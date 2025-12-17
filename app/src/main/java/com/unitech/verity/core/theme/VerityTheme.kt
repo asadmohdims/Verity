@@ -48,10 +48,18 @@ object VerityTheme {
  */
 @Composable
 fun VerityTheme(
-    colors: VerityColors,
+    /**
+     * Single switch point for palette selection: true for dark theme, false for light theme.
+     */
+    darkTheme: Boolean,
     typography: VerityTypography,
     content: @Composable () -> Unit
 ) {
+    val colors = if (darkTheme) {
+        VerityDarkColors
+    } else {
+        VerityLightColors
+    }
     CompositionLocalProvider(
         LocalVerityColors provides colors,
         LocalVerityTypography provides typography

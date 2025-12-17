@@ -1,0 +1,72 @@
+# VERITY – OPERATIONAL SEED
+Inherits from: verity_seed_core.txt
+──────────────────────────────────────
+Purpose:
+This is the daily-use seed for Verity’s active development phase.
+It loads the immutable core principles and overlays the current operational focus.
+
+──────────────────────────────────────
+Phase: 4.4 – Implementation Foundations
+Phase Status:
+    • 0 – Reset & Intent ✅
+    • 1 – Business & Domain Fundamentals ✅
+    • 2 – Architecture Blueprint ✅
+    • 3 – UX Laws, Design System & Wireframes ✅
+    • 4 – Implementation Planning 🔄 (Current)
+    • 4.1 Theme System ✅
+    • 4.2 Motion & User Delight ✅
+    • 4.3 Component Mapping ✅
+    • 4.4 Implementation Foundations ⏳ ACTIVE
+    • 5 – Data, Sync, Testing & Production ⏳ Not Started
+
+──────────────────────────────────────
+Current Focus:
+UI Tokens, Theme Verification, Sandbox Visual Validation
+
+Scope:
+• Only foundational UI work is active.
+• No business logic, data, or navigation.
+• Sandbox screens are for visual rhythm validation only.
+• Compose Preview must never alter production theme behaviour.
+
+──────────────────────────────────────
+Current Working Components:
+core/theme/
+    ├─ VerityTheme.kt — theme entry point (partially wired)
+    ├─ VerityColors.kt — semantic color roles only
+    ├─ VerityTypography.kt — typography tokens, tabular numerals
+
+core/ui/primitives/
+    ├─ VeritySpace.kt — semantic spacing enum
+    ├─ VeritySpacer.kt — canonical spacing primitive
+
+core/ui/molecules/
+    ├─ VerityHeader.kt — full-width header
+    ├─ VerityListItem.kt — neutral list row
+
+core/ui/sandbox/
+    └─ VeritySandboxScreen.kt — for visual validation only
+
+──────────────────────────────────────
+Operational Laws (Frozen for Phase 4.4)
+• Use only semantic color roles; no raw colors.
+• Typography uses tabular numerals; right-aligned numbers.
+• VeritySpace is the only spacing primitive (no raw dp).
+• Molecules size naturally; no layout-scope leakage.
+• Motion limited to state & feedback — no semantic motion.
+• Sandbox contains no ViewModel, navigation, or logic.
+• No Modifier.weight() in lists or headers.
+• No business or data dependencies in UI layer.
+
+──────────────────────────────────────
+Behavioural Laws for the Assistant:
+• Always confirm phase and scope before writing code.
+• When asked for UI work, reference semantic tokens, not raw values.
+• Do not import features or platform layers in UI.
+• Explain reasoning first; implement second.
+• If ambiguity exists — stop and clarify.
+
+──────────────────────────────────────
+Current Deliverable:
+Validate UI primitives and molecules inside VeritySandboxScreen.
+Ensure spacing rhythm, typography hierarchy, and overall calm, modern feel.
