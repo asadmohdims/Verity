@@ -8,7 +8,7 @@ Phase Status:
     • 2 – Architecture Blueprint ✅
     • 3 – UX Laws, Design System & Wireframes ✅
     • 4 – Implementation Foundations ✅ (LOCKED)
-    • 5 – Data, Sync, Testing & Production Prep 🔄 ACTIVE (Domain Architecture Locked)
+    • 5 – Data, Sync, Testing & Production Prep 🔄 ACTIVE (Domain + Module Architecture Locked)
 
 ──────────────────────────────────────
 Current Focus:
@@ -17,6 +17,7 @@ UI work is frozen unless directly required by data or correctness.
 • Aggregate boundaries, command→event flow, and replay architecture are locked.
 • Domain causality, immutability, and projection laws are constitutionally enforced.
 • Performance strategy defined via checkpointed projections (no full replay on navigation).
+• Module identity, namespaces, and build configuration are treated as correctness-critical infrastructure.
 
 ──────────────────────────────────────
 Scope:
@@ -29,6 +30,8 @@ Scope:
 • Event Sourcing applied surgically to financial and logistical domain truth only.
 • Projections treated strictly as rebuildable performance caches.
 • Replay-first design with incremental (delta-based) rebuilds for scalability.
+• Version-catalog–driven dependency management (no ad-hoc plugin or library versions).
+• Platform module is the exclusive owner of persistence technologies (Room, KSP).
 
 ──────────────────────────────────────
 Current Working Components:
@@ -39,6 +42,8 @@ core/domain/
 platform/database/
     ├─ Room entities & DAOs
     ├─ Explicit migrations (versioned, tested)
+    ├─ EventEntity (append-only event store)
+    ├─ KSP-backed Room configuration (platform-only)
 
 platform/cloud/
     ├─ Sync boundaries & replication logic (no UI coupling)
@@ -65,6 +70,9 @@ Operational Laws (Frozen for Phase 5)
 • Replay explains history; it must never decide or mutate truth.
 • Projection tables may be dropped and rebuilt at any time without data loss.
 • Performance optimizations must not introduce new sources of truth.
+• Build configuration errors are correctness failures, not tooling issues.
+• Room, KSP, and migrations must never appear outside the platform module.
+• Event storage schema changes require migration tests before merge.
 
 ──────────────────────────────────────
 Behavioural Laws for the Assistant:
@@ -76,8 +84,7 @@ Behavioural Laws for the Assistant:
 
 ──────────────────────────────────────
 Current Deliverable:
-• Event naming, versioning, and aggregate boundaries finalized.
-• Append-only event storage model defined and locked.
-• Replay engine and projection persistence strategy defined.
-• In-memory invariant tests specified as correctness gate.
-• Ready to begin concrete implementation (EventEntity, EventDao, replay engine).
+• EventEntity implemented as append-only Room table (platform-owned).
+• KSP and Room wired via version catalog (no direct plugin IDs).
+• Namespace migration to com.verity completed across modules.
+• Ready to implement EventDao (insert-only) and replay-safe queries.

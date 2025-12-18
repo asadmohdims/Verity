@@ -18,6 +18,7 @@ App Name: Verity
 Essence: Truth · Correctness · Clarity · Trust
 Tone: Professional · Modern · Calm (not flashy or enterprise gray)
 Goal: A long-term, daily-use modern Android billing app.
+Distribution: Play Store–ready, multi-organization SaaS-capable Android app.
 
 ──────────────────────────────
 
@@ -31,6 +32,7 @@ Goal: A long-term, daily-use modern Android billing app.
 • Deterministic, rebuildable projections (state must be reproducible from history).
 • Immutability by default — invoices, payments, and ledger are never mutated post-finalization.
 • Testing is first-class; domain invariants are enforced through tests, not convention.
+• Modular-by-construction — build, dependency, and namespace boundaries are enforced as architectural law.
 
 ──────────────────────────────
 
@@ -61,12 +63,8 @@ Violation of any law is an architectural defect and must stop development until 
 Top-level packages (ONLY THESE):
 
 app/
-core/
-features/
-platform/
-
-app/
 • Application entry, NavHost, DI wiring — no business logic.
+• Owns applicationId = com.verity (external identity). Namespace = com.verity.app.
 
 core/
 • theme (colors, typography, motion tokens)
@@ -75,17 +73,30 @@ core/
 • formatting (money, dates)
 • utils, result types
 • no feature knowledge.
+• Pure Compose library. No platform, database, or UI state ownership.
 
 features/
 • Each feature isolated — Invoice, Search, Customers, Ledger, Payments.
 • Communication only via navigation contracts or IDs.
 • No shared UI, ViewModels, or repositories.
+• Compose-first feature libraries. No Activities, no databases, no cross-feature state.
 
 platform/
 • database (Room + KSP)
 • cloud (Firebase / APIs)
 • workers (WorkManager)
 • device helpers and permissions.
+• Infrastructure-only. Owns Room, KSP, migrations, sync, workers. No UI dependencies.
+
+──────────────────────────────
+
+3A. Namespace & Module Identity Laws (Frozen)
+
+• applicationId represents the product identity and is fixed as: com.verity
+• Every module has its own namespace rooted at com.verity.<module>
+• No customer, environment, or developer name may appear in package paths.
+• Organizations exist only as data (OrganizationEntity), never as code structure.
+• Namespace changes after first public release are forbidden.
 
 ──────────────────────────────
 
@@ -154,6 +165,7 @@ Rules:
 • Aggregates must never read or mutate other aggregates.
 • Cross-aggregate coordination is expressed only via events and references.
 • Ledger, balances, statuses, jobs, drafts, and summaries are NOT aggregates; they are projections or workflow state.
+• Aggregates emit events only after successful invariant validation; drafts and UI state are not events.
 
 Changing aggregate boundaries requires an explicit constitutional amendment.
 
@@ -201,6 +213,7 @@ Rules:
 • Industry‑standard best practices must be used wherever applicable (Android, Kotlin, architecture).
 • Each file should be readable in isolation and clearly convey its responsibility.
 • Consistency across files is valued more than cleverness or brevity.
+• Build logic (Gradle, catalogs, plugins) is treated as production code and held to the same standard as Kotlin sources.
 
 If a file is not production‑ready, it must not be written.
 ──────────────────────────────
