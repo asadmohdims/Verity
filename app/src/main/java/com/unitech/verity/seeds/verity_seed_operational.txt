@@ -1,72 +1,83 @@
 # VERITY – OPERATIONAL SEED
 Inherits from: verity_seed_core.txt
 ──────────────────────────────────────
-Purpose:
-This is the daily-use seed for Verity’s active development phase.
-It loads the immutable core principles and overlays the current operational focus.
-
-──────────────────────────────────────
-Phase: 4.4 – Implementation Foundations
+Phase: 5 – Data, Sync, Testing & Production Prep
 Phase Status:
     • 0 – Reset & Intent ✅
     • 1 – Business & Domain Fundamentals ✅
     • 2 – Architecture Blueprint ✅
     • 3 – UX Laws, Design System & Wireframes ✅
-    • 4 – Implementation Planning 🔄 (Current)
-    • 4.1 Theme System ✅
-    • 4.2 Motion & User Delight ✅
-    • 4.3 Component Mapping ✅
-    • 4.4 Implementation Foundations ⏳ ACTIVE
-    • 5 – Data, Sync, Testing & Production ⏳ Not Started
+    • 4 – Implementation Foundations ✅ (LOCKED)
+    • 5 – Data, Sync, Testing & Production Prep 🔄 ACTIVE (Domain Architecture Locked)
 
 ──────────────────────────────────────
 Current Focus:
-UI Tokens, Theme Verification, Sandbox Visual Validation
+Domain correctness, data modeling, invariants, migrations, and test enforcement.
+UI work is frozen unless directly required by data or correctness.
+• Aggregate boundaries, command→event flow, and replay architecture are locked.
+• Domain causality, immutability, and projection laws are constitutionally enforced.
+• Performance strategy defined via checkpointed projections (no full replay on navigation).
 
+──────────────────────────────────────
 Scope:
-• Only foundational UI work is active.
-• No business logic, data, or navigation.
-• Sandbox screens are for visual rhythm validation only.
-• Compose Preview must never alter production theme behaviour.
+• Domain-first design (events, invariants, projections).
+• Local database (Room) as the sole source of truth.
+• Explicit migrations before schema changes.
+• Offline-first sync design (cloud as replication target only).
+• Test-first enforcement of domain invariants.
+• No speculative UI or UX changes.
+• Event Sourcing applied surgically to financial and logistical domain truth only.
+• Projections treated strictly as rebuildable performance caches.
+• Replay-first design with incremental (delta-based) rebuilds for scalability.
 
 ──────────────────────────────────────
 Current Working Components:
-core/theme/
-    ├─ VerityTheme.kt — theme entry point (partially wired)
-    ├─ VerityColors.kt — semantic color roles only
-    ├─ VerityTypography.kt — typography tokens, tabular numerals
+core/domain/
+    ├─ events (Invoice, Payment, Customer lifecycle events)
+    ├─ invariants (ledger, balance, immutability rules)
 
-core/ui/primitives/
-    ├─ VeritySpace.kt — semantic spacing enum
-    ├─ VeritySpacer.kt — canonical spacing primitive
+platform/database/
+    ├─ Room entities & DAOs
+    ├─ Explicit migrations (versioned, tested)
 
-core/ui/molecules/
-    ├─ VerityHeader.kt — full-width header
-    ├─ VerityListItem.kt — neutral list row
+platform/cloud/
+    ├─ Sync boundaries & replication logic (no UI coupling)
 
-core/ui/sandbox/
-    └─ VeritySandboxScreen.kt — for visual validation only
+tests/
+    ├─ Domain invariant tests
+    ├─ Ledger rebuild tests
+    ├─ Migration tests
+
+core/replay/
+    ├─ Pure replay engine (events → in-memory state)
+    ├─ Deterministic ledger computation
 
 ──────────────────────────────────────
-Operational Laws (Frozen for Phase 4.4)
-• Use only semantic color roles; no raw colors.
-• Typography uses tabular numerals; right-aligned numbers.
-• VeritySpace is the only spacing primitive (no raw dp).
-• Molecules size naturally; no layout-scope leakage.
-• Motion limited to state & feedback — no semantic motion.
-• Sandbox contains no ViewModel, navigation, or logic.
-• No Modifier.weight() in lists or headers.
-• No business or data dependencies in UI layer.
+Operational Laws (Frozen for Phase 5)
+• Local database is the single source of truth.
+• All state changes occur via append-only domain events.
+• Projections must be fully rebuildable from events.
+• No silent data mutation or in-place edits.
+• Migrations are mandatory and written before schema changes.
+• UI may not compensate for data inconsistency.
+• Cloud sync may lag, replay, or fail without corrupting truth.
+• Commands express intent; only aggregates may emit domain events.
+• Replay explains history; it must never decide or mutate truth.
+• Projection tables may be dropped and rebuilt at any time without data loss.
+• Performance optimizations must not introduce new sources of truth.
 
 ──────────────────────────────────────
 Behavioural Laws for the Assistant:
-• Always confirm phase and scope before writing code.
-• When asked for UI work, reference semantic tokens, not raw values.
-• Do not import features or platform layers in UI.
-• Explain reasoning first; implement second.
-• If ambiguity exists — stop and clarify.
+• Always confirm invariants before proposing data models.
+• No Room entities without migration strategy.
+• No sync logic without failure and replay semantics.
+• Prefer tests and invariants before feature code.
+• Stop immediately if correctness is compromised.
 
 ──────────────────────────────────────
 Current Deliverable:
-Validate UI primitives and molecules inside VeritySandboxScreen.
-Ensure spacing rhythm, typography hierarchy, and overall calm, modern feel.
+• Event naming, versioning, and aggregate boundaries finalized.
+• Append-only event storage model defined and locked.
+• Replay engine and projection persistence strategy defined.
+• In-memory invariant tests specified as correctness gate.
+• Ready to begin concrete implementation (EventEntity, EventDao, replay engine).

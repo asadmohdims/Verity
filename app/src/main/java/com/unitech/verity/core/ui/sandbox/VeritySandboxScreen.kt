@@ -45,8 +45,8 @@ fun VeritySandboxScreen() {
 
             // ── Screen Header ───────────────────────────────
             VerityHeader(
-                title = "Verity Sandbox",
-                subtitle = "Visual rhythm & typography validation"
+                title = "Verity — Industrial Billing & Ledger Management System",
+                subtitle = "Foundational typography, spacing, and surface validation under realistic stress"
             )
 
             VeritySpacer(size = VeritySpace.Large)
@@ -58,7 +58,7 @@ fun VeritySandboxScreen() {
             ) {
 
                 VerityText(
-                    text = "Display — Screen Identity",
+                    text = "Display — Verity Industrial Billing & Ledger Management",
                     style = VerityTextStyle.Display
                 )
 
@@ -72,7 +72,7 @@ fun VeritySandboxScreen() {
                 VeritySpacer(size = VeritySpace.Medium)
 
                 VerityText(
-                    text = "Body — Primary factual content used for names, ledger rows, and descriptions.",
+                    text = "Body — This invoice covers supply, installation, calibration, and on-site commissioning of industrial-grade CNC machinery, including operator training, warranty coverage, and post-installation support.",
                     style = VerityTextStyle.Body
                 )
 
@@ -86,7 +86,7 @@ fun VeritySandboxScreen() {
                 VeritySpacer(size = VeritySpace.Small)
 
                 VerityText(
-                    text = "Caption — Secondary context like dates · 12 Mar 2025",
+                    text = "Caption — Outstanding balance as of 31 Mar 2025 · ₹ 12,00,000.00",
                     style = VerityTextStyle.Caption
                 )
             }
@@ -127,7 +127,7 @@ fun VeritySandboxScreen() {
             ) {
 
                 VerityListItem(
-                    title = "Unitech Machineries",
+                    title = "Unitech Heavy Industrial Machinery & Engineering Services Private Limited",
                     subtitle = "Customer"
                 )
 
@@ -135,7 +135,7 @@ fun VeritySandboxScreen() {
 
                 VerityListItem(
                     title = "Invoice #INV-1024",
-                    subtitle = "₹ 54,320.00"
+                    subtitle = "Invoice total ₹ 54,320.00 · Generated on 12 March 2025 · Net 30 days"
                 )
 
                 VeritySpacer(size = VeritySpace.Medium)

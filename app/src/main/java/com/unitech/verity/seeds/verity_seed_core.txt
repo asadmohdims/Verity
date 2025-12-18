@@ -1,127 +1,243 @@
 📘 VERITY – CORE SEED
-Authoritative Loading Capsule
+
+Authoritative Loading Capsule (Amended & Strengthened)
+
 ──────────────────────────────
-Purpose:
+
+Purpose
+
 This seed reinitializes the complete philosophical and architectural foundation of Verity.
 It never changes unless the global constitution changes.
 All other seeds (Operational, Feature, UX, Testing, Phase) must inherit from this one.
 
 ──────────────────────────────
+
 0. Identity
+
 App Name: Verity
 Essence: Truth · Correctness · Clarity · Trust
 Tone: Professional · Modern · Calm (not flashy or enterprise gray)
 Goal: A long-term, daily-use modern Android billing app.
 
 ──────────────────────────────
+
 1. Foundational Philosophy (Frozen)
+
 • Architecture, UX, and correctness matter more than speed.
-• Compose-first, Kotlin-first, Testable, Scalable.
-• Offline-first — Cloud is a sync target, never the source of truth.
-• Deterministic, rebuildable projections.
-• Explicit domain events — no silent mutations.
-• Immutability as default — invoices, payments, and ledger are never mutated post-finalization.
-• Testing is first-class; nothing is too small to test.
+• Compose-first, Kotlin-first, testable, scalable.
+• Offline-first — local database is the sole source of truth; cloud is a replication and recovery target only.
+• Explicit domain events — append-only; no silent mutations.
+• All mutable state is derived from events, never edited in place.
+• Deterministic, rebuildable projections (state must be reproducible from history).
+• Immutability by default — invoices, payments, and ledger are never mutated post-finalization.
+• Testing is first-class; domain invariants are enforced through tests, not convention.
 
 ──────────────────────────────
+
+1A. Domain Causality Laws (Frozen)
+
+• Commands ask permission.
+• Aggregates decide truth.
+• Events record history.
+• Aggregates create history.
+• Replay interprets history.
+• Projections explain results.
+• Projections present results.
+• No projection is authoritative; deleting any projection must never destroy truth.
+
+Violation of any law is an architectural defect and must stop development until resolved.
+
+──────────────────────────────
+
 2. Multi-Organization Law (Locked)
+
 • Must support multiple organizations (not hard-coded for Unitech Machineries).
 • Branding, logo, and tax metadata must be configurable via templates.
 
 ──────────────────────────────
+
 3. Architecture & Structure (Locked)
+
 Top-level packages (ONLY THESE):
-    app/
-    core/
-    features/
-    platform/
 
 app/
-    • Application entry, NavHost, DI wiring — no business logic.
+core/
+features/
+platform/
+
+app/
+• Application entry, NavHost, DI wiring — no business logic.
 
 core/
-    • theme (colors, typography, motion tokens)
-    • ui (primitives, atoms, molecules only)
-    • navigation (destinations, routes)
-    • formatting (money, dates)
-    • utils, result types
-    • no feature knowledge.
+• theme (colors, typography, motion tokens)
+• ui (primitives, atoms, molecules only)
+• navigation (destinations, routes)
+• formatting (money, dates)
+• utils, result types
+• no feature knowledge.
 
 features/
-    • each feature isolated — Invoice, Search, Customers, Ledger, Payments.
-    • communication only via navigation contracts or IDs.
-    • no shared UI, ViewModels, or repositories.
+• Each feature isolated — Invoice, Search, Customers, Ledger, Payments.
+• Communication only via navigation contracts or IDs.
+• No shared UI, ViewModels, or repositories.
 
 platform/
-    • database (Room + KSP)
-    • cloud (Firebase/APIs)
-    • workers (WorkManager)
-    • device helpers and permissions.
+• database (Room + KSP)
+• cloud (Firebase / APIs)
+• workers (WorkManager)
+• device helpers and permissions.
 
 ──────────────────────────────
+
 4. Core Domain Model (Immutable)
+
 • Invoices = Events
 • Payments = Events
 • Customers = Identities
-• Ledger = Deterministic projection (Invoices → Debits; Payments → Credits)
+• Ledger = Deterministic projection
+(Invoices → Debits; Payments → Credits)
 
 Rules:
-    - Invoices immutable once finalized.
-    - Payments always positive, immutable, and reversible only via new entries.
-    - Ledger rebuildable and read-only.
-    - Negative balance = Customer credit (advance).
+	•	Invoices immutable once finalized.
+	•	Payments always positive, immutable, and reversible only via new entries.
+	•	Ledger is read-only and fully rebuildable from events.
+	•	Negative balance represents customer credit (advance), never negative payments.
 
 ──────────────────────────────
-5. UI & UX Foundations
+
+4A. Immutability Laws (Frozen)
+
+• The events table is append-only.
+• No event may be updated, deleted, or rewritten.
+• All corrections are represented by new compensating events.
+• No migration may alter the meaning of historical events.
+• Projections and drafts are disposable; events are not.
+• Replay is the only valid mechanism to derive state from history.
+
+Any attempt to bypass immutability is a correctness violation.
+
+──────────────────────────────
+
+4B. Aggregate Boundaries (Frozen)
+
+Verity uses explicit aggregate boundaries to enforce correctness and prevent cross-domain mutation.
+An aggregate is the smallest unit that enforces its own invariants and emits its own domain events.
+
+Authoritative aggregate list (Phase 5):
+
+• Customer
+  - Identity: customerId
+  - Responsibility: customer lifecycle and non-financial metadata
+
+• Invoice
+  - Identity: invoiceId
+  - Responsibility: financial debit (service or sale)
+  - Emits: InvoiceFinalized, InvoiceCancelled
+
+• Challan
+  - Identity: challanId
+  - Responsibility: goods custody / logistical truth
+  - Emits: ChallanIssued, ChallanCancelled
+
+• Payment
+  - Identity: paymentId
+  - Responsibility: financial credit
+  - Emits: PaymentRecorded, PaymentReversed
+
+• DocumentRelationship
+  - Identity: relationshipId
+  - Responsibility: explicit, auditable linkage between domain documents
+  - Emits: DocumentsLinked (and compensating unlink events if introduced later)
+
+Rules:
+• Aggregates validate commands and decide truth.
+• Aggregates must never read or mutate other aggregates.
+• Cross-aggregate coordination is expressed only via events and references.
+• Ledger, balances, statuses, jobs, drafts, and summaries are NOT aggregates; they are projections or workflow state.
+
+Changing aggregate boundaries requires an explicit constitutional amendment.
+
+──────────────────────────────
+
+5. UI & UX Foundations (Frozen)
+
 • Compose-first; XML forbidden.
-• Invoice creation = default primary action.
+• Invoice creation is the default primary action.
 • Search is deliberate, not ambient.
 • Fast-entry UX for power users is mandatory.
 • Preview-before-finalize is mandatory.
 • Ledger explains truth; it never edits it.
 • Payments are explicit, never automatic.
-• Motion can acknowledge change but never carry meaning.
+• Motion may acknowledge change but must never carry meaning.
 • Immutability is a user-facing principle — truth over illusion.
 
 ──────────────────────────────
+
 6. Coding Interaction Rules (Critical)
-1. Do not assume new methods, classes, or imports.
-2. Ask first if something is missing.
-3. Work on one file at a time.
-4. No refactors unless explicitly requested.
-5. Explain reasoning before writing code.
-6. Prefer minimal, reversible changes.
+	1.	Do not assume new methods, classes, or imports.
+	2.	Ask first if something is missing.
+	3.	Work on one file at a time.
+	4.	No refactors unless explicitly requested.
+	5.	Explain reasoning before writing code.
+	6.	Prefer minimal, reversible changes.
+
 Violation = stop and reassess.
 
 ──────────────────────────────
+
 7. Testing & Reliability
+
 • Each module and feature independently testable.
-• Explicit migrations required for all Room changes.
-• Ledger rebuildability tested as invariant.
-• No Firebase listeners or remote triggers in UI layer.
+• Explicit migrations required for all Room schema changes.
+• Ledger rebuildability tested as a non-negotiable invariant.
+• Domain invariants must have tests before features rely on them.
+• No Firebase listeners or remote triggers in the UI layer.
 
 ──────────────────────────────
+
+7A. Projection Laws (Frozen)
+
+• Projections are performance optimizations, never sources of truth.
+• All projections must be fully rebuildable from events.
+• Projections may lag behind events but must converge deterministically.
+• UI and business logic must never mutate projections directly.
+• If projections disagree with events, events always win.
+• Loss or corruption of a projection must not cause data loss.
+
+Projection correctness is enforced through replay-based tests.
+
+──────────────────────────────
+
 8. Stack (Locked)
+
 Jetpack Compose · Material 3 (tokens only) · Navigation-Compose ·
-ViewModel + StateFlow · Room + KSP · Coroutines · WorkManager · Hilt · Gradle Version Catalogs
+ViewModel + StateFlow · Room + KSP · Coroutines · WorkManager ·
+Hilt · Gradle Version Catalogs
 
-Forbidden: XML · Fragments · LiveData · AsyncTask · RxJava · EventBus · DataBinding · Legacy Material 2
+Forbidden:
+XML · Fragments · LiveData · AsyncTask · RxJava · EventBus ·
+DataBinding · Legacy Material 2
 
 ──────────────────────────────
+
 9. Global UX Laws (Frozen)
-1. Invoice creation is default action.
-2. Search is deliberate, not ambient.
-3. Ledger explains truth; never edits.
-4. Payments explicit; never automatic.
-5. Preview-before-finalize mandatory.
-6. Fast-entry UX is first-class.
-7. Immutability is default.
-8. Search context always visible & resettable.
-9. Secondary info never steals focus.
-10. Every screen must be wireframed before code.
+	1.	Invoice creation is the default action.
+	2.	Search is deliberate, not ambient.
+	3.	Ledger explains truth; never edits.
+	4.	Payments explicit; never automatic.
+	5.	Preview-before-finalize mandatory.
+	6.	Fast-entry UX is first-class.
+	7.	Immutability is default.
+	8.	Search context always visible and resettable.
+	9.	Secondary information never steals focus.
+	10.	Every screen must be wireframed before code.
 
 ──────────────────────────────
+
 10. Coding Assistant Behaviour
+
 This capsule defines Verity’s law.
-Any derived seed (operational, feature, or UX) inherits these rules.
-If any ambiguity arises, stop and request clarification before proceeding.
+Any derived seed (operational, feature, UX, or testing) inherits these rules.
+If ambiguity arises, stop and request clarification before proceeding.
+
+⸻
