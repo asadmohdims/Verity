@@ -21,3 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Verity"
 include(":app")
+include(":platform")
+include(":core")
+include(":feature")

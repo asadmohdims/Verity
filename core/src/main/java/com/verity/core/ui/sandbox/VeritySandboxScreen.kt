@@ -1,0 +1,197 @@
+package com.verity.``.core.ui.sandbox
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.verity.``.core.theme.VerityBaseTypography
+import com.verity.``.core.theme.VerityTheme
+import com.verity.``.core.ui.molecules.VerityHeader
+import com.verity.``.core.ui.molecules.VerityListItem
+import com.verity.``.core.ui.molecules.VeritySection
+import com.verity.``.core.ui.primitives.VeritySpacer
+import com.verity.``.core.ui.primitives.VeritySpace
+import com.verity.``.core.ui.primitives.VeritySurface
+import com.verity.``.core.ui.primitives.VeritySurfaceType
+import com.verity.``.core.ui.primitives.VerityText
+import com.verity.``.core.ui.primitives.VerityTextStyle
+import com.verity.``.core.ui.primitives.dp
+
+/**
+ * VeritySandboxScreen
+ *
+ * Visual validation surface for:
+ * - typography hierarchy
+ * - spacing rhythm
+ * - surface contrast
+ *
+ * Sandbox only. No logic. No navigation.
+ */
+@Composable
+fun VeritySandboxScreen() {
+    VeritySurface(
+        type = VeritySurfaceType.Base,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(VeritySpace.Medium.dp)
+        ) {
+
+            // ── Screen Header ───────────────────────────────
+            VerityHeader(
+                title = "Verity — Industrial Billing & Ledger Management System",
+                subtitle = "Foundational typography, spacing, and surface validation under realistic stress"
+            )
+
+            VeritySpacer(size = VeritySpace.Large)
+
+            // ── Typography Ladder ──────────────────────────
+            VeritySection(
+                title = "Typography Hierarchy",
+                showDivider = true
+            ) {
+
+                VerityText(
+                    text = "Display — Verity Industrial Billing & Ledger Management",
+                    style = VerityTextStyle.Display
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraLarge)
+
+                VerityText(
+                    text = "Title — Section Anchor",
+                    style = VerityTextStyle.Title
+                )
+
+                VeritySpacer(size = VeritySpace.Medium)
+
+                VerityText(
+                    text = "Body — This invoice covers supply, installation, calibration, and on-site commissioning of industrial-grade CNC machinery, including operator training, warranty coverage, and post-installation support.",
+                    style = VerityTextStyle.Body
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "Label — Metadata and structural hints",
+                    style = VerityTextStyle.Label
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "Caption — Outstanding balance as of 31 Mar 2025 · ₹ 12,00,000.00",
+                    style = VerityTextStyle.Caption
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Large)
+
+            // ── Numeric Stability ──────────────────────────
+            VeritySection(
+                title = "Numeric Stability",
+                showDivider = true
+            ) {
+                VerityText(
+                    text = "₹ 1,23,456.78",
+                    style = VerityTextStyle.Body
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "₹ 9,876.00",
+                    style = VerityTextStyle.Body
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "₹ 12,00,000.00",
+                    style = VerityTextStyle.Body
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Large)
+
+            // ── List Rhythm ────────────────────────────────
+            VeritySection(
+                title = "List Rhythm",
+                surfaceType = VeritySurfaceType.Raised
+            ) {
+
+                VerityListItem(
+                    title = "Unitech Heavy Industrial Machinery & Engineering Services Private Limited",
+                    subtitle = "Customer"
+                )
+
+                VeritySpacer(size = VeritySpace.Medium)
+
+                VerityListItem(
+                    title = "Invoice #INV-1024",
+                    subtitle = "Invoice total ₹ 54,320.00 · Generated on 12 March 2025 · Net 30 days"
+                )
+
+                VeritySpacer(size = VeritySpace.Medium)
+
+                VerityListItem(
+                    title = "Payment Received",
+                    subtitle = "₹ 20,000.00 · 12 Mar"
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Large)
+
+            // ── Surface Contrast ───────────────────────────
+            VeritySection(
+                title = "Surface Contrast",
+                surfaceType = VeritySurfaceType.Sunken
+            ) {
+                VerityText(
+                    text = "Sunken surface for dense information zones.",
+                    style = VerityTextStyle.Body
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.ExtraLarge)
+        }
+    }
+}
+
+/* ──────────────────────────────── */
+/* Preview wrappers (sandbox only) */
+/* ──────────────────────────────── */
+
+@Preview(
+    name = "Light",
+    showBackground = true
+)
+@Composable
+private fun VeritySandboxPreviewLight() {
+    VerityTheme(
+        darkTheme = false,
+        typography = VerityBaseTypography
+    ) {
+        VeritySandboxScreen()
+    }
+}
+
+@Preview(
+    name = "Dark",
+    showBackground = true
+)
+@Composable
+private fun VeritySandboxPreviewDark() {
+    VerityTheme(
+        darkTheme = true,
+        typography = VerityBaseTypography
+    ) {
+        VeritySandboxScreen()
+    }
+}
