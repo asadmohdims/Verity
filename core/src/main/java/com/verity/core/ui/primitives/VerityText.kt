@@ -1,10 +1,10 @@
-package com.verity.``.core.ui.primitives
+package com.verity.core.ui.primitives
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import com.verity.``.core.theme.VerityTheme
+import com.verity.core.theme.VerityTheme
 
 /**
  * Semantic text styles allowed in Verity.

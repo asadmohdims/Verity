@@ -1,4 +1,4 @@
-package com.verity.``.core.ui.sandbox
+package com.verity.core.ui.sandbox
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,18 +8,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.verity.``.core.theme.VerityBaseTypography
-import com.verity.``.core.theme.VerityTheme
-import com.verity.``.core.ui.molecules.VerityHeader
-import com.verity.``.core.ui.molecules.VerityListItem
-import com.verity.``.core.ui.molecules.VeritySection
-import com.verity.``.core.ui.primitives.VeritySpacer
-import com.verity.``.core.ui.primitives.VeritySpace
-import com.verity.``.core.ui.primitives.VeritySurface
-import com.verity.``.core.ui.primitives.VeritySurfaceType
-import com.verity.``.core.ui.primitives.VerityText
-import com.verity.``.core.ui.primitives.VerityTextStyle
-import com.verity.``.core.ui.primitives.dp
+import com.verity.core.theme.VerityBaseTypography
+import com.verity.core.theme.VerityTheme
+import com.verity.core.ui.molecules.VerityHeader
+import com.verity.core.ui.molecules.VerityListItem
+import com.verity.core.ui.molecules.VeritySection
+import com.verity.core.ui.primitives.VeritySpacer
+import com.verity.core.ui.primitives.VeritySpace
+import com.verity.core.ui.primitives.VeritySurface
+import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.core.ui.primitives.VerityText
+import com.verity.core.ui.primitives.VerityTextStyle
+import com.verity.core.ui.primitives.dp
 
 /**
  * VeritySandboxScreen

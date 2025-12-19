@@ -1,4 +1,4 @@
-package com.verity.``.feature
+package com.verity.feature
 
 import org.junit.Test
 

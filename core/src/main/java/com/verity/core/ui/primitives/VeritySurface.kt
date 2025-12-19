@@ -1,9 +1,9 @@
-package com.verity.``.core.ui.primitives
+package com.verity.core.ui.primitives
 
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.verity.``.core.theme.VerityTheme
+import com.verity.core.theme.VerityTheme
 
 /**
  * Semantic surface types used across the Verity UI.

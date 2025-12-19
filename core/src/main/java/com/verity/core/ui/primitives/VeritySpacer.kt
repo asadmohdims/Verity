@@ -1,4 +1,4 @@
-package com.verity.``.core.ui.primitives
+package com.verity.core.ui.primitives
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height

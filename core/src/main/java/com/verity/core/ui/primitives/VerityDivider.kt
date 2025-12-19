@@ -1,4 +1,4 @@
-package com.verity.``.core.ui.primitives
+package com.verity.core.ui.primitives
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -6,7 +6,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.verity.``.core.theme.VerityTheme
+import com.verity.core.theme.VerityTheme
 
 /**
  * Semantic divider strengths used across the Verity UI.
