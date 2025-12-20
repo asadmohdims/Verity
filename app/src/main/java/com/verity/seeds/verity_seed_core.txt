@@ -1,3 +1,25 @@
+⚠️ AUTHORITATIVE CONSTITUTION — READ FIRST
+
+This document is the frozen constitutional law of the Verity project.
+
+All sections marked (Frozen) or (Locked) are NON‑NEGOTIABLE.
+Nothing in this document may be ignored, weakened, summarized away,
+or reinterpreted unless the Core Seed is explicitly reopened.
+
+If any instruction, suggestion, or code conflicts with this seed:
+→ THIS SEED WINS.
+
+MANDATORY BEHAVIOR FOR ANY CHAT USING THIS SEED:
+• Treat this document as authoritative system law.
+• Ask before assuming anything not explicitly stated.
+• Do not refactor, rename, or restructure unless explicitly requested.
+• Do not introduce abstractions, helpers, or shortcuts.
+• If ambiguity arises, STOP and ask for clarification.
+• If drift is detected, HALT and reassess before proceeding.
+
+This seed exists to prevent architectural erosion.
+Violations are correctness defects, not stylistic disagreements.
+
 📘 VERITY – CORE SEED
 
 Authoritative Loading Capsule (Amended & Strengthened)
@@ -126,6 +148,117 @@ Rules:
 • Replay is the only valid mechanism to derive state from history.
 
 Any attempt to bypass immutability is a correctness violation.
+
+──────────────────────────────
+
+4C. Financial Truth & Projection Backbone (Locked)
+
+• Domain financial truth is represented exclusively by immutable events.
+• Ledger balance is a deterministic, rebuildable projection derived from events.
+• Financial meaning is extracted via an explicit mapping layer before replay.
+• Replay engines are pure, deterministic, and side‑effect free.
+• Projection writers orchestrate incremental replay and atomic persistence.
+• Projection tables embed replay cursors to support incremental catch‑up.
+• Invalid or non‑interpretable financial history must fail loudly and stop projection.
+• Projections may be dropped and rebuilt without data loss or semantic change.
+
+──────────────────────────────
+
+4D. Event Replay & Projection Infrastructure (Locked)
+
+Verity derives all read models through explicit, deterministic replay pipelines
+built on immutable domain events.
+
+Core rules:
+
+• All projections are derived exclusively from immutable domain events.
+• Replay engines are pure, deterministic, and side‑effect free.
+• Mapping from raw events to replay inputs is explicit and fail‑loud.
+• Projection writers orchestrate replay and persistence but do not interpret domain meaning.
+• Projection writers must be idempotent and safe to rerun after crashes.
+• Projection tables embed replay cursors to support incremental catch‑up.
+• Invalid or non‑interpretable history must halt projection advancement.
+
+──────────────────────────────
+
+4D-A. Platform Replay Orchestration (Locked)
+
+• All projection writers must be invoked exclusively via a single
+  platform-level replay coordinator.
+
+• The replay coordinator is the canonical entry point for:
+  – Incremental projection replay
+  – Full projection rebuilds (where supported)
+
+• UI layers, features, workers, services, or background jobs must
+  never invoke projection writers directly.
+
+• The replay coordinator defines and enforces deterministic
+  projection execution order.
+
+• Projection writers remain independent, idempotent, and rebuildable;
+  the coordinator contains no business logic and no persistence logic.
+
+Violation of this rule is an architectural defect and must halt development.
+
+──────────────────────────────
+
+4E. Canonical Replay Pipeline (Locked)
+
+Every replayable projection in Verity follows this canonical structure:
+
+EventEntity (append‑only, Room)
+   ↓
+Platform Adapter (platform‑owned)
+   ↓
+Event Mapper (core‑owned)
+   ↓
+Replay Engine (core‑owned, pure)
+   ↓
+Projection State (core‑owned, immutable)
+   ↓
+Projection Writer (platform‑owned)
+   ↓
+Projection Entity / Table (Room, disposable)
+
+Rules:
+
+• Core must never depend on Room, Android, or platform persistence.
+• Platform may adapt persistence models into core‑consumable inputs.
+• Replay engines must produce identical output for identical event history.
+• Projection writers are the sole writers of projection tables.
+
+──────────────────────────────
+
+4F. Implemented Projections (Current – Phase 5)
+
+The following replay pipelines are implemented and enforced:
+
+Ledger Projection
+• Financial events mapped via an explicit financial mapping layer.
+• Ledger replay engine computes balances deterministically.
+• Ledger balance persisted as a rebuildable projection.
+• Cursor‑based incremental replay enforced.
+• JVM tests lock replay correctness and projection writer behavior.
+
+Document Index Projection
+• Invoice and Challan lifecycle indexed for search and navigation.
+• Explicit mapping from document events to index mutations.
+• Replay engine derives canonical document index state.
+• Projection writer supports incremental replay and full rebuild.
+• Projection is idempotent, crash‑safe, and cursor‑driven.
+• JVM tests validate replay orchestration and persistence semantics.
+
+──────────────────────────────
+
+4G. Testing & Stability Clarification (Locked)
+
+• Replay engines are tested in isolation as pure functions.
+• Projection writers are tested using fakes for persistence and mapping.
+• JVM tests must not depend on Android framework classes.
+• Mapper implementation shape (class vs interface) is an architectural decision.
+• Established replay pipelines must not be structurally refactored without
+  explicitly reopening the Core Seed.
 
 ──────────────────────────────
 

@@ -45,5 +45,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.serialization.json)
+    testImplementation("org.json:json:20240303")
     implementation(project(":core"))
 }

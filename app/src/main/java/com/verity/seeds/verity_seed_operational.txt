@@ -1,23 +1,54 @@
 # VERITY – OPERATIONAL SEED
 Inherits from: verity_seed_core.txt
 ──────────────────────────────────────
-Phase: 5 – Data, Sync, Testing & Production Prep
-Phase Status:
-    • 0 – Reset & Intent ✅
-    • 1 – Business & Domain Fundamentals ✅
-    • 2 – Architecture Blueprint ✅
-    • 3 – UX Laws, Design System & Wireframes ✅
-    • 4 – Implementation Foundations ✅ (LOCKED)
-    • 5 – Data, Sync, Testing & Production Prep 🔄 ACTIVE (Domain + Module Architecture Locked)
+PROJECT PHASE MODEL (AUTHORITATIVE)
+
+FOUNDATION PHASES — COMPLETED & LOCKED
+• F0 — Reset & Intent ✅
+• F1 — Business & Domain Fundamentals ✅
+• F2 — Architecture Blueprint ✅
+• F3 — UX Laws, Design System & Wireframes ✅
+• F4 — Core Implementation Foundations ✅ (LOCKED)
+
+DELIVERY PHASES — UPCOMING
+• D1 — Search & Read-Only Experience (Search Mode + Document Viewer) ▶️ NEXT
+• D2 — Core Workflows (Invoices & Challans)
+• D3 — Experience, Sync & Production
 
 ──────────────────────────────────────
 Current Focus:
-Domain correctness, data modeling, invariants, migrations, and test enforcement.
-UI work is frozen unless directly required by data or correctness.
-• Aggregate boundaries, command→event flow, and replay architecture are locked.
-• Domain causality, immutability, and projection laws are constitutionally enforced.
-• Performance strategy defined via checkpointed projections (no full replay on navigation).
-• Module identity, namespaces, and build configuration are treated as correctness-critical infrastructure.
+Foundation is complete and constitutionally locked.
+The project is transitioning from platform correctness
+to visible product delivery.
+
+──────────────────────────────────────
+CANONICAL NAVIGATION FLOW (OPERATIONAL, LOCKED)
+
+The application follows a task‑first navigation topology.
+This topology is authoritative and must not be re‑routed.
+Delivery phases may gate nodes, but must not alter topology.
+
+Default Entry
+• App launch lands in Invoice / Challan Workspace (draft‑first).
+
+Primary Modes
+• Invoice / Challan Workspace — creation and drafting workspace.
+• Search Mode — dedicated recall, comparison, and reuse space.
+• Customers — relationship and money management.
+
+Canonical Transitions
+• Workspace → Search Mode (explicit user intent).
+• Search Mode → Open Document (read‑only PDF view).
+• Search Mode → Create from existing → Workspace (new draft; gated until D2).
+• Workspace → Customers.
+• Customers → Add Payment → Customer Ledger.
+• Customer Ledger → Open Document (read‑only).
+• Back navigation always returns to the originating context.
+
+Document Viewing Law
+• All documents (Invoice / Challan) are opened in a single, read‑only viewer.
+• The viewer renders the previously generated authoritative PDF.
+• Documents are never edited in place after finalization.
 
 ──────────────────────────────────────
 Scope:
@@ -32,6 +63,9 @@ Scope:
 • Replay-first design with incremental (delta-based) rebuilds for scalability.
 • Version-catalog–driven dependency management (no ad-hoc plugin or library versions).
 • Platform module is the exclusive owner of persistence technologies (Room, KSP).
+• Financial ledger projection pipeline (map → replay → project) implemented and test‑backed.
+• Document Index projection pipeline (map → replay → project) implemented and test‑backed.
+• PlatformReplayCoordinator is the sole entry point for invoking projection replay and rebuilds.
 
 ──────────────────────────────────────
 Current Working Components:
@@ -43,6 +77,12 @@ platform/database/
     ├─ Room entities & DAOs
     ├─ Explicit migrations (versioned, tested)
     ├─ EventEntity (append-only event store)
+    ├─ LedgerBalanceEntity (rebuildable ledger projection)
+    ├─ LedgerBalanceDao (projection-only persistence)
+    ├─ LedgerProjectionWriter (incremental replay orchestration)
+    ├─ DocumentIndexEntity (search/navigation projection)
+    ├─ DocumentIndexDao (projection-only persistence)
+    ├─ DocumentIndexProjectionWriter (incremental & full replay orchestration)
     ├─ KSP-backed Room configuration (platform-only)
 
 platform/cloud/
@@ -52,13 +92,21 @@ tests/
     ├─ Domain invariant tests
     ├─ Ledger rebuild tests
     ├─ Migration tests
+    ├─ LedgerProjectionWriter tests
+    ├─ DocumentIndexProjectionWriter tests
 
 core/replay/
-    ├─ Pure replay engine (events → in-memory state)
-    ├─ Deterministic ledger computation
+    ├─ Pure replay engine (events → LedgerState)
+    ├─ LedgerState (balances + audit entries)
+    ├─ DocumentIndexState (canonical document index view)
+    ├─ DocumentIndexReplayEngine (pure replay from mutations)
+platform/replay/
+    ├─ PlatformReplayCoordinator (canonical replay entry point)
+    ├─ DefaultPlatformReplayCoordinator (Phase‑1 implementation)
+    ├─ PlatformReplayableEvent (event adapter)
 
 ──────────────────────────────────────
-Operational Laws (Frozen for Phase 5)
+Operational Laws (Frozen for Foundation Phases)
 • Local database is the single source of truth.
 • All state changes occur via append-only domain events.
 • Projections must be fully rebuildable from events.
@@ -73,6 +121,9 @@ Operational Laws (Frozen for Phase 5)
 • Build configuration errors are correctness failures, not tooling issues.
 • Room, KSP, and migrations must never appear outside the platform module.
 • Event storage schema changes require migration tests before merge.
+• Projection writers must never be invoked directly outside the PlatformReplayCoordinator.
+• Replay execution order is deterministic and centrally enforced.
+• Introduction of alternate replay entry points is a constitutional violation.
 
 ──────────────────────────────────────
 Behavioural Laws for the Assistant:
@@ -83,8 +134,16 @@ Behavioural Laws for the Assistant:
 • Stop immediately if correctness is compromised.
 
 ──────────────────────────────────────
-Current Deliverable:
-• EventEntity implemented as append-only Room table (platform-owned).
-• KSP and Room wired via version catalog (no direct plugin IDs).
-• Namespace migration to com.verity completed across modules.
-• Ready to implement EventDao (insert-only) and replay-safe queries.
+Current Deliverables (as of Foundation completion):
+• Event store (EventEntity + EventDao) locked and tested for replay safety.
+• Financial event mapping layer enforced with fail‑loud semantics.
+• Deterministic ledger replay engine producing LedgerState.
+• Incremental ledger projection writer with embedded cursor strategy.
+• Rebuildable ledger balance projection persisted via Room.
+• JVM tests covering replay, projection, and failure scenarios.
+• Deterministic Document Index replay engine deriving canonical document state.
+• Incremental, cursor‑driven Document Index projection writer (idempotent & crash‑safe).
+• Rebuildable document index projection persisted via Room.
+• JVM tests covering Document Index replay, projection, and failure semantics.
+• PlatformReplayCoordinator implemented as the single canonical replay entry point.
+• Ledger and Document Index projection writers normalized to a common invocation contract.
