@@ -318,6 +318,69 @@ Changing aggregate boundaries requires an explicit constitutional amendment.
 
 ──────────────────────────────
 
+5A. Invoice Workspace — Landing Screen Semantics (Locked)
+
+The Invoice Workspace is the default landing screen on app launch.
+
+This screen represents the user’s daily working desk and must be
+action‑first, not review‑first.
+
+Authoritative intent:
+
+• User always lands in Invoice Workspace on app launch.
+• The screen must feel incomplete by default and invite action.
+• Primary mental flow follows real GST invoice creation, not UI abstraction.
+
+Canonical section semantics (read‑only in D1A, interactive later):
+
+1. Billed To
+   • Entry point for invoice creation.
+   • Represents legal payer identity.
+   • Shipped To is conceptually distinct and must always exist,
+     even when identical to Billed To.
+
+2. Line Items (Workbench)
+   • Dominant visual and spatial zone.
+   • Represents the core work area.
+   • Must conceptually support:
+     – Description
+     – HSN
+     – Quantity
+     – Unit
+     – Rate
+     – Line‑level remarks (internal / visual record)
+
+3. Logistics
+   • Represents goods movement and traceability.
+   • Not optional in real GST workflows.
+   • Must conceptually support:
+     – Transport details
+     – Supply date
+     – Optional challan linkage
+
+4. Summary
+   • Verification surface, not the goal during draft creation.
+   • Freight must be explicitly visible.
+   • Gains terminal weight only at Preview / Finalize stages.
+
+Additional rules:
+
+• “Draft” status is implicit and must not be redundantly displayed
+  on the landing screen.
+• Section labels must reflect real‑world invoice language
+  (e.g. “Billed To”, not abstract groupings like “Parties”).
+• Search must always be visibly accessible from the Invoice Workspace
+  as a deliberate mode switch, not an ambient overlay.
+• Visual hierarchy must encode workflow bias:
+  – Entry → Workbench → Verification
+• No atom, input, or interaction may be introduced until the
+  landing screen layout and semantics are locked.
+
+This subsection locks the conceptual structure of the Invoice Workspace.
+Any deviation requires explicitly reopening the Core Seed.
+
+──────────────────────────────
+
 6. Coding Interaction Rules (Critical)
 	1.	Do not assume new methods, classes, or imports.
 	2.	Ask first if something is missing.

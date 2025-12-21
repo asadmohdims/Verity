@@ -26,13 +26,16 @@ val VerityDarkColors = VerityColors(
 
     surface = VerityColors.Surface(
         // Primary containers
+        // Neutral canvas — must visually disappear
         base = Color(0xFF161B24),
 
-        // Slight lift for interactive / focused areas
-        raised = Color(0xFF1B2130),
+        // Context / identity / focus zones
+        // Clearly lifted from base (≈ +10–12% luminance)
+        raised = Color(0xFF232A3A),
 
-        // Dense regions (ledger rows, tables)
-        sunken = Color(0xFF10141C),
+        // Dense / summary / conclusion zones
+        // Clearly recessed from base (≈ −12–15% luminance)
+        sunken = Color(0xFF0C1018),
 
         // Inverse surface (dialogs, rare light contexts)
         inverse = Color(0xFFECEFF3)

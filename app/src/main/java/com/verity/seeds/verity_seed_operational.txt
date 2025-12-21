@@ -11,7 +11,7 @@ FOUNDATION PHASES — COMPLETED & LOCKED
 • F4 — Core Implementation Foundations ✅ (LOCKED)
 
 DELIVERY PHASES — UPCOMING
-• D1 — Search & Read-Only Experience (Search Mode + Document Viewer) ▶️ NEXT
+• D1 — Invoice Workspace (UI‑only, action‑first) + Search Mode (read‑only, no PDF) ▶️ NEXT
 • D2 — Core Workflows (Invoices & Challans)
 • D3 — Experience, Sync & Production
 
@@ -20,6 +20,30 @@ Current Focus:
 Foundation is complete and constitutionally locked.
 The project is transitioning from platform correctness
 to visible product delivery.
+
+──────────────────────────────────────
+D1 — Invoice Workspace (Operational Clarifications)
+
+The Invoice Workspace is the default landing surface in D1 and is treated
+as a working desk, not a document viewer.
+
+Operational intent for D1:
+
+• Workspace UI is read‑only but must be structurally complete and domain‑true.
+• UI reflects real GST invoice mental flow before interaction is introduced.
+• No PDF viewing, printing, or finalization in D1.
+• Summary is informational only; terminal gravity is deferred to D2.
+• Search is a distinct mode and must be visibly accessible from the Workspace
+  at all times.
+• Customer selection, line items, logistics, and summary are staged for
+  interaction but remain non‑interactive in D1A.
+
+Explicit exclusions in D1:
+
+• No input atoms or autocomplete behaviour.
+• No mutation, commands, or draft persistence.
+• No challan creation or linkage actions (conceptual slots only).
+• No navigation beyond Workspace ↔ Search Mode.
 
 ──────────────────────────────────────
 CANONICAL NAVIGATION FLOW (OPERATIONAL, LOCKED)
@@ -38,7 +62,7 @@ Primary Modes
 
 Canonical Transitions
 • Workspace → Search Mode (explicit user intent).
-• Search Mode → Open Document (read‑only PDF view).
+• Search Mode → Open Document (read‑only snapshot; PDF view deferred to D2).
 • Search Mode → Create from existing → Workspace (new draft; gated until D2).
 • Workspace → Customers.
 • Customers → Add Payment → Customer Ledger.
@@ -46,9 +70,23 @@ Canonical Transitions
 • Back navigation always returns to the originating context.
 
 Document Viewing Law
-• All documents (Invoice / Challan) are opened in a single, read‑only viewer.
-• The viewer renders the previously generated authoritative PDF.
+• Documents are immutable once finalized.
+• In D1, documents may be opened only as read‑only data snapshots.
+• Authoritative PDF generation occurs only after finalization (D2+).
+• All finalized documents are rendered via a single read‑only PDF viewer.
 • Documents are never edited in place after finalization.
+
+──────────────────────────────────────
+DOCUMENT LINKAGE (INVOICE ↔ CHALLAN) — OPERATIONAL, LOCKED
+
+• Invoices and Challans are independent, immutable documents.
+• Linking between documents is explicit and event‑driven.
+• Linking never mutates existing documents; it creates new facts.
+• One Invoice may link to one or more Challans.
+• A Challan may link to at most one Invoice.
+• Document linkage is derived into projections for navigation only.
+• Linkage must always be visible in search and document views once activated.
+• Creation of linkage is gated until D2 workflows.
 
 ──────────────────────────────────────
 Scope:

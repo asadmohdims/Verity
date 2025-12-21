@@ -31,8 +31,7 @@ fun VerityListItem(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+        verticalAlignment = Alignment.CenterVertically
     ) {
 
         if (leading != null) {
@@ -41,7 +40,7 @@ fun VerityListItem(
         }
 
         Column(
-            modifier = Modifier
+            modifier = Modifier.weight(1f)
         ) {
             VerityText(
                 text = title,
