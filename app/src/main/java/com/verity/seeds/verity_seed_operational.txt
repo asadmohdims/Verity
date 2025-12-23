@@ -10,16 +10,24 @@ FOUNDATION PHASES — COMPLETED & LOCKED
 • F3 — UX Laws, Design System & Wireframes ✅
 • F4 — Core Implementation Foundations ✅ (LOCKED)
 
-DELIVERY PHASES — UPCOMING
-• D1 — Invoice Workspace (UI‑only, action‑first) + Search Mode (read‑only, no PDF) ▶️ NEXT
-• D2 — Core Workflows (Invoices & Challans)
-• D3 — Experience, Sync & Production
+DELIVERY PHASES — IN PROGRESS
+• D1 — Invoice Workspace (UI-only, read-only) ✅ COMPLETED & LOCKED
+• D2 — Core Workflows (Invoices & Challans) ▶️ ACTIVE
+• D3 — Experience, Sync & Production ▶️ UPCOMING
 
 ──────────────────────────────────────
 Current Focus:
 Foundation is complete and constitutionally locked.
 The project is transitioning from platform correctness
 to visible product delivery.
+
+Toolchain Status (Operational, Confirmed)
+
+• Kotlin 2.x baseline is active and verified via successful build.
+• Compose Compiler is applied via the official Kotlin Compose Compiler Plugin.
+• Kotlinx Serialization is enabled and validated in the platform module.
+• No forced dependency resolution is in use.
+• Toolchain is considered stable for D2 execution.
 
 ──────────────────────────────────────
 D1 — Invoice Workspace (Operational Clarifications)
@@ -44,6 +52,42 @@ Explicit exclusions in D1:
 • No mutation, commands, or draft persistence.
 • No challan creation or linkage actions (conceptual slots only).
 • No navigation beyond Workspace ↔ Search Mode.
+
+
+D1 Status:
+• D1A — Invoice Workspace layout, semantics, and visual structure are complete and locked.
+• D1B — Parties and Line Item backbone validated conceptually and locked.
+• D1 introduced no mutation paths and preserved full read-only guarantees.
+• D1 is formally complete; no further work may be added to D1.
+
+──────────────────────────────────────
+D2 — Core Workflows (Operational Clarifications)
+
+D2 introduces interactive draft creation while preserving all domain, replay, and projection laws.
+Drafts are explicitly UI-only workflow state and are not domain truth.
+
+D2.1 — Draft Spine (COMPLETE & LOCKED)
+• In-memory, single-draft model owned by a Draft Store.
+• Draft mutation flows exclusively through Draft Store APIs.
+• Draft Reducers remain pure and side-effect free.
+• ViewModels coordinate intent but contain no business rules.
+• Draft UI State is disposable and never persisted as domain truth.
+
+D2.2 — Atom-by-Atom UI Enablement (ACTIVE)
+• Atom 1 — Billed To (Customer selection):
+  – Draft mutation path implemented via Draft Store.
+  – Read path defined via CustomerAutocompleteDataSource (CRUD-backed).
+  – Data source reads from a designated read-only Customer CRUD table.
+  – ViewModel wiring complete; no replay or projection dependency.
+  – Subsequent atoms (Shipped To, Line Items, Freight, Summary) are gated behind Atom 1 completion.
+  – Atom 1 is considered complete once UI → ViewModel → Draft Store wiring is functional and visible on screen.
+
+Explicit Exclusions in D2:
+• No invoice finalization or numbering.
+• No authoritative PDF generation (preview-only semantics deferred).
+• No cloud sync enablement.
+• No multi-draft support.
+• No event-sourced customer lifecycle or customer projections in D2.
 
 ──────────────────────────────────────
 CANONICAL NAVIGATION FLOW (OPERATIONAL, LOCKED)
@@ -97,6 +141,7 @@ Scope:
 • Test-first enforcement of domain invariants.
 • No speculative UI or UX changes.
 • Event Sourcing applied surgically to financial and logistical domain truth only.
+• Supporting identity data (e.g. Customers) is managed via CRUD where appropriate.
 • Projections treated strictly as rebuildable performance caches.
 • Replay-first design with incremental (delta-based) rebuilds for scalability.
 • Version-catalog–driven dependency management (no ad-hoc plugin or library versions).
@@ -104,11 +149,12 @@ Scope:
 • Financial ledger projection pipeline (map → replay → project) implemented and test‑backed.
 • Document Index projection pipeline (map → replay → project) implemented and test‑backed.
 • PlatformReplayCoordinator is the sole entry point for invoking projection replay and rebuilds.
+• Draft workflow state is UI-only, disposable, and excluded from persistence, replay, and sync.
 
 ──────────────────────────────────────
 Current Working Components:
 core/domain/
-    ├─ events (Invoice, Payment, Customer lifecycle events)
+    ├─ events (Invoice, Payment)
     ├─ invariants (ledger, balance, immutability rules)
 
 platform/database/
@@ -122,6 +168,8 @@ platform/database/
     ├─ DocumentIndexDao (projection-only persistence)
     ├─ DocumentIndexProjectionWriter (incremental & full replay orchestration)
     ├─ KSP-backed Room configuration (platform-only)
+    ├─ CustomerEntity (CRUD-managed customer identity table)
+    ├─ CustomerDao (CRUD persistence & read-only queries)
 
 platform/cloud/
     ├─ Sync boundaries & replication logic (no UI coupling)
@@ -143,10 +191,22 @@ platform/replay/
     ├─ DefaultPlatformReplayCoordinator (Phase‑1 implementation)
     ├─ PlatformReplayableEvent (event adapter)
 
+feature/invoice/draft/
+    ├─ InvoiceDraftUiState (UI-only draft model)
+    ├─ InvoiceDraftReducer (pure draft transformations)
+    ├─ InvoiceDraftStore (in-memory draft owner)
+
+feature/invoice/ui/
+    ├─ InvoiceWorkspaceViewModel (draft orchestration + read/write separation)
+
+feature/invoice/autocomplete/
+    ├─ CustomerAutocompleteDataSource (read-only CRUD adapter)
+
 ──────────────────────────────────────
 Operational Laws (Frozen for Foundation Phases)
 • Local database is the single source of truth.
-• All state changes occur via append-only domain events.
+• All financial and document state changes occur via append-only domain events.
+• Supporting identity data may change via explicit CRUD within defined boundaries.
 • Projections must be fully rebuildable from events.
 • No silent data mutation or in-place edits.
 • Migrations are mandatory and written before schema changes.

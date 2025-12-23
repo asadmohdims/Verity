@@ -47,4 +47,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation("org.json:json:20240303")
     implementation(project(":core"))
+    implementation(project(":feature"))
 }

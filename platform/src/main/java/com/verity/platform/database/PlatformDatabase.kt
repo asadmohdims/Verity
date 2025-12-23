@@ -3,7 +3,9 @@ package com.verity.platform.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.verity.platform.database.dao.EventDao
+import com.verity.platform.database.dao.CustomerDao
 import com.verity.platform.database.entities.EventEntity
+import com.verity.platform.database.entities.CustomerEntity
 
 /**
  * PlatformDatabase
@@ -24,7 +26,8 @@ import com.verity.platform.database.entities.EventEntity
  */
 @Database(
     entities = [
-        EventEntity::class
+        EventEntity::class,
+        CustomerEntity::class
     ],
     version = 1,
     exportSchema = true
@@ -37,4 +40,6 @@ abstract class PlatformDatabase : RoomDatabase() {
      * Append-only semantics are enforced at the DAO and schema level.
      */
     abstract fun eventDao(): EventDao
+
+    abstract fun customerDao(): CustomerDao
 }

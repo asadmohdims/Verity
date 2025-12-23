@@ -50,7 +50,10 @@ Distribution: Play Store–ready, multi-organization SaaS-capable Android app.
 • Compose-first, Kotlin-first, testable, scalable.
 • Offline-first — local database is the sole source of truth; cloud is a replication and recovery target only.
 • Explicit domain events — append-only; no silent mutations.
-• All mutable state is derived from events, never edited in place.
+• All financially significant and historically relevant domain state
+  is derived from immutable events; supporting identity data may be
+  managed via explicit CRUD models where event sourcing provides
+  no material correctness or audit benefit.
 • Deterministic, rebuildable projections (state must be reproducible from history).
 • Immutability by default — invoices, payments, and ledger are never mutated post-finalization.
 • Testing is first-class; domain invariants are enforced through tests, not convention.
@@ -110,6 +113,32 @@ platform/
 • device helpers and permissions.
 • Infrastructure-only. Owns Room, KSP, migrations, sync, workers. No UI dependencies.
 
+───────────────────────────────
+
+3B. Draft Spine Architecture (Locked)
+
+Verity uses an explicit Draft Spine for interactive workflows such as invoice creation.
+Drafts are UI-only workflow state and are never sources of domain truth.
+
+The Draft Spine MUST follow this structure:
+
+UI (Compose)
+  ↓
+Screen ViewModel
+  ↓
+Draft Store (state owner, mutation gate)
+  ↓
+Draft Reducer (pure functions)
+  ↓
+Draft UI State (data)
+
+Rules:
+• Draft Store owns the in-memory draft and is the sole mutation gate.
+• Draft Store is platform-agnostic and contains no Android or persistence logic.
+• Draft Reducers are pure and side-effect free.
+• ViewModels coordinate user intent but contain no business rules.
+• UI must never mutate draft state directly.
+
 ──────────────────────────────
 
 3A. Namespace & Module Identity Laws (Frozen)
@@ -126,7 +155,7 @@ platform/
 
 • Invoices = Events
 • Payments = Events
-• Customers = Identities
+• Customers = Identities (CRUD-managed supporting data)
 • Ledger = Deterministic projection
 (Invoices → Debits; Payments → Credits)
 
@@ -135,6 +164,21 @@ Rules:
 	•	Payments always positive, immutable, and reversible only via new entries.
 	•	Ledger is read-only and fully rebuildable from events.
 	•	Negative balance represents customer credit (advance), never negative payments.
+
+Clarification:
+• Drafts, UI state, summaries, and editors are NOT domain models.
+• They are disposable workflow state and may be discarded without consequence.
+• Domain truth is represented exclusively by immutable events.
+
+Clarification — Customer Identity Model
+--------------------------------------
+• Customer data (name, contact details, GSTIN, address) is treated as
+  supporting identity data, not financial or historical truth.
+• Customer entities are managed via explicit CRUD operations.
+• Customer changes are not event-sourced by default.
+• Historical correctness is preserved by snapshotting customer identity
+  into immutable documents (Invoices, Challans) at creation/finalization time.
+• This prevents mutable identity data from corrupting historical records.
 
 ──────────────────────────────
 
@@ -146,6 +190,9 @@ Rules:
 • No migration may alter the meaning of historical events.
 • Projections and drafts are disposable; events are not.
 • Replay is the only valid mechanism to derive state from history.
+• Immutability requirements apply strictly to financial and document
+  domain truth; supporting identity data may evolve via CRUD without
+  violating historical correctness guarantees.
 
 Any attempt to bypass immutability is a correctness violation.
 
@@ -271,7 +318,8 @@ Authoritative aggregate list (Phase 5):
 
 • Customer
   - Identity: customerId
-  - Responsibility: customer lifecycle and non-financial metadata
+  - Responsibility: customer identity and non-financial metadata
+  - Persistence Model: CRUD-managed (not event-sourced)
 
 • Invoice
   - Identity: invoiceId
@@ -388,6 +436,7 @@ Any deviation requires explicitly reopening the Core Seed.
 	4.	No refactors unless explicitly requested.
 	5.	Explain reasoning before writing code.
 	6.	Prefer minimal, reversible changes.
+	7.	Toolchain or build-system changes require explicit seed amendment before implementation.
 
 Violation = stop and reassess.
 
@@ -435,17 +484,39 @@ If a file is not production‑ready, it must not be written.
 
 Projection correctness is enforced through replay-based tests.
 
+Read vs Write Separation (Locked)
+
+• Write paths:
+  – Draft and workflow mutations flow exclusively through Draft Stores.
+  – UI and ViewModels must never write to projections or DAOs.
+
+• Read paths:
+  – Autocomplete, search, and suggestion features read from projections
+    or explicitly designated read-only CRUD identity tables (e.g. Customer).
+  – Read paths must be implemented via explicit, read-only data sources.
+  – Read paths must never mutate draft or domain state.
+
 ──────────────────────────────
 
 8. Stack (Locked)
 
 Jetpack Compose · Material 3 (tokens only) · Navigation-Compose ·
 ViewModel + StateFlow · Room + KSP · Coroutines · WorkManager ·
+Kotlin 2.x (baseline locked) · Kotlinx Serialization (locked) ·
 Hilt · Gradle Version Catalogs
 
 Forbidden:
 XML · Fragments · LiveData · AsyncTask · RxJava · EventBus ·
 DataBinding · Legacy Material 2
+
+8A. Toolchain Baseline (Locked)
+
+• Kotlin baseline is locked to Kotlin 2.x.
+• Compose Compiler must be applied via the official Kotlin Compose Compiler Plugin.
+• Kotlin Serialization is a first-class, mandatory capability and must not be removed.
+• Version alignment across Kotlin, Compose Compiler, KSP, and Serialization is required.
+• Forced dependency resolution is forbidden except by explicit constitutional amendment.
+• Toolchain upgrades must be deliberate, explicit, and performed module-by-module.
 
 ──────────────────────────────
 
@@ -470,3 +541,15 @@ Any derived seed (operational, feature, UX, or testing) inherits these rules.
 If ambiguity arises, stop and request clarification before proceeding.
 
 ⸻
+
+7B. Supporting Identity Data Law (Locked)
+
+• Not all domain data justifies event sourcing.
+• Supporting identity data (e.g. Customers) may be managed via CRUD
+  when:
+    – Change frequency is low
+    – Historical time-travel is not required
+    – Financial or legal truth is snapshotted elsewhere
+• CRUD-managed identity data must never be treated as a source of
+  financial or historical truth.
+• Immutable documents must snapshot identity data to preserve correctness.
