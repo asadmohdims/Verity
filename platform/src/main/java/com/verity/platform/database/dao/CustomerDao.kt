@@ -42,6 +42,14 @@ interface CustomerDao {
     suspend fun upsertAll(customers: List<CustomerEntity>)
 
     /**
+     * Inserts a single customer row.
+     *
+     * Used for debug seeding and admin tooling.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(customer: CustomerEntity)
+
+    /**
      * Returns all active customers.
      *
      * Intended strictly for read-only use by UI components such as
@@ -64,4 +72,12 @@ interface CustomerDao {
      */
     @Query("DELETE FROM customers")
     suspend fun deleteAll()
+
+    /**
+     * Returns total number of customers.
+     *
+     * Used only for bootstrap / debug seeding checks.
+     */
+    @Query("SELECT COUNT(*) FROM customers")
+    suspend fun count(): Int
 }

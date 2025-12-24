@@ -36,44 +36,144 @@ class InvoiceWorkspaceViewModel(
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
     val uiState: StateFlow<InvoiceDraftUiState> = _uiState.asStateFlow()
 
+    // Autocomplete UI state (Atom 1 contract)
+    private val _billedToQuery = MutableStateFlow("")
+    val billedToQuery: StateFlow<String> = _billedToQuery.asStateFlow()
+
+    private val _billedToSuggestions =
+        MutableStateFlow<List<CustomerAutocompleteItem>>(emptyList())
+    val billedToSuggestions: StateFlow<List<CustomerAutocompleteItem>> =
+        _billedToSuggestions.asStateFlow()
+
+    private val _isBilledToSearching = MutableStateFlow(false)
+    val isBilledToSearching: StateFlow<Boolean> =
+        _isBilledToSearching.asStateFlow()
+
+    private val _shippedToQuery = MutableStateFlow("")
+    val shippedToQuery: StateFlow<String> = _shippedToQuery.asStateFlow()
+
+    private val _shippedToSuggestions =
+        MutableStateFlow<List<CustomerAutocompleteItem>>(emptyList())
+    val shippedToSuggestions: StateFlow<List<CustomerAutocompleteItem>> =
+        _shippedToSuggestions.asStateFlow()
+
+    private val _isShippedToSearching = MutableStateFlow(false)
+    val isShippedToSearching: StateFlow<Boolean> =
+        _isShippedToSearching.asStateFlow()
+
     // ------------------------------------------------------------
     // Atom 1 — Billed To (read-only autocomplete)
     // ------------------------------------------------------------
-
-    private val _recentCustomers = MutableStateFlow<List<CustomerAutocompleteItem>>(emptyList())
-    val recentCustomers: StateFlow<List<CustomerAutocompleteItem>> = _recentCustomers.asStateFlow()
-
-    private val _searchResults = MutableStateFlow<List<CustomerAutocompleteItem>>(emptyList())
-    val searchResults: StateFlow<List<CustomerAutocompleteItem>> = _searchResults.asStateFlow()
 
     // ------------------------------------------------------------
     // Atom 1 — Billed To
     // ------------------------------------------------------------
 
-    fun onBilledToFocused() {
-        viewModelScope.launch {
-            _recentCustomers.value = customerAutocompleteDataSource.recentCustomers()
-        }
-    }
-
     fun onBilledToQueryChanged(query: String) {
+        _billedToQuery.value = query
+
         if (query.isBlank()) {
-            _searchResults.value = emptyList()
+            _billedToSuggestions.value = emptyList()
+            _isBilledToSearching.value = false
             return
         }
 
         viewModelScope.launch {
-            _searchResults.value = customerAutocompleteDataSource.searchCustomers(query)
+            _isBilledToSearching.value = true
+            _billedToSuggestions.value =
+                customerAutocompleteDataSource.searchCustomers(query)
+            _isBilledToSearching.value = false
         }
     }
 
     fun onBilledToSelected(address: DraftAddress) {
         draftStore.setBilledTo(address)
         _uiState.value = draftStore.currentDraft
+
+        // Clear autocomplete UI state after selection
+        _billedToQuery.value = ""
+        _billedToSuggestions.value = emptyList()
+        _isBilledToSearching.value = false
+    }
+
+    /**
+     * Adapter for autocomplete selection.
+     *
+     * Maps read-model (CustomerAutocompleteItem) to draft-model (DraftAddress)
+     * at the ViewModel boundary, then delegates to the existing mutation path.
+     */
+    fun onBilledToSelected(item: CustomerAutocompleteItem) {
+        val address = DraftAddress(
+            name = item.customerName,
+            addressLine1 = "",
+            city = item.city ?: "",
+            state = item.state ?: "",
+            stateCode = "",
+            pincode = ""
+        )
+
+        onBilledToSelected(address)
     }
 
     fun onBilledToCleared() {
         draftStore.clearBilledTo()
         _uiState.value = draftStore.currentDraft
+
+        // Reset autocomplete UI state
+        _billedToQuery.value = ""
+        _billedToSuggestions.value = emptyList()
+        _isBilledToSearching.value = false
+    }
+
+    // ------------------------------------------------------------
+    // Atom 2 — Shipped To (override autocomplete)
+    // ------------------------------------------------------------
+
+    fun onShippedToQueryChanged(query: String) {
+        _shippedToQuery.value = query
+
+        if (query.isBlank()) {
+            _shippedToSuggestions.value = emptyList()
+            _isShippedToSearching.value = false
+            return
+        }
+
+        viewModelScope.launch {
+            _isShippedToSearching.value = true
+            _shippedToSuggestions.value =
+                customerAutocompleteDataSource.searchCustomers(query)
+            _isShippedToSearching.value = false
+        }
+    }
+
+    fun onShippedToSelected(address: DraftAddress) {
+        draftStore.setShippedToOverride(address)
+        _uiState.value = draftStore.currentDraft
+
+        _shippedToQuery.value = ""
+        _shippedToSuggestions.value = emptyList()
+        _isShippedToSearching.value = false
+    }
+
+    fun onShippedToSelected(item: CustomerAutocompleteItem) {
+        val address = DraftAddress(
+            name = item.customerName,
+            addressLine1 = "",
+            city = item.city ?: "",
+            state = item.state ?: "",
+            stateCode = "",
+            pincode = ""
+        )
+
+        onShippedToSelected(address)
+    }
+
+    fun onShippedToCleared() {
+        draftStore.clearShippedToOverride()
+        _uiState.value = draftStore.currentDraft
+
+        _shippedToQuery.value = ""
+        _shippedToSuggestions.value = emptyList()
+        _isShippedToSearching.value = false
     }
 }

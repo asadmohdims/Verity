@@ -27,6 +27,21 @@ class InvoiceDraftStore(
     }
 
     fun clearBilledTo() {
-        _currentDraft = _currentDraft.copy(billedTo = null)
+        _currentDraft = _currentDraft.copy(billedTo = null, shippedTo = null)
+    }
+
+    // ------------------------------------------------------------
+    // Atom 2 — Shipped To (Override)
+    // ------------------------------------------------------------
+
+    fun setShippedToOverride(address: DraftAddress) {
+        _currentDraft = InvoiceDraftReducer.setShippedToOverride(
+            draft = _currentDraft,
+            shippedTo = address
+        )
+    }
+
+    fun clearShippedToOverride() {
+        _currentDraft = _currentDraft.copy(shippedTo = null)
     }
 }

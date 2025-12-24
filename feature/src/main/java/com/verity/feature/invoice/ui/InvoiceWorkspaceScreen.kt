@@ -26,6 +26,21 @@ import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.dp
 import com.verity.core.ui.molecules.VerityListItem
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextField
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
+import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+
+import com.verity.invoice.draft.InvoiceDraftStore
+import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 
 /**
  * InvoiceWorkspaceScreen
@@ -61,10 +76,21 @@ import com.verity.core.ui.molecules.VerityListItem
  */
 @Composable
 fun InvoiceWorkspaceScreen(
-    draft: InvoiceDraftUiState
+    draft: InvoiceDraftUiState,
+    viewModel: InvoiceWorkspaceViewModel
 ) {
+    val billedToQuery by viewModel.billedToQuery.collectAsState()
+    val billedToSuggestions by viewModel.billedToSuggestions.collectAsState()
+    val isBilledToSearching by viewModel.isBilledToSearching.collectAsState()
+
+    val shippedToQuery by viewModel.shippedToQuery.collectAsState()
+    val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
+    val isShippedToSearching by viewModel.isShippedToSearching.collectAsState()
+
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
     ) {
 
         // ─────────────────────────────────────────────
@@ -114,10 +140,54 @@ fun InvoiceWorkspaceScreen(
 
                         VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                        VerityText(
-                            text = draft.customer?.displayName ?: "Select customer",
-                            style = VerityTextStyle.Body
-                        )
+                        if (draft.billedTo == null) {
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = billedToQuery,
+                                onValueChange = { viewModel.onBilledToQueryChanged(it) },
+                                placeholder = { VerityText(text = "Search customer", style = VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            DropdownMenu(
+                                expanded = billedToSuggestions.isNotEmpty(),
+                                onDismissRequest = { /* suggestions hide automatically on clear */ },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                billedToSuggestions.forEach { item ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            VerityText(
+                                                text = item.customerName,
+                                                style = VerityTextStyle.Body
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.onBilledToSelected(item)
+                                        }
+                                    )
+                                }
+                            }
+
+                        } else {
+
+                            VerityText(
+                                text = draft.billedTo.name,
+                                style = VerityTextStyle.Body
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            VerityText(
+                                text = "Change",
+                                style = VerityTextStyle.Caption,
+                                modifier = Modifier
+                                    .padding(top = VeritySpace.ExtraSmall.dp)
+                                    .then(Modifier)
+                                    .clickable { viewModel.onBilledToCleared() }
+                            )
+                        }
                     }
 
                     VeritySpacer(size = VeritySpace.Large, horizontal = true)
@@ -132,15 +202,58 @@ fun InvoiceWorkspaceScreen(
 
                         VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                        VerityText(
-                            text = draft.customer?.displayName ?: "Same as billed",
-                            style = VerityTextStyle.Body
-                        )
+                        if (draft.shippedTo != null) {
 
-                        VerityText(
-                            text = "(Same as billed)",
-                            style = VerityTextStyle.Caption
-                        )
+                            VerityText(
+                                text = draft.shippedTo.name,
+                                style = VerityTextStyle.Body
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            VerityText(
+                                text = "Change",
+                                style = VerityTextStyle.Caption,
+                                modifier = Modifier
+                                    .padding(top = VeritySpace.ExtraSmall.dp)
+                                    .clickable { viewModel.onShippedToCleared() }
+                            )
+
+                        } else {
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = shippedToQuery,
+                                onValueChange = { viewModel.onShippedToQueryChanged(it) },
+                                placeholder = {
+                                    VerityText(
+                                        text = draft.billedTo?.name ?: "Search customer",
+                                        style = VerityTextStyle.Body
+                                    )
+                                },
+                                singleLine = true
+                            )
+
+                            DropdownMenu(
+                                expanded = shippedToSuggestions.isNotEmpty(),
+                                onDismissRequest = { /* auto-hide */ },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                shippedToSuggestions.forEach { item ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            VerityText(
+                                                text = item.customerName,
+                                                style = VerityTextStyle.Body
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.onShippedToSelected(item)
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -153,13 +266,23 @@ fun InvoiceWorkspaceScreen(
         // ─────────────────────────────────────────────
 
         VeritySection(title = "Line Items") {
+            var isAddingLineItem by remember { mutableStateOf(false) }
 
-            if (draft.lineItems.isEmpty()) {
+            if (draft.lineItems.isEmpty() && !isAddingLineItem) {
                 VerityText(
                     text = "No line items added",
                     style = VerityTextStyle.Caption
                 )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "+ Add line item",
+                    style = VerityTextStyle.Label,
+                    modifier = Modifier.clickable { isAddingLineItem = true }
+                )
             } else {
+
                 draft.lineItems.forEach { item ->
                     VerityListItem(
                         title = item.description,
@@ -168,6 +291,26 @@ fun InvoiceWorkspaceScreen(
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
+                }
+
+                if (!isAddingLineItem) {
+                    VerityText(
+                        text = "+ Add another line item",
+                        style = VerityTextStyle.Label,
+                        modifier = Modifier.clickable { isAddingLineItem = true }
+                    )
+                }
+            }
+
+            if (isAddingLineItem) {
+                VeritySpacer(size = VeritySpace.Small)
+
+                VeritySurface(type = VeritySurfaceType.Sunken) {
+                    VerityText(
+                        text = "New line item (editing UI coming next)",
+                        style = VerityTextStyle.Caption,
+                        modifier = Modifier.padding(VeritySpace.Small.dp)
+                    )
                 }
             }
         }
@@ -260,11 +403,11 @@ private fun InvoiceWorkspacePreviewLight() {
         ) {
             Column(
                 modifier = Modifier
-                    .verticalScroll(rememberScrollState())
                     .padding(VeritySpace.Medium.dp)
             ) {
                 InvoiceWorkspaceScreen(
-                    draft = previewInvoiceDraft()
+                    draft = previewInvoiceDraft(),
+                    viewModel = previewInvoiceWorkspaceViewModel()
                 )
             }
         }
@@ -287,13 +430,45 @@ private fun InvoiceWorkspacePreviewDark() {
         ) {
             Column(
                 modifier = Modifier
-                    .verticalScroll(rememberScrollState())
                     .padding(VeritySpace.Medium.dp)
             ) {
                 InvoiceWorkspaceScreen(
-                    draft = previewInvoiceDraft()
+                    draft = previewInvoiceDraft(),
+                    viewModel = previewInvoiceWorkspaceViewModel()
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
+    return InvoiceWorkspaceViewModel(
+        draftStore = previewDraftStore(),
+        customerAutocompleteDataSource = previewCustomerAutocompleteDataSource()
+    )
+}
+
+@Composable
+private fun previewDraftStore(): InvoiceDraftStore {
+    return InvoiceDraftStore(initialDraft = previewInvoiceDraft())
+}
+
+@Composable
+private fun previewCustomerAutocompleteDataSource(): CustomerAutocompleteDataSource {
+    return object : CustomerAutocompleteDataSource {
+
+        override suspend fun recentCustomers(
+            limit: Int
+        ): List<CustomerAutocompleteItem> {
+            return emptyList()
+        }
+
+        override suspend fun searchCustomers(
+            query: String,
+            limit: Int
+        ): List<CustomerAutocompleteItem> {
+            return emptyList()
         }
     }
 }
@@ -307,7 +482,7 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
         ),
         lineItems = listOf(
             DraftLineItem(
-                description = "Metal Sheet",
+                description = "Metl Sheet",
                 hsnCode = "7208",
                 quantity = 10.0,
                 unit = "PCS",

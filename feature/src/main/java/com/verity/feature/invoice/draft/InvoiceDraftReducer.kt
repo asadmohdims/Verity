@@ -30,18 +30,13 @@ object InvoiceDraftReducer {
         return draft.copy(billedTo = billedTo)
     }
 
-    fun setShippedTo(
+    fun setShippedToOverride(
         draft: InvoiceDraftUiState,
         shippedTo: DraftAddress
     ): InvoiceDraftUiState {
         return draft.copy(shippedTo = shippedTo)
     }
 
-    fun copyBilledToShipped(
-        draft: InvoiceDraftUiState
-    ): InvoiceDraftUiState {
-        return draft.copy(shippedTo = draft.billedTo)
-    }
 
     fun addLineItem(
         draft: InvoiceDraftUiState,

@@ -74,6 +74,47 @@ D2.1 — Draft Spine (COMPLETE & LOCKED)
 • Draft UI State is disposable and never persisted as domain truth.
 
 D2.2 — Atom-by-Atom UI Enablement (ACTIVE)
+
+D2.2.A — Atom Inventory (Authoritative for D2)
+
+This section enumerates all draft input atoms planned for D2 execution.
+Atoms are implemented sequentially and locked once validated end-to-end.
+
+Planned Atoms:
+
+• Atom 1 — Billed To (Customer selection)
+  – Customer autocomplete (CRUD-backed, read-only)
+  – Draft mutation: billedTo
+  – Status: COMPLETE & LOCKED
+
+• Atom 2 — Shipped To (Override from Billed To)
+  – Defaults to billedTo when unset
+  – Tap-to-edit affordance (no explicit “Change” action)
+  – Draft mutation: shippedTo (explicit override only)
+  – Status: IN PROGRESS
+
+• Atom 3 — Line Items
+  – Add / edit / remove draft line items
+  – Quantity, rate, HSN, unit
+  – Draft mutation: lineItems[]
+  – Status: PLANNED
+
+• Atom 4 — Logistics & Freight
+  – Transport details, freight amount, supply date
+  – Draft mutation: transportDetails, additionalDetails
+  – Status: PLANNED
+
+• Atom 5 — Summary (Derived)
+  – Subtotal, tax, grand total
+  – Read-only derived view from draft state
+  – No direct mutation
+  – Status: PLANNED
+
+• Atom 6 — Pre-finalization Preview
+  – Read-only authoritative PDF preview
+  – Gate before finalization
+  – Status: PLANNED
+
 • Atom 1 — Billed To (Customer selection):
   – Draft mutation path implemented via Draft Store.
   – Read path defined via CustomerAutocompleteDataSource (CRUD-backed).
@@ -81,6 +122,28 @@ D2.2 — Atom-by-Atom UI Enablement (ACTIVE)
   – ViewModel wiring complete; no replay or projection dependency.
   – Subsequent atoms (Shipped To, Line Items, Freight, Summary) are gated behind Atom 1 completion.
   – Atom 1 is considered complete once UI → ViewModel → Draft Store wiring is functional and visible on screen.
+
+Deferred UX Optimization — Autocomplete & Input Interactions (Recorded)
+
+The following UX issues have been consciously observed during Atom 1
+end-to-end testing and are intentionally deferred until all input-heavy
+atoms are structurally complete.
+
+Observed Issues:
+• Keyboard dismisses when autocomplete suggestions appear.
+• Focus is lost during query → results transition.
+• Dropdown layout interaction feels jumpy on mobile.
+• Interaction rhythm between typing and selection is suboptimal.
+
+Deferral Rationale:
+• Autocomplete UX depends on final focus and keyboard strategy.
+• Multiple additional input atoms (Shipped To, Line Items, Freight, Notes)
+  are pending and would invalidate premature tuning.
+• UX optimization will be performed once all draft input atoms exist.
+
+Planned Resolution Window:
+• Dedicated UX optimization pass scheduled after Atom 4 (Line Items entry)
+  and before any PDF preview, finalization, or production hardening work.
 
 Explicit Exclusions in D2:
 • No invoice finalization or numbering.

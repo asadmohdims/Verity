@@ -26,6 +26,9 @@ import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
+import androidx.compose.runtime.LaunchedEffect
+import java.util.UUID
+import com.verity.platform.database.entities.CustomerEntity
 
 /**
  * MainActivity
@@ -69,12 +72,43 @@ private fun MainEntry() {
 
     if (showInvoiceWorkspace) {
         val context = androidx.compose.ui.platform.LocalContext.current
+        val database = remember { PlatformDatabaseFactory.create(context) }
+        val customerDao = remember { database.customerDao() }
+
+        LaunchedEffect(Unit) {
+            // DEBUG‑ONLY seed data for autocomplete testing
+            if (customerDao.count() == 0) {
+                customerDao.insert(
+                    CustomerEntity(
+                        customerId = UUID.randomUUID().toString(),
+                        customerName = "Bhargava Industries",
+                        phone = null,
+                        gstin = "27AAACB1234Z1Z",
+                        city = "Pune",
+                        state = "Maharashtra",
+                        isActive = true,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+                customerDao.insert(
+                    CustomerEntity(
+                        customerId = UUID.randomUUID().toString(),
+                        customerName = "Apex Engineering",
+                        phone = null,
+                        gstin = "29AABCA9999Q1Z",
+                        city = "Bengaluru",
+                        state = "Karnataka",
+                        isActive = true,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
 
         val viewModel: InvoiceWorkspaceViewModel = viewModel(
             factory = object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val database = PlatformDatabaseFactory.create(context)
-                    val customerDao = database.customerDao()
+                    // Reuse DB / DAO created in composable scope
                     val autocompleteDataSource =
                         DefaultCustomerAutocompleteDataSource(customerDao)
 
@@ -88,7 +122,8 @@ private fun MainEntry() {
         )
 
         InvoiceWorkspaceScreen(
-            draft = viewModel.uiState.collectAsState().value
+            draft = viewModel.uiState.collectAsState().value,
+            viewModel = viewModel
         )
     } else {
         LandingScreen(
