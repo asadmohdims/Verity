@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.DraftAddress
+import com.verity.invoice.draft.DraftLineItem
 import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.invoice.draft.InvoiceDraftUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -175,5 +176,35 @@ class InvoiceWorkspaceViewModel(
         _shippedToQuery.value = ""
         _shippedToSuggestions.value = emptyList()
         _isShippedToSearching.value = false
+    }
+
+    // ------------------------------------------------------------
+    // Atom 3 — Line Items
+    // ------------------------------------------------------------
+
+    fun onAddLineItem(item: DraftLineItem) {
+        draftStore.addLineItem(item)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    // ------------------------------------------------------------
+    // Atom 4 — Line Items (Remove)
+    // ------------------------------------------------------------
+
+    fun onRemoveLineItem(index: Int) {
+        draftStore.removeLineItem(index)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    // ------------------------------------------------------------
+    // Atom 4 — Line Items (Update)
+    // ------------------------------------------------------------
+
+    fun onUpdateLineItem(
+        index: Int,
+        item: DraftLineItem
+    ) {
+        draftStore.updateLineItem(index, item)
+        _uiState.value = draftStore.currentDraft
     }
 }

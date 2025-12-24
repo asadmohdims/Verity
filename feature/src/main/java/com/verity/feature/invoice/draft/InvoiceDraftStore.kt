@@ -44,4 +44,33 @@ class InvoiceDraftStore(
     fun clearShippedToOverride() {
         _currentDraft = _currentDraft.copy(shippedTo = null)
     }
+
+    // ------------------------------------------------------------
+    // Atom 3 — Line Items
+    // ------------------------------------------------------------
+
+    fun addLineItem(item: DraftLineItem) {
+        _currentDraft = InvoiceDraftReducer.addLineItem(
+            draft = _currentDraft,
+            item = item
+        )
+    }
+
+    fun removeLineItem(index: Int) {
+        _currentDraft = InvoiceDraftReducer.removeLineItem(
+            draft = _currentDraft,
+            index = index
+        )
+    }
+
+    fun updateLineItem(
+        index: Int,
+        item: DraftLineItem
+    ) {
+        _currentDraft = InvoiceDraftReducer.updateLineItem(
+            draft = _currentDraft,
+            index = index,
+            item = item
+        )
+    }
 }

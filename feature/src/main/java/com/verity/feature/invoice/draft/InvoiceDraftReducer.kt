@@ -53,7 +53,7 @@ object InvoiceDraftReducer {
     ): InvoiceDraftUiState {
         val updatedItems = draft.lineItems.mapIndexed { i, item ->
             if (i == index) {
-                val newAmount = (quantity * item.rate).toLong()
+                val newAmount = quantity * item.rate
                 item.copy(quantity = quantity, amount = newAmount)
             } else {
                 item
@@ -65,15 +65,26 @@ object InvoiceDraftReducer {
     fun updateLineItemRate(
         draft: InvoiceDraftUiState,
         index: Int,
-        rate: Long
+        rate: Double
     ): InvoiceDraftUiState {
         val updatedItems = draft.lineItems.mapIndexed { i, item ->
             if (i == index) {
-                val newAmount = (item.quantity * rate).toLong()
+                val newAmount = item.quantity * rate
                 item.copy(rate = rate, amount = newAmount)
             } else {
                 item
             }
+        }
+        return recalculate(draft.copy(lineItems = updatedItems))
+    }
+
+    fun updateLineItem(
+        draft: InvoiceDraftUiState,
+        index: Int,
+        item: DraftLineItem
+    ): InvoiceDraftUiState {
+        val updatedItems = draft.lineItems.mapIndexed { i, existing ->
+            if (i == index) item else existing
         }
         return recalculate(draft.copy(lineItems = updatedItems))
     }
@@ -88,7 +99,7 @@ object InvoiceDraftReducer {
 
     fun setFreight(
         draft: InvoiceDraftUiState,
-        freightAmount: Long?
+        freightAmount: Double?
     ): InvoiceDraftUiState {
         val updatedDetails = draft.additionalDetails.copy(
             freightAmount = freightAmount
@@ -100,13 +111,13 @@ object InvoiceDraftReducer {
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {
         val itemsTotal = draft.lineItems.sumOf { it.amount }
-        val freight = draft.additionalDetails.freightAmount ?: 0L
+        val freight = draft.additionalDetails.freightAmount ?: 0.0
         val subtotal = itemsTotal + freight
 
         return draft.copy(
             summary = DraftSummary(
                 subtotal = subtotal,
-                taxTotal = 0L,
+                taxTotal = 0.0,
                 grandTotal = subtotal
             )
         )

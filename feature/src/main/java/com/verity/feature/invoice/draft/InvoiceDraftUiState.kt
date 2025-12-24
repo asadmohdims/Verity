@@ -48,12 +48,12 @@ data class DraftLineItem(
     val hsnCode: String,
     val quantity: Double,
     val unit: String,
-    val rate: Long,
-    val amount: Long        // UI-calculated convenience value
+    val rate: Double,
+    val amount: Double        // UI-calculated convenience value
 )
 
 data class DraftAdditionalDetails(
-    val freightAmount: Long? = null,
+    val freightAmount: Double? = null,
     val notes: String? = null
 )
 
@@ -65,7 +65,7 @@ data class DraftTransportDetails(
 )
 
 data class DraftSummary(
-    val subtotal: Long = 0L,
-    val taxTotal: Long = 0L,
-    val grandTotal: Long = 0L
+    val subtotal: Double = 0.0,
+    val taxTotal: Double = 0.0,
+    val grandTotal: Double = 0.0
 )
