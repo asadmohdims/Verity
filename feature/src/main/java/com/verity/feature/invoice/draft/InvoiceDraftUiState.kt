@@ -16,7 +16,6 @@ data class InvoiceDraftUiState(
     val supplyDate: LocalDate? = null,
     val reverseCharge: Boolean = false,
     val lineItems: List<DraftLineItem> = emptyList(),
-    val additionalDetails: DraftAdditionalDetails = DraftAdditionalDetails(),
     val transportDetails: DraftTransportDetails? = null,
     val summary: DraftSummary = DraftSummary()
 )
@@ -52,16 +51,13 @@ data class DraftLineItem(
     val amount: Double        // UI-calculated convenience value
 )
 
-data class DraftAdditionalDetails(
-    val freightAmount: Double? = null,
-    val notes: String? = null
-)
-
 data class DraftTransportDetails(
     val transporterName: String? = null,
     val vehicleNumber: String? = null,
+    val supplyDate: LocalDate? = null,
     val grOrLrNumber: String? = null,
-    val transportMode: String? = null
+    val freightAmount: Double? = null,
+    val notes: String? = null
 )
 
 data class DraftSummary(

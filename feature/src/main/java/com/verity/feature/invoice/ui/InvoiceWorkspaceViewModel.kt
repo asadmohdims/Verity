@@ -6,6 +6,7 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.DraftAddress
 import com.verity.invoice.draft.DraftLineItem
+import com.verity.invoice.draft.DraftTransportDetails
 import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.invoice.draft.InvoiceDraftUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -205,6 +206,15 @@ class InvoiceWorkspaceViewModel(
         item: DraftLineItem
     ) {
         draftStore.updateLineItem(index, item)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    // ------------------------------------------------------------
+    // Atom 5 — Transportation Mode
+    // ------------------------------------------------------------
+
+    fun onTransportDetailsChanged(details: DraftTransportDetails?) {
+        draftStore.setTransportDetails(details)
         _uiState.value = draftStore.currentDraft
     }
 }

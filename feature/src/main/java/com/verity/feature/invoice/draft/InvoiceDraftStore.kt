@@ -73,4 +73,15 @@ class InvoiceDraftStore(
             item = item
         )
     }
+
+    // ------------------------------------------------------------
+    // Atom 5 — Logistics (Freight)
+    // ------------------------------------------------------------
+
+    fun setTransportDetails(details: DraftTransportDetails?) {
+        _currentDraft = InvoiceDraftReducer.setTransportDetails(
+            draft = _currentDraft,
+            details = details
+        )
+    }
 }

@@ -97,21 +97,22 @@ object InvoiceDraftReducer {
         return recalculate(draft.copy(lineItems = updatedItems))
     }
 
-    fun setFreight(
+    fun setTransportDetails(
         draft: InvoiceDraftUiState,
-        freightAmount: Double?
+        details: DraftTransportDetails?
     ): InvoiceDraftUiState {
-        val updatedDetails = draft.additionalDetails.copy(
-            freightAmount = freightAmount
+        return recalculate(
+            draft.copy(
+                transportDetails = details
+            )
         )
-        return recalculate(draft.copy(additionalDetails = updatedDetails))
     }
 
     private fun recalculate(
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {
         val itemsTotal = draft.lineItems.sumOf { it.amount }
-        val freight = draft.additionalDetails.freightAmount ?: 0.0
+        val freight = draft.transportDetails?.freightAmount ?: 0.0
         val subtotal = itemsTotal + freight
 
         return draft.copy(

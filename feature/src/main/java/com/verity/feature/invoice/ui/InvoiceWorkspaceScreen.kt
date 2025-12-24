@@ -5,7 +5,7 @@ import com.verity.core.theme.VerityTheme
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.invoice.draft.DraftCustomer
 import com.verity.invoice.draft.DraftLineItem
-import com.verity.invoice.draft.DraftAdditionalDetails
+import com.verity.invoice.draft.DraftTransportDetails
 import com.verity.invoice.draft.DraftSummary
 
 import androidx.compose.foundation.layout.Column
@@ -537,32 +537,139 @@ fun InvoiceWorkspaceScreen(
         VeritySpacer(size = VeritySpace.Large)
 
         // ─────────────────────────────────────────────
-        // Logistics Section (formerly Additional Details)
+        // Transportation Mode
         // ─────────────────────────────────────────────
 
-        VeritySection(title = "Logistics") {
+        var isEditingTransport by remember { mutableStateOf(false) }
 
-            VerityText(
-                text = "Transporter: —",
-                style = VerityTextStyle.Caption
-            )
+        var transporter by remember { mutableStateOf(draft.transportDetails?.transporterName ?: "") }
+        var vehicleNo by remember { mutableStateOf(draft.transportDetails?.vehicleNumber ?: "") }
+        var supplyDate by remember { mutableStateOf(draft.transportDetails?.supplyDate?.toString() ?: "") }
+        var grNumber by remember { mutableStateOf(draft.transportDetails?.grOrLrNumber ?: "") }
+        var freight by remember { mutableStateOf(draft.transportDetails?.freightAmount?.toString() ?: "") }
 
-            VerityText(
-                text = "Vehicle No: —",
-                style = VerityTextStyle.Caption
-            )
+        VeritySection(title = "Transportation Mode") {
 
-            VerityText(
-                text = "Supply Date: —",
-                style = VerityTextStyle.Caption
-            )
+            if (!isEditingTransport) {
 
-            VeritySpacer(size = VeritySpace.Small)
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            transporter = draft.transportDetails?.transporterName ?: ""
+                            vehicleNo = draft.transportDetails?.vehicleNumber ?: ""
+                            supplyDate = draft.transportDetails?.supplyDate?.toString() ?: ""
+                            grNumber = draft.transportDetails?.grOrLrNumber ?: ""
+                            freight = draft.transportDetails?.freightAmount?.toString() ?: ""
+                            isEditingTransport = true
+                        }
+                ) {
+                    VerityText(
+                        text = "Transporter: ${draft.transportDetails?.transporterName ?: "—"}",
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = "Vehicle No: ${draft.transportDetails?.vehicleNumber ?: "—"}",
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = "Supply Date: ${draft.transportDetails?.supplyDate ?: "—"}",
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = "GR / LR No: ${draft.transportDetails?.grOrLrNumber ?: "—"}",
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = "Freight: ${draft.transportDetails?.freightAmount ?: "—"}",
+                        style = VerityTextStyle.Body
+                    )
+                }
 
-            VerityText(
-                text = "Linked Challan: —",
-                style = VerityTextStyle.Caption
-            )
+            } else {
+
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = transporter,
+                    onValueChange = { transporter = it },
+                    placeholder = { VerityText("Transporter", VerityTextStyle.Body) },
+                    singleLine = true
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = vehicleNo,
+                    onValueChange = { vehicleNo = it },
+                    placeholder = { VerityText("Vehicle Number", VerityTextStyle.Body) },
+                    singleLine = true
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = supplyDate,
+                    onValueChange = { supplyDate = it },
+                    placeholder = { VerityText("Supply Date (YYYY-MM-DD)", VerityTextStyle.Body) },
+                    singleLine = true
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = grNumber,
+                    onValueChange = { grNumber = it },
+                    placeholder = { VerityText("GR / LR Number", VerityTextStyle.Body) },
+                    singleLine = true
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = freight,
+                    onValueChange = { freight = it },
+                    placeholder = { VerityText("Freight", VerityTextStyle.Body) },
+                    singleLine = true
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                androidx.compose.foundation.layout.Row {
+
+                    VerityText(
+                        text = "Save",
+                        style = VerityTextStyle.Label,
+                        modifier = Modifier.clickable {
+                            viewModel.onTransportDetailsChanged(
+                                DraftTransportDetails(
+                                    transporterName = transporter.ifBlank { null },
+                                    vehicleNumber = vehicleNo.ifBlank { null },
+                                    supplyDate = runCatching {
+                                        supplyDate.takeIf { it.isNotBlank() }?.let { java.time.LocalDate.parse(it) }
+                                    }.getOrNull(),
+                                    grOrLrNumber = grNumber.ifBlank { null },
+                                    freightAmount = freight.toDoubleOrNull()
+                                )
+                            )
+                            isEditingTransport = false
+                        }
+                    )
+
+                    VeritySpacer(size = VeritySpace.Large, horizontal = true)
+
+                    VerityText(
+                        text = "Cancel",
+                        style = VerityTextStyle.Caption,
+                        modifier = Modifier.clickable {
+                            isEditingTransport = false
+                        }
+                    )
+                }
+            }
         }
 
         VeritySpacer(size = VeritySpace.Large)
@@ -584,7 +691,7 @@ fun InvoiceWorkspaceScreen(
                 VeritySpacer(size = VeritySpace.ExtraSmall)
 
                 VerityText(
-                    text = "Freight: ${draft.additionalDetails.freightAmount ?: 0}",
+                    text = "Freight: ${draft.transportDetails?.freightAmount ?: 0}",
                     style = VerityTextStyle.Body
                 )
 
@@ -717,7 +824,7 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
                 amount = 2250.0
             )
         ),
-        additionalDetails = DraftAdditionalDetails(
+        transportDetails = DraftTransportDetails(
             freightAmount = 500.0
         ),
         summary = DraftSummary(
