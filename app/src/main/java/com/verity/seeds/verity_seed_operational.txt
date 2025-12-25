@@ -137,27 +137,41 @@ D2.2.A — Atom Inventory (Authoritative for D2)
   – Subsequent atoms (Shipped To, Line Items, Freight, Summary) are gated behind Atom 1 completion.
   – Atom 1 is considered complete once UI → ViewModel → Draft Store wiring is functional and visible on screen.
 
-Deferred UX Optimization — Autocomplete & Input Interactions (Recorded)
+Resolved UX Direction — Autocomplete & Input Interactions (Locked)
 
-The following UX issues have been consciously observed during Atom 1
-end-to-end testing and are intentionally deferred until all input-heavy
-atoms are structurally complete.
+Autocomplete behavior for input‑heavy atoms has now been explicitly designed
+and is considered directionally locked. This section records execution‑level
+UX rules; it does not alter domain, draft, or replay guarantees.
 
-Observed Issues:
-• Keyboard dismisses when autocomplete suggestions appear.
-• Focus is lost during query → results transition.
-• Dropdown layout interaction feels jumpy on mobile.
-• Interaction rhythm between typing and selection is suboptimal.
+Resolved Interaction Model:
+• Autocomplete is typing‑first and power‑user optimized.
+• Input fields remain fully editable at all times.
+• Suggestions are rendered inline (non‑popup) below the input field.
+• Popup‑based components (e.g. DropdownMenu, Popup) are not used for autocomplete.
+• Keyboard focus must never be interrupted while typing.
+• Keyboard closes only on explicit suggestion selection or user dismissal.
+• Suggestions may appear from the first character.
+• Suggestions auto‑hide when empty.
+• Selection commits value and collapses suggestions deterministically.
 
-Deferral Rationale:
-• Autocomplete UX depends on final focus and keyboard strategy.
-• Multiple additional input atoms (Shipped To, Line Items, Freight, Notes)
-  are pending and would invalidate premature tuning.
-• UX optimization will be performed once all draft input atoms exist.
+Visual & Surface Semantics:
+• Autocomplete suggestions are treated as assistive surfaces, not modal pickers.
+• Assistive surfaces are visually subordinate to the primary input field.
+• Visual hierarchy is expressed via spacing, typography, and elevation first.
+• Color usage follows semantic tokens defined in core/theme.
+• Raw hex colors are not permitted in UI code.
 
-Planned Resolution Window:
-• Dedicated UX optimization pass scheduled after Atom 4 (Line Items entry)
-  and before any PDF preview, finalization, or production hardening work.
+Execution Notes:
+• Autocomplete filtering and ranking logic is owned by screen‑level state
+  (ViewModel / reducer), not by UI primitives.
+• UI primitives receive pre‑filtered, ordered suggestion lists.
+• Result capping and relevance ordering are required for performance and UX
+  but are executed upstream.
+
+Status:
+• Direction locked.
+• UI primitive stabilized.
+• Further work limited to visual polish and upstream filtering logic.
 
 Explicit Exclusions in D2:
 • No invoice finalization or numbering.

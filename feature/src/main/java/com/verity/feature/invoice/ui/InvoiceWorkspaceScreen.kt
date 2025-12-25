@@ -163,15 +163,12 @@ fun InvoiceWorkspaceScreen(
         // ─────────────────────────────────────────────
         // Parties Section (formerly Customer Details)
         // ─────────────────────────────────────────────
-
         VeritySurface(
             type = VeritySurfaceType.Base,
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
-            VeritySection {
-
+            VeritySection(title = "Parties") {
                 androidx.compose.foundation.layout.Row {
-
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -183,7 +180,6 @@ fun InvoiceWorkspaceScreen(
                         VeritySpacer(size = VeritySpace.ExtraSmall)
 
                         if (draft.billedTo == null) {
-
                             TextField(
                                 modifier = Modifier.fillMaxWidth(),
                                 value = billedToQuery,
@@ -191,7 +187,6 @@ fun InvoiceWorkspaceScreen(
                                 placeholder = { VerityText(text = "Search customer", style = VerityTextStyle.Body) },
                                 singleLine = true
                             )
-
                             DropdownMenu(
                                 expanded = billedToSuggestions.isNotEmpty(),
                                 onDismissRequest = { /* suggestions hide automatically on clear */ },
@@ -211,16 +206,12 @@ fun InvoiceWorkspaceScreen(
                                     )
                                 }
                             }
-
                         } else {
-
                             VerityText(
                                 text = draft.billedTo.name,
                                 style = VerityTextStyle.Body
                             )
-
                             VeritySpacer(size = VeritySpace.ExtraSmall)
-
                             VerityText(
                                 text = "Change",
                                 style = VerityTextStyle.Caption,
@@ -231,9 +222,7 @@ fun InvoiceWorkspaceScreen(
                             )
                         }
                     }
-
                     VeritySpacer(size = VeritySpace.Large, horizontal = true)
-
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -241,18 +230,13 @@ fun InvoiceWorkspaceScreen(
                             text = "Shipped To",
                             style = VerityTextStyle.Label
                         )
-
                         VeritySpacer(size = VeritySpace.ExtraSmall)
-
                         if (draft.shippedTo != null) {
-
                             VerityText(
                                 text = draft.shippedTo.name,
                                 style = VerityTextStyle.Body
                             )
-
                             VeritySpacer(size = VeritySpace.ExtraSmall)
-
                             VerityText(
                                 text = "Change",
                                 style = VerityTextStyle.Caption,
@@ -260,9 +244,7 @@ fun InvoiceWorkspaceScreen(
                                     .padding(top = VeritySpace.ExtraSmall.dp)
                                     .clickable { viewModel.onShippedToCleared() }
                             )
-
                         } else {
-
                             TextField(
                                 modifier = Modifier.fillMaxWidth(),
                                 value = shippedToQuery,
@@ -275,7 +257,6 @@ fun InvoiceWorkspaceScreen(
                                 },
                                 singleLine = true
                             )
-
                             DropdownMenu(
                                 expanded = shippedToSuggestions.isNotEmpty(),
                                 onDismissRequest = { /* auto-hide */ },
@@ -300,124 +281,256 @@ fun InvoiceWorkspaceScreen(
                 }
             }
         }
-
         VeritySpacer(size = VeritySpace.Medium)
 
         // ─────────────────────────────────────────────
         // Line Items Section
         // ─────────────────────────────────────────────
+        VeritySurface(
+            type = VeritySurfaceType.Base,
+            modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+        ) {
+            VeritySection(title = "Line Items") {
+                var isAddingLineItem by remember { mutableStateOf(false) }
+                var editingIndex by remember { mutableStateOf<Int?>(null) }
 
-        VeritySection(title = "Line Items") {
-            var isAddingLineItem by remember { mutableStateOf(false) }
-            var editingIndex by remember { mutableStateOf<Int?>(null) }
-
-            if (draft.lineItems.isEmpty() && !isAddingLineItem) {
-                VerityText(
-                    text = "No line items added",
-                    style = VerityTextStyle.Caption
-                )
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                VerityText(
-                    text = "+ Add line item",
-                    style = VerityTextStyle.Label,
-                    modifier = Modifier.clickable { isAddingLineItem = true }
-                )
-            } else {
-                draft.lineItems.forEachIndexed { index, item ->
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                editingIndex = index
-                                isAddingLineItem = false
-                            }
-                    ) {
-                        VerityListItem(
-                            title = item.description,
-                            subtitle =
-                                "HSN ${item.hsnCode} · ${item.quantity} ${item.unit} × ${item.rate}  |  Amount: ${item.amount}"
-                        )
-                    }
+                if (draft.lineItems.isEmpty() && !isAddingLineItem) {
+                    VerityText(
+                        text = "No line items added",
+                        style = VerityTextStyle.Caption
+                    )
 
                     VeritySpacer(size = VeritySpace.Small)
 
-                    if (editingIndex == index) {
+                    VerityText(
+                        text = "+ Add line item",
+                        style = VerityTextStyle.Label,
+                        modifier = Modifier.clickable { isAddingLineItem = true }
+                    )
+                } else {
+                    draft.lineItems.forEachIndexed { index, item ->
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    editingIndex = index
+                                    isAddingLineItem = false
+                                }
+                        ) {
+                            VerityListItem(
+                                title = item.description,
+                                subtitle =
+                                "HSN ${item.hsnCode} · ${item.quantity} ${item.unit} × ${item.rate}  |  Amount: ${item.amount}"
+                            )
+                        }
+
                         VeritySpacer(size = VeritySpace.Small)
 
-                        var description by remember { mutableStateOf(item.description) }
-                        var hsn by remember { mutableStateOf(item.hsnCode) }
-                        var quantity by remember { mutableStateOf(item.quantity.toString()) }
-                        var unit by remember { mutableStateOf(item.unit) }
-                        var rate by remember { mutableStateOf(item.rate.toString()) }
+                        if (editingIndex == index) {
+                            VeritySpacer(size = VeritySpace.Small)
 
-                        val qtyValue = quantity.toDoubleOrNull() ?: 0.0
-                        val rateValue = rate.toDoubleOrNull() ?: 0.0
-                        val amount = qtyValue * rateValue
+                            var description by remember { mutableStateOf(item.description) }
+                            var hsn by remember { mutableStateOf(item.hsnCode) }
+                            var quantity by remember { mutableStateOf(item.quantity.toString()) }
+                            var unit by remember { mutableStateOf(item.unit) }
+                            var rate by remember { mutableStateOf(item.rate.toString()) }
 
-                        VeritySurface(type = VeritySurfaceType.Sunken) {
-                            Column(modifier = Modifier.padding(VeritySpace.Small.dp)) {
+                            val qtyValue = quantity.toDoubleOrNull() ?: 0.0
+                            val rateValue = rate.toDoubleOrNull() ?: 0.0
+                            val amount = qtyValue * rateValue
 
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = description,
-                                    onValueChange = { description = it },
-                                    singleLine = true
-                                )
+                            VeritySurface(type = VeritySurfaceType.Sunken) {
+                                Column(modifier = Modifier.padding(VeritySpace.Small.dp)) {
 
-                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                    TextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = description,
+                                        onValueChange = { description = it },
+                                        singleLine = true
+                                    )
 
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = hsn,
-                                    onValueChange = { hsn = it },
-                                    singleLine = true
-                                )
+                                    VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                    TextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = hsn,
+                                        onValueChange = { hsn = it },
+                                        singleLine = true
+                                    )
 
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = quantity,
-                                    onValueChange = { quantity = it },
-                                    singleLine = true
-                                )
+                                    VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                    TextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = quantity,
+                                        onValueChange = { quantity = it },
+                                        singleLine = true
+                                    )
 
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = unit,
-                                    onValueChange = { unit = it },
-                                    singleLine = true
-                                )
+                                    VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                    TextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = unit,
+                                        onValueChange = { unit = it },
+                                        singleLine = true
+                                    )
 
-                                TextField(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = rate,
-                                    onValueChange = { rate = it },
-                                    singleLine = true
-                                )
+                                    VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                                VeritySpacer(size = VeritySpace.Small)
+                                    TextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = rate,
+                                        onValueChange = { rate = it },
+                                        singleLine = true
+                                    )
 
-                                VerityText(
-                                    text = "Amount: $amount",
-                                    style = VerityTextStyle.Body
-                                )
+                                    VeritySpacer(size = VeritySpace.Small)
 
-                                VeritySpacer(size = VeritySpace.Small)
-
-                                androidx.compose.foundation.layout.Row {
                                     VerityText(
-                                        text = "Save",
-                                        style = VerityTextStyle.Label,
-                                        modifier = Modifier.clickable {
-                                            viewModel.onUpdateLineItem(
-                                                index,
+                                        text = "Amount: $amount",
+                                        style = VerityTextStyle.Body
+                                    )
+
+                                    VeritySpacer(size = VeritySpace.Small)
+
+                                    androidx.compose.foundation.layout.Row {
+                                        VerityText(
+                                            text = "Save",
+                                            style = VerityTextStyle.Label,
+                                            modifier = Modifier.clickable {
+                                                viewModel.onUpdateLineItem(
+                                                    index,
+                                                    DraftLineItem(
+                                                        description = description,
+                                                        hsnCode = hsn,
+                                                        quantity = qtyValue,
+                                                        unit = unit,
+                                                        rate = rateValue,
+                                                        amount = amount
+                                                    )
+                                                )
+                                                editingIndex = null
+                                            }
+                                        )
+
+                                        VeritySpacer(size = VeritySpace.Large, horizontal = true)
+
+                                        VerityText(
+                                            text = "Delete",
+                                            style = VerityTextStyle.Label,
+                                            modifier = Modifier.clickable {
+                                                viewModel.onRemoveLineItem(index)
+                                                editingIndex = null
+                                            }
+                                        )
+
+                                        VeritySpacer(size = VeritySpace.Large, horizontal = true)
+
+                                        VerityText(
+                                            text = "Cancel",
+                                            style = VerityTextStyle.Caption,
+                                            modifier = Modifier.clickable {
+                                                editingIndex = null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isAddingLineItem && editingIndex == null) {
+                        VerityText(
+                            text = "+ Add another line item",
+                            style = VerityTextStyle.Label,
+                            modifier = Modifier.clickable { isAddingLineItem = true }
+                        )
+                    }
+                }
+
+                if (isAddingLineItem && editingIndex == null) {
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    var description by remember { mutableStateOf("") }
+                    var hsn by remember { mutableStateOf("") }
+                    var quantity by remember { mutableStateOf("") }
+                    var unit by remember { mutableStateOf("") }
+                    var rate by remember { mutableStateOf("") }
+
+                    val qtyValue = quantity.toDoubleOrNull() ?: 0.0
+                    val rateValue = rate.toDoubleOrNull() ?: 0.0
+                    val amount = qtyValue * rateValue
+
+                    VeritySurface(type = VeritySurfaceType.Sunken) {
+                        Column(
+                            modifier = Modifier.padding(VeritySpace.Small.dp)
+                        ) {
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = description,
+                                onValueChange = { description = it },
+                                placeholder = { VerityText("Description", VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = hsn,
+                                onValueChange = { hsn = it },
+                                placeholder = { VerityText("HSN Code", VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = quantity,
+                                onValueChange = { quantity = it },
+                                placeholder = { VerityText("Quantity", VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = unit,
+                                onValueChange = { unit = it },
+                                placeholder = { VerityText("Unit", VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                            TextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = rate,
+                                onValueChange = { rate = it },
+                                placeholder = { VerityText("Rate", VerityTextStyle.Body) },
+                                singleLine = true
+                            )
+
+                            VeritySpacer(size = VeritySpace.Small)
+
+                            VerityText(
+                                text = "Amount: $amount",
+                                style = VerityTextStyle.Body
+                            )
+
+                            VeritySpacer(size = VeritySpace.Small)
+
+                            androidx.compose.foundation.layout.Row {
+                                VerityText(
+                                    text = "Add",
+                                    style = VerityTextStyle.Label,
+                                    modifier = Modifier
+                                        .clickable {
+                                            viewModel.onAddLineItem(
                                                 DraftLineItem(
                                                     description = description,
                                                     hsnCode = hsn,
@@ -427,300 +540,160 @@ fun InvoiceWorkspaceScreen(
                                                     amount = amount
                                                 )
                                             )
-                                            editingIndex = null
+                                            isAddingLineItem = false
                                         }
-                                    )
+                                )
 
-                                    VeritySpacer(size = VeritySpace.Large, horizontal = true)
+                                VeritySpacer(size = VeritySpace.Large, horizontal = true)
 
-                                    VerityText(
-                                        text = "Delete",
-                                        style = VerityTextStyle.Label,
-                                        modifier = Modifier.clickable {
-                                            viewModel.onRemoveLineItem(index)
-                                            editingIndex = null
+                                VerityText(
+                                    text = "Cancel",
+                                    style = VerityTextStyle.Caption,
+                                    modifier = Modifier
+                                        .clickable {
+                                            isAddingLineItem = false
                                         }
-                                    )
-
-                                    VeritySpacer(size = VeritySpace.Large, horizontal = true)
-
-                                    VerityText(
-                                        text = "Cancel",
-                                        style = VerityTextStyle.Caption,
-                                        modifier = Modifier.clickable {
-                                            editingIndex = null
-                                        }
-                                    )
-                                }
+                                )
                             }
                         }
                     }
                 }
-
-                if (!isAddingLineItem && editingIndex == null) {
-                    VerityText(
-                        text = "+ Add another line item",
-                        style = VerityTextStyle.Label,
-                        modifier = Modifier.clickable { isAddingLineItem = true }
-                    )
-                }
             }
+        }
 
-            if (isAddingLineItem && editingIndex == null) {
-                VeritySpacer(size = VeritySpace.Small)
+        VeritySpacer(size = VeritySpace.Medium)
 
-                var description by remember { mutableStateOf("") }
-                var hsn by remember { mutableStateOf("") }
-                var quantity by remember { mutableStateOf("") }
-                var unit by remember { mutableStateOf("") }
-                var rate by remember { mutableStateOf("") }
+        // ─────────────────────────────────────────────
+        // Transportation Section
+        // ─────────────────────────────────────────────
+        VeritySurface(
+            type = VeritySurfaceType.Base,
+            modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+        ) {
+            VeritySection(title = "Transportation Mode") {
+                var isEditingTransport by remember { mutableStateOf(false) }
+                var transporter by remember { mutableStateOf(draft.transportDetails?.transporterName ?: "") }
+                var vehicleNo by remember { mutableStateOf(draft.transportDetails?.vehicleNumber ?: "") }
+                var supplyDate by remember { mutableStateOf(draft.transportDetails?.supplyDate?.toString() ?: "") }
+                var grNumber by remember { mutableStateOf(draft.transportDetails?.grOrLrNumber ?: "") }
+                var freight by remember { mutableStateOf(draft.transportDetails?.freightAmount?.toString() ?: "") }
 
-                val qtyValue = quantity.toDoubleOrNull() ?: 0.0
-                val rateValue = rate.toDoubleOrNull() ?: 0.0
-                val amount = qtyValue * rateValue
-
-                VeritySurface(type = VeritySurfaceType.Sunken) {
-                    Column(
-                        modifier = Modifier.padding(VeritySpace.Small.dp)
-                    ) {
-
-                        TextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = description,
-                            onValueChange = { description = it },
-                            placeholder = { VerityText("Description", VerityTextStyle.Body) },
-                            singleLine = true
-                        )
-
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                        TextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = hsn,
-                            onValueChange = { hsn = it },
-                            placeholder = { VerityText("HSN Code", VerityTextStyle.Body) },
-                            singleLine = true
-                        )
-
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                        TextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = quantity,
-                            onValueChange = { quantity = it },
-                            placeholder = { VerityText("Quantity", VerityTextStyle.Body) },
-                            singleLine = true
-                        )
-
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                        TextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = unit,
-                            onValueChange = { unit = it },
-                            placeholder = { VerityText("Unit", VerityTextStyle.Body) },
-                            singleLine = true
-                        )
-
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                        TextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = rate,
-                            onValueChange = { rate = it },
-                            placeholder = { VerityText("Rate", VerityTextStyle.Body) },
-                            singleLine = true
-                        )
-
-                        VeritySpacer(size = VeritySpace.Small)
-
+                if (!isEditingTransport) {
+                    if (draft.transportDetails == null) {
+                        // Show collapsed "no details" view
                         VerityText(
-                            text = "Amount: $amount",
-                            style = VerityTextStyle.Body
+                            text = "No transportation details",
+                            style = VerityTextStyle.Caption
                         )
-
                         VeritySpacer(size = VeritySpace.Small)
-
-                        androidx.compose.foundation.layout.Row {
+                        VerityText(
+                            text = "+ Add transportation details",
+                            style = VerityTextStyle.Label,
+                            modifier = Modifier.clickable { isEditingTransport = true }
+                        )
+                    } else {
+                        // Show compact summary
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             VerityText(
-                                text = "Add",
+                                text = "Freight: ${draft.transportDetails.freightAmount ?: "—"}",
+                                style = VerityTextStyle.Body,
+                                modifier = Modifier.weight(1f)
+                            )
+                            VerityText(
+                                text = "Edit transportation details",
                                 style = VerityTextStyle.Label,
                                 modifier = Modifier
                                     .clickable {
-                                        viewModel.onAddLineItem(
-                                            DraftLineItem(
-                                                description = description,
-                                                hsnCode = hsn,
-                                                quantity = qtyValue,
-                                                unit = unit,
-                                                rate = rateValue,
-                                                amount = amount
-                                            )
-                                        )
-                                        isAddingLineItem = false
-                                    }
-                            )
-
-                            VeritySpacer(size = VeritySpace.Large, horizontal = true)
-
-                            VerityText(
-                                text = "Cancel",
-                                style = VerityTextStyle.Caption,
-                                modifier = Modifier
-                                    .clickable {
-                                        isAddingLineItem = false
+                                        transporter = draft.transportDetails?.transporterName ?: ""
+                                        vehicleNo = draft.transportDetails?.vehicleNumber ?: ""
+                                        supplyDate = draft.transportDetails?.supplyDate?.toString() ?: ""
+                                        grNumber = draft.transportDetails?.grOrLrNumber ?: ""
+                                        freight = draft.transportDetails?.freightAmount?.toString() ?: ""
+                                        isEditingTransport = true
                                     }
                             )
                         }
+                    }
+                } else {
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = transporter,
+                        onValueChange = { transporter = it },
+                        placeholder = { VerityText("Transporter", VerityTextStyle.Body) },
+                        singleLine = true
+                    )
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = vehicleNo,
+                        onValueChange = { vehicleNo = it },
+                        placeholder = { VerityText("Vehicle Number", VerityTextStyle.Body) },
+                        singleLine = true
+                    )
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = supplyDate,
+                        onValueChange = { supplyDate = it },
+                        placeholder = { VerityText("Supply Date (YYYY-MM-DD)", VerityTextStyle.Body) },
+                        singleLine = true
+                    )
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = grNumber,
+                        onValueChange = { grNumber = it },
+                        placeholder = { VerityText("GR / LR Number", VerityTextStyle.Body) },
+                        singleLine = true
+                    )
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = freight,
+                        onValueChange = { freight = it },
+                        placeholder = { VerityText("Freight", VerityTextStyle.Body) },
+                        singleLine = true
+                    )
+                    VeritySpacer(size = VeritySpace.Small)
+                    androidx.compose.foundation.layout.Row {
+                        VerityText(
+                            text = "Save",
+                            style = VerityTextStyle.Label,
+                            modifier = Modifier.clickable {
+                                viewModel.onTransportDetailsChanged(
+                                    DraftTransportDetails(
+                                        transporterName = transporter.ifBlank { null },
+                                        vehicleNumber = vehicleNo.ifBlank { null },
+                                        supplyDate = runCatching {
+                                            supplyDate.takeIf { it.isNotBlank() }?.let { java.time.LocalDate.parse(it) }
+                                        }.getOrNull(),
+                                        grOrLrNumber = grNumber.ifBlank { null },
+                                        freightAmount = freight.toDoubleOrNull()
+                                    )
+                                )
+                                isEditingTransport = false
+                            }
+                        )
+                        VeritySpacer(size = VeritySpace.Large, horizontal = true)
+                        VerityText(
+                            text = "Cancel",
+                            style = VerityTextStyle.Caption,
+                            modifier = Modifier.clickable {
+                                isEditingTransport = false
+                            }
+                        )
                     }
                 }
             }
         }
 
-        VeritySpacer(size = VeritySpace.Large)
-
-        // ─────────────────────────────────────────────
-        // Transportation Mode
-        // ─────────────────────────────────────────────
-
-        var isEditingTransport by remember { mutableStateOf(false) }
-
-        var transporter by remember { mutableStateOf(draft.transportDetails?.transporterName ?: "") }
-        var vehicleNo by remember { mutableStateOf(draft.transportDetails?.vehicleNumber ?: "") }
-        var supplyDate by remember { mutableStateOf(draft.transportDetails?.supplyDate?.toString() ?: "") }
-        var grNumber by remember { mutableStateOf(draft.transportDetails?.grOrLrNumber ?: "") }
-        var freight by remember { mutableStateOf(draft.transportDetails?.freightAmount?.toString() ?: "") }
-
-        VeritySection(title = "Transportation Mode") {
-
-            if (!isEditingTransport) {
-
-                androidx.compose.foundation.layout.Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            transporter = draft.transportDetails?.transporterName ?: ""
-                            vehicleNo = draft.transportDetails?.vehicleNumber ?: ""
-                            supplyDate = draft.transportDetails?.supplyDate?.toString() ?: ""
-                            grNumber = draft.transportDetails?.grOrLrNumber ?: ""
-                            freight = draft.transportDetails?.freightAmount?.toString() ?: ""
-                            isEditingTransport = true
-                        }
-                ) {
-                    VerityText(
-                        text = "Transporter: ${draft.transportDetails?.transporterName ?: "—"}",
-                        style = VerityTextStyle.Body
-                    )
-                    VerityText(
-                        text = "Vehicle No: ${draft.transportDetails?.vehicleNumber ?: "—"}",
-                        style = VerityTextStyle.Body
-                    )
-                    VerityText(
-                        text = "Supply Date: ${draft.transportDetails?.supplyDate ?: "—"}",
-                        style = VerityTextStyle.Body
-                    )
-                    VerityText(
-                        text = "GR / LR No: ${draft.transportDetails?.grOrLrNumber ?: "—"}",
-                        style = VerityTextStyle.Body
-                    )
-                    VerityText(
-                        text = "Freight: ${draft.transportDetails?.freightAmount ?: "—"}",
-                        style = VerityTextStyle.Body
-                    )
-                }
-
-            } else {
-
-                TextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = transporter,
-                    onValueChange = { transporter = it },
-                    placeholder = { VerityText("Transporter", VerityTextStyle.Body) },
-                    singleLine = true
-                )
-
-                VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                TextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = vehicleNo,
-                    onValueChange = { vehicleNo = it },
-                    placeholder = { VerityText("Vehicle Number", VerityTextStyle.Body) },
-                    singleLine = true
-                )
-
-                VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                TextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = supplyDate,
-                    onValueChange = { supplyDate = it },
-                    placeholder = { VerityText("Supply Date (YYYY-MM-DD)", VerityTextStyle.Body) },
-                    singleLine = true
-                )
-
-                VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                TextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = grNumber,
-                    onValueChange = { grNumber = it },
-                    placeholder = { VerityText("GR / LR Number", VerityTextStyle.Body) },
-                    singleLine = true
-                )
-
-                VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                TextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = freight,
-                    onValueChange = { freight = it },
-                    placeholder = { VerityText("Freight", VerityTextStyle.Body) },
-                    singleLine = true
-                )
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                androidx.compose.foundation.layout.Row {
-
-                    VerityText(
-                        text = "Save",
-                        style = VerityTextStyle.Label,
-                        modifier = Modifier.clickable {
-                            viewModel.onTransportDetailsChanged(
-                                DraftTransportDetails(
-                                    transporterName = transporter.ifBlank { null },
-                                    vehicleNumber = vehicleNo.ifBlank { null },
-                                    supplyDate = runCatching {
-                                        supplyDate.takeIf { it.isNotBlank() }?.let { java.time.LocalDate.parse(it) }
-                                    }.getOrNull(),
-                                    grOrLrNumber = grNumber.ifBlank { null },
-                                    freightAmount = freight.toDoubleOrNull()
-                                )
-                            )
-                            isEditingTransport = false
-                        }
-                    )
-
-                    VeritySpacer(size = VeritySpace.Large, horizontal = true)
-
-                    VerityText(
-                        text = "Cancel",
-                        style = VerityTextStyle.Caption,
-                        modifier = Modifier.clickable {
-                            isEditingTransport = false
-                        }
-                    )
-                }
-            }
-        }
-
-        VeritySpacer(size = VeritySpace.Large)
+        VeritySpacer(size = VeritySpace.Medium)
 
         // ─────────────────────────────────────────────
         // Summary Section
         // ─────────────────────────────────────────────
-
         VeritySurface(
             type = VeritySurfaceType.Sunken,
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
@@ -739,20 +712,15 @@ fun InvoiceWorkspaceScreen(
                 )
 
                 draft.summary.tax?.let { tax ->
-
                     VeritySpacer(size = VeritySpace.Small)
-
                     when (tax.mode) {
-
                         com.verity.invoice.draft.DraftTaxMode.INTRA_STATE -> {
-
                             tax.cgst?.let {
                                 VerityText(
                                     text = "CGST (${it.ratePercent}%): ${it.amount}",
                                     style = VerityTextStyle.Body
                                 )
                             }
-
                             tax.sgst?.let {
                                 VerityText(
                                     text = "SGST (${it.ratePercent}%): ${it.amount}",
@@ -760,9 +728,7 @@ fun InvoiceWorkspaceScreen(
                                 )
                             }
                         }
-
                         com.verity.invoice.draft.DraftTaxMode.INTER_STATE -> {
-
                             tax.igst?.let {
                                 VerityText(
                                     text = "IGST (${it.ratePercent}%): ${it.amount}",
@@ -771,9 +737,7 @@ fun InvoiceWorkspaceScreen(
                             }
                         }
                     }
-
                     VeritySpacer(size = VeritySpace.ExtraSmall)
-
                     VerityText(
                         text = "Tax Total: ${draft.summary.taxTotal}",
                         style = VerityTextStyle.Body
@@ -782,14 +746,15 @@ fun InvoiceWorkspaceScreen(
 
                 VeritySpacer(size = VeritySpace.Small)
 
+                VeritySpacer(size = VeritySpace.Small)
                 VerityText(
                     text = "Grand Total: ${draft.summary.grandTotal}",
                     style = VerityTextStyle.Title
                 )
             }
         }
-    }
-}
+    } // closes Column
+} // closes InvoiceWorkspaceScreen
 
 @Preview(
     name = "Invoice Workspace — Light",
