@@ -86,6 +86,7 @@ private fun MainEntry() {
                         gstin = "27AAACB1234Z1Z",
                         city = "Pune",
                         state = "Maharashtra",
+                        stateCode = "27",
                         isActive = true,
                         updatedAt = System.currentTimeMillis()
                     )
@@ -98,6 +99,7 @@ private fun MainEntry() {
                         gstin = "29AABCA9999Q1Z",
                         city = "Bengaluru",
                         state = "Karnataka",
+                        stateCode = "29",
                         isActive = true,
                         updatedAt = System.currentTimeMillis()
                     )

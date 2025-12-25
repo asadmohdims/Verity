@@ -50,5 +50,7 @@ data class CustomerAutocompleteItem(
     val customerName: String,
     val gstin: String?,
     val city: String?,
-    val state: String?
+    val state: String?,
+    // GST state code as 2-digit numeric string (e.g. "27")
+    val stateCode: String?
 )

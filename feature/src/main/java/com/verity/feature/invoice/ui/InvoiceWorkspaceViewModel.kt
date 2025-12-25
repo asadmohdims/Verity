@@ -7,6 +7,7 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.DraftAddress
 import com.verity.invoice.draft.DraftLineItem
 import com.verity.invoice.draft.DraftTransportDetails
+import com.verity.invoice.draft.DraftDocumentType
 import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.invoice.draft.InvoiceDraftUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,7 +111,7 @@ class InvoiceWorkspaceViewModel(
             addressLine1 = "",
             city = item.city ?: "",
             state = item.state ?: "",
-            stateCode = "",
+            stateCode = item.stateCode ?: "",
             pincode = ""
         )
 
@@ -163,7 +164,7 @@ class InvoiceWorkspaceViewModel(
             addressLine1 = "",
             city = item.city ?: "",
             state = item.state ?: "",
-            stateCode = "",
+            stateCode = item.stateCode ?: "",
             pincode = ""
         )
 
@@ -215,6 +216,15 @@ class InvoiceWorkspaceViewModel(
 
     fun onTransportDetailsChanged(details: DraftTransportDetails?) {
         draftStore.setTransportDetails(details)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    // ------------------------------------------------------------
+    // Atom 6.1 — Document Type
+    // ------------------------------------------------------------
+
+    fun onDocumentTypeChanged(documentType: DraftDocumentType) {
+        draftStore.setDocumentType(documentType)
         _uiState.value = draftStore.currentDraft
     }
 }

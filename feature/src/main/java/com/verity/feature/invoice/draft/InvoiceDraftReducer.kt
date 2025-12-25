@@ -10,6 +10,10 @@ package com.verity.invoice.draft
  */
 object InvoiceDraftReducer {
 
+    private const val ASSUMED_SELLER_STATE_CODE = "27"
+    private const val GST_RATE_TOTAL = 18.0
+    private const val GST_RATE_HALF = 9.0
+
     fun setCustomer(
         draft: InvoiceDraftUiState,
         customer: DraftCustomer,
@@ -108,18 +112,81 @@ object InvoiceDraftReducer {
         )
     }
 
+    fun setDocumentType(
+        draft: InvoiceDraftUiState,
+        documentType: DraftDocumentType
+    ): InvoiceDraftUiState {
+        // No behavior change yet.
+        // Tax behavior will branch on documentType in Atom 6.2.
+        return recalculate(
+            draft.copy(documentType = documentType)
+        )
+    }
+
     private fun recalculate(
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {
+
         val itemsTotal = draft.lineItems.sumOf { it.amount }
         val freight = draft.transportDetails?.freightAmount ?: 0.0
         val subtotal = itemsTotal + freight
 
+        // -----------------------------
+        // Draft Tax Calculation (Atom 6.2)
+        // -----------------------------
+        // TODO (FINALIZATION):
+        // Remove hardcoded ASSUMED_SELLER_STATE_CODE.
+        // Seller GST state must come from Organization Profile / GSTIN
+        // once Draft → Final boundary is introduced.
+
+        val buyerStateCode = draft.billedTo?.stateCode.orEmpty()
+
+        val taxBreakdown =
+            if (draft.documentType == DraftDocumentType.CHALLAN) {
+                null
+            } else if (buyerStateCode.isBlank()) {
+                null
+            } else {
+                val isIntraState = buyerStateCode == ASSUMED_SELLER_STATE_CODE
+
+                if (isIntraState) {
+                    DraftTaxBreakdown(
+                        mode = DraftTaxMode.INTRA_STATE,
+                        cgst = DraftTaxComponent(
+                            ratePercent = GST_RATE_HALF,
+                            amount = subtotal * GST_RATE_HALF / 100
+                        ),
+                        sgst = DraftTaxComponent(
+                            ratePercent = GST_RATE_HALF,
+                            amount = subtotal * GST_RATE_HALF / 100
+                        )
+                    )
+                } else {
+                    DraftTaxBreakdown(
+                        mode = DraftTaxMode.INTER_STATE,
+                        igst = DraftTaxComponent(
+                            ratePercent = GST_RATE_TOTAL,
+                            amount = subtotal * GST_RATE_TOTAL / 100
+                        )
+                    )
+                }
+            }
+
+        val taxTotal =
+            taxBreakdown?.let {
+                (it.cgst?.amount ?: 0.0) +
+                (it.sgst?.amount ?: 0.0) +
+                (it.igst?.amount ?: 0.0)
+            } ?: 0.0
+
+        val grandTotal = subtotal + taxTotal
+
         return draft.copy(
             summary = DraftSummary(
                 subtotal = subtotal,
-                taxTotal = 0.0,
-                grandTotal = subtotal
+                tax = taxBreakdown,
+                taxTotal = taxTotal,
+                grandTotal = grandTotal
             )
         )
     }

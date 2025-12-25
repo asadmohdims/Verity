@@ -84,4 +84,15 @@ class InvoiceDraftStore(
             details = details
         )
     }
+
+    // ------------------------------------------------------------
+    // Atom 6.1 — Document Type
+    // ------------------------------------------------------------
+
+    fun setDocumentType(documentType: DraftDocumentType) {
+        _currentDraft = InvoiceDraftReducer.setDocumentType(
+            draft = _currentDraft,
+            documentType = documentType
+        )
+    }
 }

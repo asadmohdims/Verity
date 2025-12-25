@@ -98,7 +98,7 @@ fun InvoiceWorkspaceScreen(
 
         VerityHeader(
             title = "Invoice Workspace",
-            subtitle = "Invoice",
+            subtitle = draft.documentType.name.lowercase().replaceFirstChar { it.uppercase() },
             trailing = {
                 VerityText(
                     text = "Search",
@@ -109,11 +109,54 @@ fun InvoiceWorkspaceScreen(
 
         VeritySpacer(size = VeritySpace.Large)
 
-        VerityText(
-            text = "Document Type: Invoice",
-            style = VerityTextStyle.Caption,
+        VeritySurface(
+            type = VeritySurfaceType.Base,
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
-        )
+        ) {
+            VeritySection {
+
+                var isDocTypeMenuOpen by remember { mutableStateOf(false) }
+
+                VerityText(
+                    text = "Document Type",
+                    style = VerityTextStyle.Label
+                )
+
+                VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                VerityText(
+                    text = draft.documentType.name.lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    style = VerityTextStyle.Body,
+                    modifier = Modifier
+                        .clickable { isDocTypeMenuOpen = true }
+                )
+
+                DropdownMenu(
+                    expanded = isDocTypeMenuOpen,
+                    onDismissRequest = { isDocTypeMenuOpen = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { VerityText("Invoice", VerityTextStyle.Body) },
+                        onClick = {
+                            viewModel.onDocumentTypeChanged(
+                                com.verity.invoice.draft.DraftDocumentType.INVOICE
+                            )
+                            isDocTypeMenuOpen = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { VerityText("Challan", VerityTextStyle.Body) },
+                        onClick = {
+                            viewModel.onDocumentTypeChanged(
+                                com.verity.invoice.draft.DraftDocumentType.CHALLAN
+                            )
+                            isDocTypeMenuOpen = false
+                        }
+                    )
+                }
+            }
+        }
 
         VeritySpacer(size = VeritySpace.Small)
 
@@ -695,12 +738,47 @@ fun InvoiceWorkspaceScreen(
                     style = VerityTextStyle.Body
                 )
 
-                VeritySpacer(size = VeritySpace.ExtraSmall)
+                draft.summary.tax?.let { tax ->
 
-                VerityText(
-                    text = "Tax: ${draft.summary.taxTotal}",
-                    style = VerityTextStyle.Body
-                )
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    when (tax.mode) {
+
+                        com.verity.invoice.draft.DraftTaxMode.INTRA_STATE -> {
+
+                            tax.cgst?.let {
+                                VerityText(
+                                    text = "CGST (${it.ratePercent}%): ${it.amount}",
+                                    style = VerityTextStyle.Body
+                                )
+                            }
+
+                            tax.sgst?.let {
+                                VerityText(
+                                    text = "SGST (${it.ratePercent}%): ${it.amount}",
+                                    style = VerityTextStyle.Body
+                                )
+                            }
+                        }
+
+                        com.verity.invoice.draft.DraftTaxMode.INTER_STATE -> {
+
+                            tax.igst?.let {
+                                VerityText(
+                                    text = "IGST (${it.ratePercent}%): ${it.amount}",
+                                    style = VerityTextStyle.Body
+                                )
+                            }
+                        }
+                    }
+
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                    VerityText(
+                        text = "Tax Total: ${draft.summary.taxTotal}",
+                        style = VerityTextStyle.Body
+                    )
+                }
 
                 VeritySpacer(size = VeritySpace.Small)
 
@@ -829,6 +907,17 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
         ),
         summary = DraftSummary(
             subtotal = 5950.0,
+            tax = com.verity.invoice.draft.DraftTaxBreakdown(
+                mode = com.verity.invoice.draft.DraftTaxMode.INTRA_STATE,
+                cgst = com.verity.invoice.draft.DraftTaxComponent(
+                    ratePercent = 9.0,
+                    amount = 535.5
+                ),
+                sgst = com.verity.invoice.draft.DraftTaxComponent(
+                    ratePercent = 9.0,
+                    amount = 535.5
+                )
+            ),
             taxTotal = 1071.0,
             grandTotal = 7021.0
         )

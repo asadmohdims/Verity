@@ -54,7 +54,8 @@ class DefaultCustomerAutocompleteDataSource(
             customerName = customerName,
             gstin = gstin,
             city = city,
-            state = state
+            state = state,
+            stateCode = stateCode
         )
     }
 }

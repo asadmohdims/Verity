@@ -11,15 +11,16 @@ FOUNDATION PHASES — COMPLETED & LOCKED
 • F4 — Core Implementation Foundations ✅ (LOCKED)
 
 DELIVERY PHASES — IN PROGRESS
-• D1 — Invoice Workspace (UI-only, read-only) ✅ COMPLETED & LOCKED
-• D2 — Core Workflows (Invoices & Challans) ▶️ ACTIVE
+• D1 — Invoice Workspace (Read-only semantics) ✅ COMPLETED & LOCKED
+• D2 — Draft Creation & Core Workflows ▶️ ACTIVE
 • D3 — Experience, Sync & Production ▶️ UPCOMING
 
 ──────────────────────────────────────
 Current Focus:
-Foundation is complete and constitutionally locked.
-The project is transitioning from platform correctness
-to visible product delivery.
+D2 execution is now centered on completing financial correctness
+(Tax model) and preparing the Draft → Final boundary.
+UX polish, preview generation, and finalization are explicitly deferred
+until tax correctness is achieved.
 
 Toolchain Status (Operational, Confirmed)
 
@@ -60,6 +61,11 @@ D1 Status:
 • D1 introduced no mutation paths and preserved full read-only guarantees.
 • D1 is formally complete; no further work may be added to D1.
 
+NOTE (AMENDED):
+While D1 was originally scoped as read-only, draft interaction work was
+intentionally executed in D2. All mutation paths, draft reducers, and
+interactive atoms belong to D2 and do not violate D1 guarantees.
+
 ──────────────────────────────────────
 D2 — Core Workflows (Operational Clarifications)
 
@@ -73,47 +79,55 @@ D2.1 — Draft Spine (COMPLETE & LOCKED)
 • ViewModels coordinate intent but contain no business rules.
 • Draft UI State is disposable and never persisted as domain truth.
 
+Status Confirmation:
+The Draft Spine has been exercised across multiple complex atoms
+(Parties, Line Items, Transportation Mode, Document Type) and is now
+considered proven in practice, not theoretical.
+
 D2.2 — Atom-by-Atom UI Enablement (ACTIVE)
 
 D2.2.A — Atom Inventory (Authoritative for D2)
 
-This section enumerates all draft input atoms planned for D2 execution.
-Atoms are implemented sequentially and locked once validated end-to-end.
-
-Planned Atoms:
-
 • Atom 1 — Billed To (Customer selection)
-  – Customer autocomplete (CRUD-backed, read-only)
+  – Autocomplete-backed
   – Draft mutation: billedTo
   – Status: COMPLETE & LOCKED
 
 • Atom 2 — Shipped To (Override from Billed To)
   – Defaults to billedTo when unset
-  – Tap-to-edit affordance (no explicit “Change” action)
-  – Draft mutation: shippedTo (explicit override only)
-  – Status: IN PROGRESS
+  – Tap-to-edit override
+  – Draft mutation: shippedToOverride
+  – Status: COMPLETE & LOCKED
 
 • Atom 3 — Line Items
   – Add / edit / remove draft line items
-  – Quantity, rate, HSN, unit
+  – Inline editor with Save / Cancel
   – Draft mutation: lineItems[]
-  – Status: PLANNED
+  – Status: COMPLETE & LOCKED
 
-• Atom 4 — Logistics & Freight
-  – Transport details, freight amount, supply date
-  – Draft mutation: transportDetails, additionalDetails
-  – Status: PLANNED
+• Atom 4 — Transportation Mode
+  – Unified transport details (transporter, vehicle, supply date, GR/LR, freight)
+  – Whole-block edit semantics
+  – Draft mutation: transportDetails
+  – Status: COMPLETE & LOCKED
 
 • Atom 5 — Summary (Derived)
-  – Subtotal, tax, grand total
-  – Read-only derived view from draft state
-  – No direct mutation
-  – Status: PLANNED
+  – Subtotal, tax placeholder, grand total
+  – Derived exclusively in reducer
+  – Status: COMPLETE & LOCKED
 
-• Atom 6 — Pre-finalization Preview
-  – Read-only authoritative PDF preview
-  – Gate before finalization
-  – Status: PLANNED
+• Atom 6.1 — Document Type (Invoice / Challan)
+  – Draft-level document type
+  – Propagated end-to-end
+  – Status: COMPLETE & LOCKED
+
+• Atom 6.2 — Tax Model (GST)
+  – CGST / SGST / IGST breakdown
+  – DocumentType-aware (Invoice vs Challan)
+  – Draft-derived only (reducer-owned)
+  – Buyer-state–aware via Customer.stateCode
+  – Seller-state temporarily assumed (explicit TODO)
+  – Status: COMPLETE & LOCKED
 
 • Atom 1 — Billed To (Customer selection):
   – Draft mutation path implemented via Draft Store.

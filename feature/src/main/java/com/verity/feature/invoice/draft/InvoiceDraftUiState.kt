@@ -27,6 +27,23 @@ enum class DraftDocumentType {
     CHALLAN
 }
 
+enum class DraftTaxMode {
+    INTRA_STATE, // CGST + SGST
+    INTER_STATE  // IGST
+}
+
+data class DraftTaxComponent(
+    val ratePercent: Double,
+    val amount: Double
+)
+
+data class DraftTaxBreakdown(
+    val mode: DraftTaxMode,
+    val cgst: DraftTaxComponent? = null,
+    val sgst: DraftTaxComponent? = null,
+    val igst: DraftTaxComponent? = null
+)
+
 data class DraftCustomer(
     val displayName: String,
     val gstin: String?
@@ -62,6 +79,7 @@ data class DraftTransportDetails(
 
 data class DraftSummary(
     val subtotal: Double = 0.0,
+    val tax: DraftTaxBreakdown? = null,
     val taxTotal: Double = 0.0,
     val grandTotal: Double = 0.0
 )

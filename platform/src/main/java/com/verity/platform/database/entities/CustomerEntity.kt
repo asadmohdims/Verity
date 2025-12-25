@@ -79,6 +79,22 @@ data class CustomerEntity(
     val state: String?,
 
     /**
+     * GST state code associated with the customer's primary address.
+     *
+     * This is the official 2-digit numeric GST state code
+     * (e.g. "27" for Maharashtra, "29" for Karnataka).
+     *
+     * This field is used for:
+     * • Draft tax derivation (CGST/SGST vs IGST)
+     * • GSTIN validation (future)
+     *
+     * Nullable to support:
+     * • Non-GST customers
+     * • Legacy / incomplete imports
+     */
+    val stateCode: String?,
+
+    /**
      * Indicates whether the customer is currently active.
      *
      * Inactive customers remain in the table for historical

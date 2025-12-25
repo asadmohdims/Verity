@@ -20,7 +20,21 @@ MANDATORY BEHAVIOR FOR ANY CHAT USING THIS SEED:
 This seed exists to prevent architectural erosion.
 Violations are correctness defects, not stylistic disagreements.
 
+
 📘 VERITY – CORE SEED
+
+──────────────────────────────
+CORE SEED AMENDMENT — DRAFT WORKSPACE COMPLETION
+
+Status:
+• Invoice Workspace (Draft Creation) is functionally complete.
+• Transportation Mode is unified and first-class.
+• Document Type (Invoice / Challan) is draft-level and end-to-end.
+• Draft-level GST tax is implemented, reducer-derived, and Invoice/Challan aware.
+
+This amendment records achieved facts only.
+No frozen law is weakened or reinterpreted.
+──────────────────────────────
 
 Authoritative Loading Capsule (Amended & Strengthened)
 
@@ -368,6 +382,68 @@ Changing aggregate boundaries requires an explicit constitutional amendment.
 
 5A. Invoice Workspace — Landing Screen Semantics (Locked)
 
+STATUS UPDATE (LOCKED)
+
+The Invoice Workspace is now functionally complete in Draft Mode.
+
+Implemented sections:
+• Billed To / Shipped To
+  – Autocomplete-backed
+  – Shipped To defaults to Billed To and is overrideable
+  – Draft-only workflow state
+
+• Line Items (Workbench)
+  – Add / Edit / Delete supported
+  – Inline editing with Save / Cancel
+  – Single editor at a time
+  – Deterministic recalculation via reducer
+
+• Transportation Mode
+  – Treated as a single semantic unit
+  – Includes Transporter, Vehicle No, Supply Date, GR/LR No, Freight
+  – One tap → one edit session
+  – Whole-block replace only
+  – Freight participates in summary math
+
+• Summary
+  – Subtotal derived from line items
+  – Freight derived from Transportation Mode
+  – GST tax derived via Draft Reducer (CGST / SGST / IGST)
+  – Grand total recalculated deterministically
+──────────────────────────────
+
+5A-A. Transportation Mode Law (Locked)
+
+Transportation Mode represents real-world goods movement and dispatch metadata.
+
+Rules:
+• Transportation data MUST be edited as a single cohesive block.
+• Freight MUST live inside Transportation Mode.
+• Partial transport edits are forbidden.
+• Transportation data MUST NOT be treated as financial truth.
+• Transportation data may influence summary math (freight only).
+
+This law exists to:
+• Match real GST invoice structure.
+• Support Challans correctly.
+• Enable future E-Way Bill integration.
+
+──────────────────────────────
+
+5A-B. Document Type Law (Locked)
+
+Invoices and Challans share the same workspace and draft spine.
+
+Rules:
+• DocumentType is a draft-level property.
+• Default document type is INVOICE.
+• CHALLAN is secondary but first-class.
+• Document Type selection MUST NOT reset draft contents.
+• Document Type controls tax applicability, preview template, and finalization behavior.
+
+Document Type MUST propagate through:
+UI → ViewModel → DraftStore → DraftReducer → DraftState.
+
 The Invoice Workspace is the default landing screen on app launch.
 
 This screen represents the user’s daily working desk and must be
@@ -624,3 +700,21 @@ If any prior instruction, habit, or conversational momentum conflicts with this 
 10A.10 Enforcement Clause
 Failure to follow this epistemic conduct constitutes a reasoning defect.
 If drift is detected, the assistant must halt and reassess before proceeding.
+──────────────────────────────
+
+6A. Tax Introduction Law (Locked)
+
+Tax MUST NOT be introduced until:
+• Line items are stable.
+• Freight is stable.
+• Transportation Mode is unified.
+• Document Type is draft-level.
+
+Tax introduction SHALL:
+• Begin as draft-level derived data.
+• Be computed in the Draft Reducer.
+• Depend on Document Type.
+• Depend on abstract state context (seller vs buyer state).
+• NOT require real organization or customer entities initially.
+
+This prevents premature coupling and preserves draft purity.
