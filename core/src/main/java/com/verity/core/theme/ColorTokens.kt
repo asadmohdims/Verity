@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 data class VerityColors(
     val background: Background,
     val surface: Surface,
+    val borders: Borders,
     val text: Text,
     val action: Action,
     val state: State,
@@ -27,10 +28,29 @@ data class VerityColors(
     )
 
     data class Surface(
+        /** Primary content surfaces */
         val base: Color,
+
+        /** Elevated containers (dialogs, sheets) */
         val raised: Color,
-        val sunken: Color,
+
+        /**
+         * Assist surfaces:
+         * - search suggestions
+         * - inline helpers
+         * - guidance UI
+         *
+         * Calm, non-authoritative.
+         */
+        val assist: Color,
+
+        /** Inverse surface for dark-on-light contexts */
         val inverse: Color
+    )
+
+    data class Borders(
+        val subtle: Color,
+        val divider: Color
     )
 
     data class Text(

@@ -14,7 +14,7 @@ import com.verity.core.theme.VerityTheme
 enum class VeritySurfaceType {
     Base,
     Raised,
-    Sunken
+    Assist
 }
 
 /**
@@ -41,7 +41,7 @@ fun VeritySurface(
     val backgroundColor = when (type) {
         VeritySurfaceType.Base -> colors.surface.base
         VeritySurfaceType.Raised -> colors.surface.raised
-        VeritySurfaceType.Sunken -> colors.surface.sunken
+        VeritySurfaceType.Assist -> colors.surface.assist
     }
 
     Surface(

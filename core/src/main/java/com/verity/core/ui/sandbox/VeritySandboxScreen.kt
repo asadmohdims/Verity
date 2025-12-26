@@ -151,10 +151,10 @@ fun VeritySandboxScreen() {
             // ── Surface Contrast ───────────────────────────
             VeritySection(
                 title = "Surface Contrast",
-                surfaceType = VeritySurfaceType.Sunken
+                surfaceType = VeritySurfaceType.Assist
             ) {
                 VerityText(
-                    text = "Sunken surface for dense information zones.",
+                    text = "Assist surface for dense information zones.",
                     style = VerityTextStyle.Body
                 )
             }

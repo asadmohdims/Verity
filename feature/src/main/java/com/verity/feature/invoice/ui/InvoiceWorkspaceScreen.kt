@@ -339,7 +339,7 @@ fun InvoiceWorkspaceScreen(
                             val rateValue = rate.toDoubleOrNull() ?: 0.0
                             val amount = qtyValue * rateValue
 
-                            VeritySurface(type = VeritySurfaceType.Sunken) {
+                            VeritySurface(type = VeritySurfaceType.Assist) {
                                 Column(modifier = Modifier.padding(VeritySpace.Small.dp)) {
 
                                     TextField(
@@ -462,7 +462,7 @@ fun InvoiceWorkspaceScreen(
                     val rateValue = rate.toDoubleOrNull() ?: 0.0
                     val amount = qtyValue * rateValue
 
-                    VeritySurface(type = VeritySurfaceType.Sunken) {
+                    VeritySurface(type = VeritySurfaceType.Assist) {
                         Column(
                             modifier = Modifier.padding(VeritySpace.Small.dp)
                         ) {
@@ -695,7 +695,7 @@ fun InvoiceWorkspaceScreen(
         // Summary Section
         // ─────────────────────────────────────────────
         VeritySurface(
-            type = VeritySurfaceType.Sunken,
+            type = VeritySurfaceType.Assist,
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
             VeritySection(title = "Summary") {

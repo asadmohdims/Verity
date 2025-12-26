@@ -184,6 +184,26 @@ private fun LandingScreen(
                     id = "2",
                     primary = "Apex Engineering",
                     secondary = "Bengaluru · Karnataka"
+                ),
+                VeritySuggestion(
+                    id = "3",
+                    primary = "Sunrise Tools Pvt Ltd",
+                    secondary = "Mumbai · Maharashtra"
+                ),
+                VeritySuggestion(
+                    id = "4",
+                    primary = "Nova Tech Solutions",
+                    secondary = "Hyderabad · Telangana"
+                ),
+                VeritySuggestion(
+                    id = "5",
+                    primary = "Kaveri Hydraulics",
+                    secondary = "Coimbatore · Tamil Nadu"
+                ),
+                VeritySuggestion(
+                    id = "6",
+                    primary = "Zenith Industrial Works",
+                    secondary = "Ahmedabad · Gujarat"
                 )
             ).filter {
                 query.isNotBlank() && it.primary.contains(query, ignoreCase = true)

@@ -35,10 +35,18 @@ val VerityDarkColors = VerityColors(
 
         // Dense / summary / conclusion zones
         // Clearly recessed from base (≈ −12–15% luminance)
-        sunken = Color(0xFF0C1018),
+        assist = Color(0xFF0C1018),
 
         // Inverse surface (dialogs, rare light contexts)
         inverse = Color(0xFFECEFF3)
+    ),
+
+    borders = VerityColors.Borders(
+        // Subtle outlines for inputs, cards, and assist surfaces
+        subtle = Color(0xFF2A3142),
+
+        // Hairline dividers between list items and sections
+        divider = Color(0xFF323A4E)
     ),
 
     text = VerityColors.Text(
@@ -60,7 +68,7 @@ val VerityDarkColors = VerityColors(
 
     action = VerityColors.Action(
         // Primary action — same hue family as light mode
-        primary = Color(0xFF6B8CFF),
+        primary = Color(0xFF4C6EF5),
 
         // Secondary actions
         secondary = Color(0xFF8FA3C8),
