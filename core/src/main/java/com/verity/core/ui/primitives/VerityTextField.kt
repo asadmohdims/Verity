@@ -134,16 +134,16 @@ private fun SelectionSearchField(
                 unfocusedTextColor = VerityTheme.colors.text.primary,
                 disabledTextColor = VerityTheme.colors.text.disabled,
 
-                focusedBorderColor = VerityTheme.colors.action.primary,
+                focusedBorderColor = VerityTheme.colors.primary,
                 unfocusedBorderColor = VerityTheme.colors.borders.subtle,
 
-                focusedLabelColor = VerityTheme.colors.action.primary,
+                focusedLabelColor = VerityTheme.colors.primary,
                 unfocusedLabelColor = VerityTheme.colors.text.muted,
 
                 focusedPlaceholderColor = VerityTheme.colors.text.muted,
                 unfocusedPlaceholderColor = VerityTheme.colors.text.muted,
 
-                cursorColor = VerityTheme.colors.action.primary
+                cursorColor = VerityTheme.colors.primary
             )
         )
 
@@ -275,16 +275,16 @@ private fun BasicTextField(
             unfocusedTextColor = VerityTheme.colors.text.primary,
             disabledTextColor = VerityTheme.colors.text.disabled,
 
-            focusedBorderColor = VerityTheme.colors.action.primary,
+            focusedBorderColor = VerityTheme.colors.primary,
             unfocusedBorderColor = VerityTheme.colors.borders.subtle,
 
-            focusedLabelColor = VerityTheme.colors.action.primary,
+            focusedLabelColor = VerityTheme.colors.primary,
             unfocusedLabelColor = VerityTheme.colors.text.muted,
 
             focusedPlaceholderColor = VerityTheme.colors.text.muted,
             unfocusedPlaceholderColor = VerityTheme.colors.text.muted,
 
-            cursorColor = VerityTheme.colors.action.primary
+            cursorColor = VerityTheme.colors.primary
         )
     )
 }

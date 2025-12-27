@@ -503,6 +503,39 @@ Additional rules:
 This subsection locks the conceptual structure of the Invoice Workspace.
 Any deviation requires explicitly reopening the Core Seed.
 
+5B. UI Color Semantics (Locked)
+
+Verity enforces a strict semantic distinction between two color roles:
+
+• Primary (System Backbone)
+• Accent (Action Emphasis)
+
+Primary (System Backbone):
+• Defines the visual backbone of the application.
+• Used for persistent and structural UI state, including:
+  – Input focus indicators (cursor, border, label)
+  – Navigation selection (Top App Bar, Bottom Navigation)
+  – Card emphasis and assist surfaces
+  – Subtle active and selected states
+• Must be calm, low-fatigue, and suitable for continuous long-session use.
+• Must never compete with content or demand attention.
+
+Accent (Action Emphasis):
+• Used exclusively to draw attention to explicit user actions.
+• Applied sparingly to:
+  – Primary call-to-action buttons
+  – Critical commit / continue actions
+• May be more energetic than Primary but must remain subordinate
+  to content and never dominate the overall UI.
+
+Rules:
+• Primary and Accent MUST NOT be conflated into a single token.
+• A color suitable for CTA emphasis is not automatically suitable
+  as a system backbone.
+• Visual calm and cognitive endurance take precedence over novelty
+  or conversion-oriented aesthetics.
+• Final color selection is an implementation concern and may evolve
+  without reopening this seed, provided this semantic split is preserved.
 ──────────────────────────────
 
 6. Coding Interaction Rules (Critical)

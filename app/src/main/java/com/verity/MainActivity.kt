@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
@@ -21,6 +24,12 @@ import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
+import com.verity.core.ui.primitives.VerityTextField
+import com.verity.core.ui.primitives.VerityTextFieldRole
+import com.verity.core.ui.primitives.VeritySuggestion
+import com.verity.core.ui.primitives.VerityButton
+import com.verity.core.ui.primitives.VerityButtonState
+import com.verity.core.ui.primitives.VerityButtonRole
 import com.verity.feature.invoice.ui.InvoiceWorkspaceScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
 import com.verity.invoice.draft.InvoiceDraftStore
@@ -28,11 +37,11 @@ import com.verity.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.dp
 import java.util.UUID
 import com.verity.platform.database.entities.CustomerEntity
-import com.verity.core.ui.primitives.VerityTextField
-import com.verity.core.ui.primitives.VerityTextFieldRole
-import com.verity.core.ui.primitives.VeritySuggestion
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 
 /**
  * MainActivity
@@ -56,7 +65,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VerityTheme(
-                darkTheme = false,
+                darkTheme = true,
                 typography = VerityBaseTypography
             ) {
                 VeritySurface(
@@ -143,7 +152,10 @@ private fun LandingScreen(
     onGoToInvoice: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
     ) {
         VeritySection(title = "Verity") {
 
@@ -210,25 +222,6 @@ private fun LandingScreen(
             }
 
             VerityTextField(
-                role = VerityTextFieldRole.Basic,
-                label = "Basic Text Field",
-                placeholder = "Select customer",
-                value = query,
-                onValueChange = { query = it },
-                editing = editing,
-                onEnterEdit = { editing = true },
-                onExitEdit = { editing = false },
-                suggestions = suggestions,
-                onSelectSuggestion = {
-                    query = it.primary
-                    editing = false
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            VeritySpacer(size = VeritySpace.Medium)
-
-            VerityTextField(
                 role = VerityTextFieldRole.SelectionSearch,
                 label = "Selection Search",
                 placeholder = "Select customer",
@@ -244,6 +237,91 @@ private fun LandingScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            VeritySpacer(size = VeritySpace.Large)
+
+            VeritySection(title = "Primary Button Review") {
+
+                // Full-width Primary button
+                VerityButton(
+                    label = "Create Invoice",
+                    role = VerityButtonRole.Primary,
+                    state = VerityButtonState.Enabled,
+                    onClick = {}
+                )
+
+                VeritySpacer(size = VeritySpace.Medium)
+
+                // Side-by-side Primary buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    VerityButton(
+                        label = "Save Draft",
+                        role = VerityButtonRole.Primary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    VerityButton(
+                        label = "Preview",
+                        role = VerityButtonRole.Primary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+
+                VeritySpacer(size = VeritySpace.Large)
+
+                // Row 1 — Primary + Tonal Secondary
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    VerityButton(
+                        label = "Create Invoice",
+                        role = VerityButtonRole.Primary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                    VerityButton(
+                        label = "Save Draft",
+                        role = VerityButtonRole.Secondary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                VeritySpacer(size = VeritySpace.Medium)
+
+                // Row 2 — Primary + Outlined Secondary
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    VerityButton(
+                        label = "Create Invoice",
+                        role = VerityButtonRole.Primary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                    VerityButton(
+                        label = "Cancel",
+                        role = VerityButtonRole.Secondary,
+                        state = VerityButtonState.Enabled,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+            }
         }
         // --- END DEBUG SANDBOX ---
     }

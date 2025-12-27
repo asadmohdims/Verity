@@ -336,3 +336,16 @@ Current Deliverables (as of Foundation completion):
 • JVM tests covering Document Index replay, projection, and failure semantics.
 • PlatformReplayCoordinator implemented as the single canonical replay entry point.
 • Ledger and Document Index projection writers normalized to a common invocation contract.
+
+──────────────────────────────────────
+UI Design System — Operational Status (AMENDED)
+
+• A semantic split between Primary (System Backbone) and Accent (Action Emphasis)
+  colors is now architecturally accepted and locked at the Core Seed level.
+• No concrete color values are finalized yet.
+• Multiple candidate palettes (muted teal, slate, Perplexity teal,
+  turquoise variants) are under active visual evaluation.
+• Evaluation is performed via sandboxed UI comparison only.
+• No production UI, theming, or component contracts depend on a final
+  color decision at this stage.
+• Color selection remains explicitly non-blocking for D2 domain correctness work.

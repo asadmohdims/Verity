@@ -13,6 +13,12 @@ import androidx.compose.ui.graphics.Color
  */
 val VerityDarkColors = VerityColors(
 
+    // SYSTEM BACKBONE — identity & authority (dark mode tuned)
+    primary = Color(0xFF5FB3A2),
+
+    // ACTION EMPHASIS — focus & attention (placeholder, may change)
+    accent = Color(0xFF7DD4DF),
+
     background = VerityColors.Background(
         // App canvas — deep graphite, not pure black
         app = Color(0xFF0E1116),
@@ -42,8 +48,13 @@ val VerityDarkColors = VerityColors(
     ),
 
     borders = VerityColors.Borders(
-        // Subtle outlines for inputs, cards, and assist surfaces
+        // Default outlines for inputs, cards, secondary buttons
+        // Must be visible on dark surfaces but never dominant
         subtle = Color(0xFF2A3142),
+
+        // Stronger emphasis border (pressed / focused / selected)
+        // Used sparingly to reinforce interaction
+        strong = Color(0xFF3E475D),
 
         // Hairline dividers between list items and sections
         divider = Color(0xFF323A4E)
@@ -66,20 +77,6 @@ val VerityDarkColors = VerityColors(
         disabled = Color(0xFF6E7686)
     ),
 
-    action = VerityColors.Action(
-        // Primary action — same hue family as light mode
-        primary = Color(0xFF4C6EF5),
-
-        // Secondary actions
-        secondary = Color(0xFF8FA3C8),
-
-        // Destructive intent
-        destructive = Color(0xFFEF6A6A),
-
-        // Disabled actions
-        disabled = Color(0xFF4C5566)
-    ),
-
     state = VerityColors.State(
         // Feedback only, never semantic meaning
         success = Color(0xFF4FB286),
@@ -93,6 +90,9 @@ val VerityDarkColors = VerityColors(
         neutral = Color(0xFFE6EAF0),
 
         // Emphasis via luminance, not hue
-        emphasis = Color(0xFFF4F6FA)
+        emphasis = Color(0xFFF4F6FA),
+
+        // Ledger / accounting emphasis (dark-mode tuned)
+        ledger = Color(0xFFC1B6AD)
     )
 )

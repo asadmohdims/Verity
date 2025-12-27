@@ -13,6 +13,12 @@ import androidx.compose.ui.graphics.Color
  */
 val VerityLightColors = VerityColors(
 
+    // SYSTEM BACKBONE — identity & authority
+    primary = Color(0xFF2F7D6D),
+
+    // ACTION EMPHASIS — focus & attention (placeholder, may change)
+    accent = Color(0xFF2096A1),
+
     background = VerityColors.Background(
         // App canvas — not pure white, slightly cool
         app = Color(0xFFF8F9FB),
@@ -42,8 +48,13 @@ val VerityLightColors = VerityColors(
     ),
 
     borders = VerityColors.Borders(
-        // Subtle outlines for inputs, cards, and assist surfaces
+        // Default outlines for inputs, cards, secondary buttons
+        // Must be visible but never dominant
         subtle = Color(0xFFD1D5DB),
+
+        // Stronger emphasis border (pressed / focused / selected)
+        // Used sparingly to reinforce interaction
+        strong = Color(0xFF9AA1AA),
 
         // Hairline dividers between list items and sections
         divider = Color(0xFFC6CCD6)
@@ -66,20 +77,6 @@ val VerityLightColors = VerityColors(
         disabled = Color(0xFF9AA1AA)
     ),
 
-    action = VerityColors.Action(
-        // Primary action — restrained cool accent
-        primary = Color(0xFF4C6EF5),
-
-        // Secondary actions / outlines
-        secondary = Color(0xFF5A6B8A),
-
-        // Destructive intent (clear, not alarming)
-        destructive = Color(0xFFB4232A),
-
-        // Disabled actions
-        disabled = Color(0xFFB8C0CC)
-    ),
-
     state = VerityColors.State(
         // System feedback only (never financial meaning)
         success = Color(0xFF1E7F5C),
@@ -93,6 +90,37 @@ val VerityLightColors = VerityColors(
         neutral = Color(0xFF111418),
 
         // Emphasis via hierarchy, not hue
-        emphasis = Color(0xFF0B0E12)
+        emphasis = Color(0xFF0B0E12),
+
+        // Ledger / accounting emphasis
+        ledger = Color(0xFF6B5E52)
     )
 )
+
+/**
+ * ------------------------------------------------------------
+ * COLOR CANDIDATES (NON‑SYSTEM)
+ * ------------------------------------------------------------
+ *
+ * Purpose:
+ * - Hold exploratory / comparison colors
+ * - NOT part of VerityColors contract
+ * - Must never be referenced via VerityTheme.colors
+ *
+ * Promotion rule:
+ * - A candidate may ONLY be promoted by explicitly
+ *   moving it into VerityColors (primary / accent / etc.)
+ * - No direct usage in production UI
+ */
+
+object VerityColorCandidates {
+
+    // Perplexity Teal — higher energy, MD3‑like
+    val perplexityTeal = Color(0xFF2096A1)
+
+    // Soft Turquoise — calmer, greener accent candidate
+    val turquoiseSoft = Color(0xFF00CED1)
+
+    // Bright Turquoise — high energy (likely reject)
+    val turquoiseBright = Color(0xFF00D1CF)
+}

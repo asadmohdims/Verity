@@ -12,11 +12,12 @@ import androidx.compose.ui.graphics.Color
  * exclusively via these semantic tokens.
  */
 data class VerityColors(
+    val primary: Color,
+    val accent: Color,
     val background: Background,
     val surface: Surface,
     val borders: Borders,
     val text: Text,
-    val action: Action,
     val state: State,
     val finance: Finance
 ) {
@@ -50,6 +51,7 @@ data class VerityColors(
 
     data class Borders(
         val subtle: Color,
+        val strong: Color,
         val divider: Color
     )
 
@@ -58,13 +60,6 @@ data class VerityColors(
         val secondary: Color,
         val muted: Color,
         val inverse: Color,
-        val disabled: Color
-    )
-
-    data class Action(
-        val primary: Color,
-        val secondary: Color,
-        val destructive: Color,
         val disabled: Color
     )
 
@@ -77,6 +72,7 @@ data class VerityColors(
 
     data class Finance(
         val neutral: Color,
-        val emphasis: Color
+        val emphasis: Color,
+        val ledger: Color
     )
 }
