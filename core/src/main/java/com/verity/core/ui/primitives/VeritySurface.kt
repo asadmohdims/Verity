@@ -4,6 +4,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.verity.core.theme.VerityTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.unit.dp
 
 /**
  * Semantic surface types used across the Verity UI.
@@ -14,7 +17,8 @@ import com.verity.core.theme.VerityTheme
 enum class VeritySurfaceType {
     Base,
     Raised,
-    Assist
+    Assist,
+    AssistInteractive
 }
 
 /**
@@ -42,11 +46,18 @@ fun VeritySurface(
         VeritySurfaceType.Base -> colors.surface.base
         VeritySurfaceType.Raised -> colors.surface.raised
         VeritySurfaceType.Assist -> colors.surface.assist
+        VeritySurfaceType.AssistInteractive -> colors.surface.assistInteractive
+    }
+
+    val shape = when (type) {
+        VeritySurfaceType.Base -> RectangleShape
+        else -> RoundedCornerShape(8.dp)
     }
 
     Surface(
         modifier = modifier,
         color = backgroundColor,
+        shape = shape,
         content = content
     )
 }

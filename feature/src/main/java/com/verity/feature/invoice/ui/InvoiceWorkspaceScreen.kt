@@ -1,5 +1,9 @@
 package com.verity.feature.invoice.ui
 
+import com.verity.core.ui.primitives.VerityTextField
+import com.verity.core.ui.primitives.VerityTextFieldRole
+import com.verity.core.ui.primitives.VeritySuggestion
+
 import androidx.compose.ui.tooling.preview.Preview
 import com.verity.core.theme.VerityTheme
 import com.verity.core.theme.VerityBaseTypography
@@ -40,6 +44,17 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 
 import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
+
+private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
+    val secondaryText =
+        listOfNotNull(city, state).joinToString(", ").ifBlank { null }
+
+    return VeritySuggestion(
+        id = customerId,
+        primary = customerName,
+        secondary = secondaryText
+    )
+}
 
 /**
  * InvoiceWorkspaceScreen
@@ -172,111 +187,57 @@ fun InvoiceWorkspaceScreen(
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        VerityText(
-                            text = "Billed To",
-                            style = VerityTextStyle.Label
-                        )
-
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                        if (draft.billedTo == null) {
-                            TextField(
-                                modifier = Modifier.fillMaxWidth(),
-                                value = billedToQuery,
-                                onValueChange = { viewModel.onBilledToQueryChanged(it) },
-                                placeholder = { VerityText(text = "Search customer", style = VerityTextStyle.Body) },
-                                singleLine = true
-                            )
-                            DropdownMenu(
-                                expanded = billedToSuggestions.isNotEmpty(),
-                                onDismissRequest = { /* suggestions hide automatically on clear */ },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                billedToSuggestions.forEach { item ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            VerityText(
-                                                text = item.customerName,
-                                                style = VerityTextStyle.Body
-                                            )
-                                        },
-                                        onClick = {
-                                            viewModel.onBilledToSelected(item)
-                                        }
-                                    )
+                        VerityTextField(
+                            role = VerityTextFieldRole.SelectionSearch,
+                            label = "Billed To",
+                            placeholder = "Search customer",
+                            value = billedToQuery,
+                            onValueChange = { newValue ->
+                                if (draft.billedTo != null && newValue.isBlank()) {
+                                    viewModel.onBilledToCleared()
                                 }
-                            }
-                        } else {
-                            VerityText(
-                                text = draft.billedTo.name,
-                                style = VerityTextStyle.Body
-                            )
-                            VeritySpacer(size = VeritySpace.ExtraSmall)
-                            VerityText(
-                                text = "Change",
-                                style = VerityTextStyle.Caption,
-                                modifier = Modifier
-                                    .padding(top = VeritySpace.ExtraSmall.dp)
-                                    .then(Modifier)
-                                    .clickable { viewModel.onBilledToCleared() }
-                            )
-                        }
+                                viewModel.onBilledToQueryChanged(newValue)
+                            },
+                            editing = true,
+                            onEnterEdit = null,
+                            onExitEdit = null,
+                            suggestions = billedToSuggestions.map { it.toVeritySuggestion() },
+                            onSelectSuggestion = { suggestion ->
+                                val original =
+                                    billedToSuggestions.first { it.customerId == suggestion.id }
+                                viewModel.onBilledToSelected(original)
+                                viewModel.onBilledToQueryChanged(original.customerName)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                     VeritySpacer(size = VeritySpace.Large, horizontal = true)
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        VerityText(
-                            text = "Shipped To",
-                            style = VerityTextStyle.Label
-                        )
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-                        if (draft.shippedTo != null) {
-                            VerityText(
-                                text = draft.shippedTo.name,
-                                style = VerityTextStyle.Body
-                            )
-                            VeritySpacer(size = VeritySpace.ExtraSmall)
-                            VerityText(
-                                text = "Change",
-                                style = VerityTextStyle.Caption,
-                                modifier = Modifier
-                                    .padding(top = VeritySpace.ExtraSmall.dp)
-                                    .clickable { viewModel.onShippedToCleared() }
-                            )
-                        } else {
-                            TextField(
-                                modifier = Modifier.fillMaxWidth(),
-                                value = shippedToQuery,
-                                onValueChange = { viewModel.onShippedToQueryChanged(it) },
-                                placeholder = {
-                                    VerityText(
-                                        text = draft.billedTo?.name ?: "Search customer",
-                                        style = VerityTextStyle.Body
-                                    )
-                                },
-                                singleLine = true
-                            )
-                            DropdownMenu(
-                                expanded = shippedToSuggestions.isNotEmpty(),
-                                onDismissRequest = { /* auto-hide */ },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                shippedToSuggestions.forEach { item ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            VerityText(
-                                                text = item.customerName,
-                                                style = VerityTextStyle.Body
-                                            )
-                                        },
-                                        onClick = {
-                                            viewModel.onShippedToSelected(item)
-                                        }
-                                    )
+                        VerityTextField(
+                            role = VerityTextFieldRole.SelectionSearch,
+                            label = "Shipped To",
+                            placeholder = draft.billedTo?.name ?: "Search customer",
+                            value = shippedToQuery,
+                            onValueChange = { newValue ->
+                                if (draft.shippedTo != null && newValue.isBlank()) {
+                                    viewModel.onShippedToCleared()
                                 }
-                            }
-                        }
+                                viewModel.onShippedToQueryChanged(newValue)
+                            },
+                            editing = true,
+                            onEnterEdit = null,
+                            onExitEdit = null,
+                            suggestions = shippedToSuggestions.map { it.toVeritySuggestion() },
+                            onSelectSuggestion = { suggestion ->
+                                val original =
+                                    shippedToSuggestions.first { it.customerId == suggestion.id }
+                                viewModel.onShippedToSelected(original)
+                                viewModel.onShippedToQueryChanged(original.customerName)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }

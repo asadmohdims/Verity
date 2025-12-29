@@ -18,7 +18,21 @@ data class InvoiceDraftUiState(
     val lineItems: List<DraftLineItem> = emptyList(),
     val transportDetails: DraftTransportDetails? = null,
     val summary: DraftSummary = DraftSummary()
-)
+) {
+    /**
+     * Effective shipped address for display and read-only consumption.
+     *
+     * Business rule:
+     * - Shipped To mirrors Billed To by default
+     * - A user-set shippedTo acts as an explicit override
+     *
+     * IMPORTANT:
+     * - This is a derived value (no mutation)
+     * - Do NOT persist or finalize using this field
+     */
+    val effectiveShippedTo: DraftAddress?
+        get() = shippedTo ?: billedTo
+}
 
 /* ---------- Supporting Draft Types ---------- */
 

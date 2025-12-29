@@ -378,6 +378,18 @@ Changing aggregate boundaries requires an explicit constitutional amendment.
 • Motion may acknowledge change but must never carry meaning.
 • Immutability is a user-facing principle — truth over illusion.
 
+Button Semantics (Locked)
+
+Verity permits exactly two button roles:
+• Primary — decisive, commit-level actions
+• Secondary — deliberate alternatives
+
+Rules:
+• Button roles are semantic, not stylistic.
+• Primary must visually dominate Secondary.
+• Secondary must never compete with Primary.
+• Button interaction semantics must be consistent across themes.
+
 ──────────────────────────────
 
 5A. Invoice Workspace — Landing Screen Semantics (Locked)
@@ -505,6 +517,89 @@ Any deviation requires explicitly reopening the Core Seed.
 
 5B. UI Color Semantics (Locked)
 
+──────────────────────────────
+
+5C. Input Ownership & Autocomplete Law (LOCKED)
+
+5D. Focus & IME Management Law (LOCKED)
+
+Purpose
+To ensure fast, predictable, and professional data entry for power users,
+especially in high‑frequency workflows such as invoice creation.
+
+Law — Explicit Focus Ownership
+
+• Focus management MUST be explicit and intentional.
+• Focus logic MUST live at the screen / caller level.
+• Layout containers, surfaces, or edit shells MUST NOT own focus logic.
+
+Rules
+
+• Expandable edit blocks:
+  – MUST auto‑focus the first logical input when expanded.
+  – MUST clear focus and dismiss IME when collapsed.
+
+• Field‑to‑field navigation:
+  – MUST be linear and deterministic.
+  – MUST be implemented via IME actions (Next / Done).
+  – Edit containers MUST NOT infer or impose field order.
+
+• IME semantics:
+  – Each input MUST declare its intent via ImeAction.
+  – “Next” advances focus.
+  – “Done” terminates the edit session or dismisses IME.
+
+• Scope of responsibility:
+  – Screens define focus order and IME behavior.
+  – Molecules (e.g. VerityEditBlock) provide structure only.
+  – Primitives (e.g. VerityTextField) remain stateless and controlled.
+
+Forbidden Patterns
+
+• Internal focus state inside edit blocks or containers.
+• Implicit or heuristic focus movement.
+• Relying on default IME behavior for multi‑field editors.
+• Using edit‑mode flags to compensate for missing focus ownership.
+
+Rationale
+
+Fast‑entry UX is a first‑class requirement in Verity.
+Predictable focus and keyboard behavior are mandatory for correctness,
+speed, and long‑session ergonomics.
+
+Purpose
+To prevent UI instability, cursor snap‑back, deletion failures, and ambiguous state ownership in Compose forms.
+
+Law — Single Ownership of TextField Value
+
+• Every editable TextField **MUST have exactly one owner of its `value`.**
+• The owner is always **UI‑local input/query state**.
+• Draft, domain, or projection state **MUST NEVER drive a TextField’s `value`.**
+
+Violation is a correctness defect.
+
+Autocomplete & Selection Rules
+
+• TextField `value` MUST always be bound to query/input state.
+• Selecting a suggestion:
+  – Explicitly updates draft/domain state
+  – Explicitly updates query/input state
+• Editing or clearing the field:
+  – Operates on query/input state
+  – MAY explicitly clear draft/domain state
+  – MUST NOT be overridden by draft/domain state
+
+The TextField must behave identically to a standalone input regardless of selection state.
+
+Forbidden Patterns (Non‑Exhaustive)
+
+• `value = draftField ?: query`
+• Conditional or derived ownership of `value`
+• Domain/draft state overriding user edits
+• “Edit mode” flags added to compensate for ownership conflicts
+
+If encountered, the fix is to restore single ownership, not to add compensating logic.
+
 Verity enforces a strict semantic distinction between two color roles:
 
 • Primary (System Backbone)
@@ -536,6 +631,18 @@ Rules:
   or conversion-oriented aesthetics.
 • Final color selection is an implementation concern and may evolve
   without reopening this seed, provided this semantic split is preserved.
+
+Border Semantics (Locked)
+
+Borders have explicit semantic meaning:
+• Subtle — resting structure
+• Strong — interaction reinforcement only
+• Divider — content separation
+
+Rules:
+• Border strength must not encode hierarchy.
+• Border changes may occur only in response to interaction.
+• Border semantics must be consistent across themes.
 ──────────────────────────────
 
 6. Coding Interaction Rules (Critical)
@@ -640,6 +747,11 @@ DataBinding · Legacy Material 2
 	8.	Search context always visible and resettable.
 	9.	Secondary information never steals focus.
 	10.	Every screen must be wireframed before code.
+
+Search is expanded, not popped.
+
+Autocomplete and search suggestions must be treated as an expansion
+of the input field, not as floating menus or overlays.
 
 ──────────────────────────────
 

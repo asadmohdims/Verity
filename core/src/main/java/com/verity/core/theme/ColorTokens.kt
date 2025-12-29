@@ -45,6 +45,16 @@ data class VerityColors(
          */
         val assist: Color,
 
+        /**
+         * Interactive assist surfaces:
+         * - expandable edit blocks
+         * - draft editors
+         *
+         * Subtle brand-tinted surface indicating
+         * an interactive editing context.
+         */
+        val assistInteractive: Color,
+
         /** Inverse surface for dark-on-light contexts */
         val inverse: Color
     )

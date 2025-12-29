@@ -153,94 +153,96 @@ private fun SelectionSearchField(
             exit = fadeOut()
         ) {
             Surface(
-                color = VerityTheme.colors.surface.assist,
-                shape = RoundedCornerShape(12.dp),
-                tonalElevation = 4.dp,
-                shadowElevation = 2.dp,
+                color = VerityTheme.colors.surface.base,
+                shape = RoundedCornerShape(8.dp),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 6.dp)
                     .border(
                         width = 1.dp,
-                        color = VerityTheme.colors.borders.subtle,
-                        shape = RoundedCornerShape(12.dp)
+                        color = VerityTheme.colors.primary,
+                        shape = RoundedCornerShape(8.dp)
                     )
             ) {
-                Box(
-                    modifier = Modifier.heightIn(max = 190.dp)
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
+                Column {
+                    Box(
+                        modifier = Modifier.heightIn(max = 190.dp)
                     ) {
-                        items(
-                            items = suggestions,
-                            key = { it.id }
-                        ) { suggestion ->
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onSelectSuggestion?.invoke(suggestion)
-                                        expanded = false
-                                        keyboardController?.hide()
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 18.dp)
-                            ) {
-                                Text(
-                                    text = suggestion.primary,
-                                    color = VerityTheme.colors.text.primary,
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
-                                )
-                                if (suggestion.secondary != null) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(
+                                items = suggestions,
+                                key = { it.id }
+                            ) { suggestion ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelectSuggestion?.invoke(suggestion)
+                                            expanded = false
+                                            keyboardController?.hide()
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 18.dp)
+                                ) {
                                     Text(
-                                        text = suggestion.secondary,
-                                        color = VerityTheme.colors.text.secondary,
-                                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        text = suggestion.primary,
+                                        color = VerityTheme.colors.text.primary,
+                                        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                                    )
+                                    if (suggestion.secondary != null) {
+                                        Text(
+                                            text = suggestion.secondary,
+                                            color = VerityTheme.colors.text.secondary,
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                }
+                                if (suggestion != suggestions.last()) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        thickness = 0.5.dp,
+                                        color = VerityTheme.colors.borders.divider
                                     )
                                 }
                             }
-                            if (suggestion != suggestions.last()) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    thickness = 0.5.dp,
-                                    color = VerityTheme.colors.borders.divider
-                                )
-                            }
                         }
+
+                        // Top edge fade
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(16.dp)
+                                .align(Alignment.TopCenter)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            VerityTheme.colors.surface.base,
+                                            VerityTheme.colors.surface.base.copy(alpha = 0f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        // Bottom edge fade
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(16.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            VerityTheme.colors.surface.base.copy(alpha = 0f),
+                                            VerityTheme.colors.surface.base
+                                        )
+                                    )
+                                )
+                        )
                     }
-
-                    // Top edge fade
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(16.dp)
-                            .align(Alignment.TopCenter)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        VerityTheme.colors.surface.assist,
-                                        VerityTheme.colors.surface.assist.copy(alpha = 0f)
-                                    )
-                                )
-                            )
-                    )
-
-                    // Bottom edge fade
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(16.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        VerityTheme.colors.surface.assist.copy(alpha = 0f),
-                                        VerityTheme.colors.surface.assist
-                                    )
-                                )
-                            )
-                    )
                 }
             }
         }

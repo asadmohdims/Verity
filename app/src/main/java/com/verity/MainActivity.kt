@@ -42,6 +42,8 @@ import java.util.UUID
 import com.verity.platform.database.entities.CustomerEntity
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import com.verity.core.ui.molecules.VerityEditBlock
+import com.verity.core.ui.molecules.VerityEditMode
 
 /**
  * MainActivity
@@ -65,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VerityTheme(
-                darkTheme = true,
+                darkTheme = false,
                 typography = VerityBaseTypography
             ) {
                 VeritySurface(
@@ -321,6 +323,70 @@ private fun LandingScreen(
                     )
                 }
 
+            }
+        }
+
+        VeritySpacer(size = VeritySpace.ExtraLarge)
+
+        VeritySection(title = "DEBUG · VerityEditBlock") {
+
+            var expanded by remember { mutableStateOf(false) }
+
+            var itemName by remember { mutableStateOf("") }
+            var quantity by remember { mutableStateOf("") }
+            var rate by remember { mutableStateOf("") }
+
+            VerityEditBlock(
+                title = "Lisdfsdfsnes",
+                mode = VerityEditMode.Add,
+                expanded = expanded,
+                collapsedActionLabel = "Add Line Item",
+                onCollapsedAction = { expanded = true },
+                onAdd = { /* no-op */ },
+                onCancel = { expanded = false }
+            ) {
+                VerityTextField(
+                    role = VerityTextFieldRole.Basic,
+                    label = "Item Name",
+                    value = itemName,
+                    onValueChange = { itemName = it },
+                    editing = true,
+                    onEnterEdit = null,
+                    onExitEdit = null,
+                    suggestions = emptyList(),
+                    onSelectSuggestion = null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityTextField(
+                    role = VerityTextFieldRole.Basic,
+                    label = "Quantity",
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    editing = true,
+                    onEnterEdit = null,
+                    onExitEdit = null,
+                    suggestions = emptyList(),
+                    onSelectSuggestion = null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityTextField(
+                    role = VerityTextFieldRole.Basic,
+                    label = "Rate",
+                    value = rate,
+                    onValueChange = { rate = it },
+                    editing = true,
+                    onEnterEdit = null,
+                    onExitEdit = null,
+                    suggestions = emptyList(),
+                    onSelectSuggestion = null,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
         // --- END DEBUG SANDBOX ---

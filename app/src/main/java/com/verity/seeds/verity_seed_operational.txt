@@ -155,9 +155,11 @@ Resolved Interaction Model:
 • Selection commits value and collapses suggestions deterministically.
 
 Visual & Surface Semantics:
-• Autocomplete suggestions are treated as assistive surfaces, not modal pickers.
-• Assistive surfaces are visually subordinate to the primary input field.
-• Visual hierarchy is expressed via spacing, typography, and elevation first.
+• Autocomplete suggestions are treated as an expansion of the input field,
+  not as a floating popup or menu.
+• Visual continuity with the input field is mandatory (shape, border semantics).
+• Popup affordances (elevation, shadow, decorative accents) are not used.
+• Visual hierarchy is expressed via spacing, typography, and structure.
 • Color usage follows semantic tokens defined in core/theme.
 • Raw hex colors are not permitted in UI code.
 
@@ -338,14 +340,41 @@ Current Deliverables (as of Foundation completion):
 • Ledger and Document Index projection writers normalized to a common invocation contract.
 
 ──────────────────────────────────────
+
 UI Design System — Operational Status (AMENDED)
 
-• A semantic split between Primary (System Backbone) and Accent (Action Emphasis)
-  colors is now architecturally accepted and locked at the Core Seed level.
-• No concrete color values are finalized yet.
-• Multiple candidate palettes (muted teal, slate, Perplexity teal,
-  turquoise variants) are under active visual evaluation.
-• Evaluation is performed via sandboxed UI comparison only.
-• No production UI, theming, or component contracts depend on a final
-  color decision at this stage.
-• Color selection remains explicitly non-blocking for D2 domain correctness work.
+• Verity Light and Dark color palettes are now concretely implemented and
+  operationally active.
+• Color philosophy is enforced in code:
+  – Cool-neutral, graphite-anchored
+  – Luminance-driven hierarchy
+  – No semantic meaning encoded via color
+• Primary (System Backbone) and Accent (Action Emphasis) roles are preserved
+  exactly as defined in the Core Seed.
+• Accent color remains adjustable, but the structural color contract is locked.
+
+• Exploratory colors are explicitly quarantined as non-system candidates.
+• Candidate colors are not accessible via VerityTheme and must never be used
+  in production UI.
+
+• VerityButton is now a stable, first-class UI primitive:
+  – Two roles only: Primary and Secondary
+  – Primary uses system backbone color
+  – Secondary uses neutral surfaces with border semantics only
+  – Disabled and pressed states are deterministic and theme-driven
+  – No accent misuse or ad-hoc styling permitted
+
+• VerityTextField is now a stable, first-class UI primitive:
+  – Material-aligned (OutlinedTextField based)
+  – Supports SelectionSearch and Basic roles
+  – Autocomplete behavior follows the locked UX laws:
+      * Typing-first
+      * Inline expansion (non-popup)
+      * Keyboard focus is never interrupted
+      * Suggestions are visually continuous with the input field
+  – Filtering and ranking remain upstream responsibilities
+  – UI primitives receive pre-filtered suggestion lists only
+
+• These primitives are no longer experimental.
+• Future UI work must compose from these primitives, not bypass or replace them.
+• Further changes are limited to visual polish or explicit contract evolution.

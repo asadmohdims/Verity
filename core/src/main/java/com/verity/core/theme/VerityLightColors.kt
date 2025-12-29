@@ -43,6 +43,9 @@ val VerityLightColors = VerityColors(
         // Clearly recessed from base (≈ −12% luminance)
         assist = Color(0xFFE3E7EE),
 
+        // Interactive edit blocks (scoped brand tint)
+        assistInteractive = Color(0xFFE0F4F1),
+
         // Inverse surface for dark-on-light contexts
         inverse = Color(0xFF1A1D21)
     ),
