@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.molecules.VeritySection
+import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
 import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySurface
@@ -240,90 +241,27 @@ private fun LandingScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            VeritySpacer(size = VeritySpace.Large)
+        }
 
-            VeritySection(title = "Primary Button Review") {
+        VeritySpacer(size = VeritySpace.Large)
 
-                // Full-width Primary button
-                VerityButton(
-                    label = "Create Invoice",
-                    role = VerityButtonRole.Primary,
-                    state = VerityButtonState.Enabled,
-                    onClick = {}
-                )
+        VeritySection(title = "DEBUG · Invoice Line Item Review") {
 
-                VeritySpacer(size = VeritySpace.Medium)
+            VerityInvoiceLineItemRow(
+                description = "Stainless Steel Bolt M12 — High tensile, zinc coated, suitable for outdoor structural applications",
+                quantity = 12.0,
+                rate = 121.0,
+                amount = 1452.0,
+                hsnCode = "731815"
+            )
 
-                // Side-by-side Primary buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    VerityButton(
-                        label = "Save Draft",
-                        role = VerityButtonRole.Primary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    VerityButton(
-                        label = "Preview",
-                        role = VerityButtonRole.Primary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-
-                VeritySpacer(size = VeritySpace.Large)
-
-                // Row 1 — Primary + Tonal Secondary
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    VerityButton(
-                        label = "Create Invoice",
-                        role = VerityButtonRole.Primary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-                    VerityButton(
-                        label = "Save Draft",
-                        role = VerityButtonRole.Secondary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                VeritySpacer(size = VeritySpace.Medium)
-
-                // Row 2 — Primary + Outlined Secondary
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    VerityButton(
-                        label = "Create Invoice",
-                        role = VerityButtonRole.Primary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-                    VerityButton(
-                        label = "Cancel",
-                        role = VerityButtonRole.Secondary,
-                        state = VerityButtonState.Enabled,
-                        onClick = {},
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-            }
+            VerityInvoiceLineItemRow(
+                description = "Cold Rolled Coil (CRCA Sheet)",
+                quantity = 5.0,
+                rate = 450.0,
+                amount = 2250.0,
+                hsnCode = "7209"
+            )
         }
 
         VeritySpacer(size = VeritySpace.ExtraLarge)

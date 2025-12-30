@@ -182,6 +182,27 @@ Explicit Exclusions in D2:
 • No multi-draft support.
 • No event-sourced customer lifecycle or customer projections in D2.
 
+D2.3 — Pre-Finalization Document Preview (OPERATIONAL, LOCKED)
+
+Before finalization, users must be able to preview the document
+(Invoice or Challan) exactly as it will appear once finalized.
+
+Preview semantics are strictly defined:
+
+• Preview is a visual, read-only representation rendered directly from
+  the current draft snapshot.
+• No PDF is generated during preview.
+• No document number, persistence, or projection occurs during preview.
+• Preview rendering uses the same canonical layout system as the
+  finalized document to ensure visual fidelity.
+• Preview exists solely to allow user confirmation before irreversible
+  finalization.
+• Exiting preview returns the user to the editable draft without side
+  effects.
+
+Preview is not a persistence step and produces no domain facts.
+It is a UI-level, deterministic rendering of draft-derived state.
+
 ──────────────────────────────────────
 CANONICAL NAVIGATION FLOW (OPERATIONAL, LOCKED)
 

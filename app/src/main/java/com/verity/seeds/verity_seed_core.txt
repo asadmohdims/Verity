@@ -368,6 +368,76 @@ Changing aggregate boundaries requires an explicit constitutional amendment.
 
 5. UI & UX Foundations (Frozen)
 
+──────────────────────────────
+
+5X. EditBlock Interaction Pattern (LOCKED)
+
+Verity enforces a single, canonical interaction pattern for all
+inline draft editing within the Invoice Workspace and similar workflows.
+
+This pattern is mandatory wherever a user adds or edits
+draft-level data blocks (e.g. Line Items, Transportation Mode).
+
+──────────────────────────────
+EditBlock Canonical Pattern
+──────────────────────────────
+
+The user workflow MUST follow this sequence:
+
+Read-only Projection
+  → Explicit User Action
+    → Single Expandable EditBlock
+      → Commit (Add / Save) or Cancel
+        → Re-rendered Read-only Projection
+
+Rules:
+
+• Read-only projection is the default state.
+• Inline or always-visible editors are forbidden.
+• Exactly ONE EditBlock may be active at a time per section.
+• EditBlocks MUST NOT exist inside list rows or projections.
+• EditBlocks MUST NOT directly mutate draft or domain state.
+
+──────────────────────────────
+Add vs Edit Semantics
+──────────────────────────────
+
+• Add:
+  – Used when no data exists for the section.
+  – Invoked via an explicit collapsed CTA (e.g. “Add line item”).
+
+• Edit:
+  – Used when data already exists.
+  – Invoked by tapping the existing projection/summary.
+  – Must pre-fill the EditBlock with current draft data.
+
+• Singular draft entities (e.g. Transportation Mode):
+  – MUST NOT expose additive CTAs once data exists.
+  – Editing is contextual, not additive.
+
+──────────────────────────────
+State Ownership Rules
+──────────────────────────────
+
+• EditBlock is a UI shell only.
+• Temporary edit state is owned by the screen.
+• Draft Store remains the sole mutation gate.
+• ViewModels translate user intent into draft mutations.
+• EditBlock must never own, infer, or persist data.
+
+──────────────────────────────
+Consistency Requirement
+──────────────────────────────
+
+All sections using EditBlock MUST:
+• Share the same mental model.
+• Share the same action row semantics (Primary / Secondary).
+• Avoid section-specific editing paradigms.
+
+Deviation from this pattern requires explicitly reopening the Core Seed.
+
+──────────────────────────────
+
 • Compose-first; XML forbidden.
 • Invoice creation is the default primary action.
 • Search is deliberate, not ambient.

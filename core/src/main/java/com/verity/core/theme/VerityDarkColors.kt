@@ -37,7 +37,10 @@ val VerityDarkColors = VerityColors(
 
         // Context / identity / focus zones
         // Clearly lifted from base (≈ +10–12% luminance)
-        raised = Color(0xFF232A3A),
+        // Graphite surface with subtle teal anchoring
+        // Ensures brand cohesion in dark mode without reducing contrast
+        // or competing with primary action colors
+        raised = Color(0xFF1E2726),
 
         // Dense / summary / conclusion zones
         // Clearly recessed from base (≈ −12–15% luminance)

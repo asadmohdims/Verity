@@ -36,8 +36,11 @@ val VerityLightColors = VerityColors(
         base = Color(0xFFFFFFFF),
 
         // Context / identity / focus zones
-        // Noticeably lifted from base (≈ +10% luminance)
-        raised = Color(0xFFF3F6FF),
+        // Subtly lifted from base (≈ +10% luminance)
+        // Neutral surface with a restrained teal bias
+        // Used for repeated entities (e.g. invoice line items) to carry Verity identity
+        // without encoding semantic meaning or visual noise
+        raised = Color(0xFFEDF4F2),
 
         // Dense / summary / conclusion zones
         // Clearly recessed from base (≈ −12% luminance)

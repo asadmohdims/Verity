@@ -447,120 +447,164 @@ fun InvoiceWorkspaceScreen(
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
             VeritySection(title = "Transportation Mode") {
-                var isEditingTransport by remember { mutableStateOf(false) }
-                var transporter by remember { mutableStateOf(draft.transportDetails?.transporterName ?: "") }
-                var vehicleNo by remember { mutableStateOf(draft.transportDetails?.vehicleNumber ?: "") }
-                var supplyDate by remember { mutableStateOf(draft.transportDetails?.supplyDate?.toString() ?: "") }
-                var grNumber by remember { mutableStateOf(draft.transportDetails?.grOrLrNumber ?: "") }
-                var freight by remember { mutableStateOf(draft.transportDetails?.freightAmount?.toString() ?: "") }
 
-                if (!isEditingTransport) {
-                    if (draft.transportDetails == null) {
-                        // Show collapsed "no details" view
-                        VerityText(
-                            text = "No transportation details",
-                            style = VerityTextStyle.Caption
+                var isEditingTransport by remember { mutableStateOf(false) }
+                var transporterName by remember { mutableStateOf("") }
+                var vehicleNumber by remember { mutableStateOf("") }
+                var grOrLrNumber by remember { mutableStateOf("") }
+                var freightAmount by remember { mutableStateOf("") }
+
+                if (draft.transportDetails == null) {
+                    VerityText(
+                        text = "No transportation details",
+                        style = VerityTextStyle.Caption,
+                        modifier = Modifier.clickable {
+                            isEditingTransport = true
+                        }
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                isEditingTransport = true
+                                transporterName = draft.transportDetails.transporterName ?: ""
+                                vehicleNumber = draft.transportDetails.vehicleNumber ?: ""
+                                grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
+                                freightAmount = draft.transportDetails.freightAmount?.toString() ?: ""
+                            }
+                    ) {
+                        VerityListItem(
+                            title = "Transportation",
+                            subtitle =
+                                listOfNotNull(
+                                    draft.transportDetails.transporterName,
+                                    draft.transportDetails.vehicleNumber,
+                                    draft.transportDetails.grOrLrNumber
+                                ).joinToString(" · ")
                         )
-                        VeritySpacer(size = VeritySpace.Small)
-                        VerityText(
-                            text = "+ Add transportation details",
-                            style = VerityTextStyle.Label,
-                            modifier = Modifier.clickable { isEditingTransport = true }
-                        )
-                    } else {
-                        // Show compact summary
-                        androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+
+                        draft.transportDetails.freightAmount?.let {
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = "Freight: ${draft.transportDetails.freightAmount ?: "—"}",
-                                style = VerityTextStyle.Body,
-                                modifier = Modifier.weight(1f)
-                            )
-                            VerityText(
-                                text = "Edit transportation details",
-                                style = VerityTextStyle.Label,
-                                modifier = Modifier
-                                    .clickable {
-                                        transporter = draft.transportDetails?.transporterName ?: ""
-                                        vehicleNo = draft.transportDetails?.vehicleNumber ?: ""
-                                        supplyDate = draft.transportDetails?.supplyDate?.toString() ?: ""
-                                        grNumber = draft.transportDetails?.grOrLrNumber ?: ""
-                                        freight = draft.transportDetails?.freightAmount?.toString() ?: ""
-                                        isEditingTransport = true
-                                    }
+                                text = "Freight: $it",
+                                style = VerityTextStyle.Body
                             )
                         }
                     }
-                } else {
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = transporter,
-                        onValueChange = { transporter = it },
-                        placeholder = { VerityText("Transporter", VerityTextStyle.Body) },
-                        singleLine = true
-                    )
-                    VeritySpacer(size = VeritySpace.ExtraSmall)
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = vehicleNo,
-                        onValueChange = { vehicleNo = it },
-                        placeholder = { VerityText("Vehicle Number", VerityTextStyle.Body) },
-                        singleLine = true
-                    )
-                    VeritySpacer(size = VeritySpace.ExtraSmall)
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = supplyDate,
-                        onValueChange = { supplyDate = it },
-                        placeholder = { VerityText("Supply Date (YYYY-MM-DD)", VerityTextStyle.Body) },
-                        singleLine = true
-                    )
-                    VeritySpacer(size = VeritySpace.ExtraSmall)
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = grNumber,
-                        onValueChange = { grNumber = it },
-                        placeholder = { VerityText("GR / LR Number", VerityTextStyle.Body) },
-                        singleLine = true
-                    )
-                    VeritySpacer(size = VeritySpace.ExtraSmall)
-                    TextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = freight,
-                        onValueChange = { freight = it },
-                        placeholder = { VerityText("Freight", VerityTextStyle.Body) },
-                        singleLine = true
-                    )
-                    VeritySpacer(size = VeritySpace.Small)
-                    androidx.compose.foundation.layout.Row {
-                        VerityText(
-                            text = "Save",
-                            style = VerityTextStyle.Label,
-                            modifier = Modifier.clickable {
-                                viewModel.onTransportDetailsChanged(
-                                    DraftTransportDetails(
-                                        transporterName = transporter.ifBlank { null },
-                                        vehicleNumber = vehicleNo.ifBlank { null },
-                                        supplyDate = runCatching {
-                                            supplyDate.takeIf { it.isNotBlank() }?.let { java.time.LocalDate.parse(it) }
-                                        }.getOrNull(),
-                                        grOrLrNumber = grNumber.ifBlank { null },
-                                        freightAmount = freight.toDoubleOrNull()
-                                    )
-                                )
-                                isEditingTransport = false
-                            }
+                }
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityEditBlock(
+                    title = null,
+                    mode =
+                        if (draft.transportDetails == null)
+                            VerityEditMode.Add
+                        else
+                            VerityEditMode.Edit,
+                    expanded = isEditingTransport,
+                    collapsedActionLabel =
+                        if (draft.transportDetails == null)
+                            "Add transportation details"
+                        else
+                            null,
+                    onCollapsedAction = {
+                        isEditingTransport = true
+                    },
+                    onAdd = {
+                        viewModel.onTransportDetailsChanged(
+                            DraftTransportDetails(
+                                transporterName = transporterName,
+                                vehicleNumber = vehicleNumber,
+                                grOrLrNumber = grOrLrNumber,
+                                freightAmount = freightAmount.toDoubleOrNull()
+                            )
                         )
-                        VeritySpacer(size = VeritySpace.Large, horizontal = true)
-                        VerityText(
-                            text = "Cancel",
-                            style = VerityTextStyle.Caption,
-                            modifier = Modifier.clickable {
-                                isEditingTransport = false
-                            }
+
+                        isEditingTransport = false
+                        transporterName = ""
+                        vehicleNumber = ""
+                        grOrLrNumber = ""
+                        freightAmount = ""
+                    },
+                    onSave = {
+                        viewModel.onTransportDetailsChanged(
+                            DraftTransportDetails(
+                                transporterName = transporterName,
+                                vehicleNumber = vehicleNumber,
+                                grOrLrNumber = grOrLrNumber,
+                                freightAmount = freightAmount.toDoubleOrNull()
+                            )
                         )
+
+                        isEditingTransport = false
+                        transporterName = ""
+                        vehicleNumber = ""
+                        grOrLrNumber = ""
+                        freightAmount = ""
+                    },
+                    onCancel = {
+                        isEditingTransport = false
+                        transporterName = ""
+                        vehicleNumber = ""
+                        grOrLrNumber = ""
+                        freightAmount = ""
                     }
+                ) {
+                    VerityTextField(
+                        role = VerityTextFieldRole.Basic,
+                        label = "Transporter Name",
+                        value = transporterName,
+                        onValueChange = { transporterName = it },
+                        editing = true,
+                        onEnterEdit = null,
+                        onExitEdit = null,
+                        suggestions = emptyList(),
+                        onSelectSuggestion = null
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityTextField(
+                        role = VerityTextFieldRole.Basic,
+                        label = "Vehicle Number",
+                        value = vehicleNumber,
+                        onValueChange = { vehicleNumber = it },
+                        editing = true,
+                        onEnterEdit = null,
+                        onExitEdit = null,
+                        suggestions = emptyList(),
+                        onSelectSuggestion = null
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityTextField(
+                        role = VerityTextFieldRole.Basic,
+                        label = "GR / LR Number",
+                        value = grOrLrNumber,
+                        onValueChange = { grOrLrNumber = it },
+                        editing = true,
+                        onEnterEdit = null,
+                        onExitEdit = null,
+                        suggestions = emptyList(),
+                        onSelectSuggestion = null
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityTextField(
+                        role = VerityTextFieldRole.Basic,
+                        label = "Freight Amount",
+                        value = freightAmount,
+                        onValueChange = { freightAmount = it },
+                        editing = true,
+                        onEnterEdit = null,
+                        onExitEdit = null,
+                        suggestions = emptyList(),
+                        onSelectSuggestion = null
+                    )
                 }
             }
         }
