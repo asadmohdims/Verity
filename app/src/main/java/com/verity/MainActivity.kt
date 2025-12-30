@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import com.verity.core.ui.molecules.VerityEditBlock
 import com.verity.core.ui.molecules.VerityEditMode
+import com.verity.core.formatting.money.Money
 
 /**
  * MainActivity
@@ -246,12 +247,11 @@ private fun LandingScreen(
         VeritySpacer(size = VeritySpace.Large)
 
         VeritySection(title = "DEBUG · Invoice Line Item Review") {
-
             VerityInvoiceLineItemRow(
                 description = "Stainless Steel Bolt M12 — High tensile, zinc coated, suitable for outdoor structural applications",
                 quantity = 12.0,
                 rate = 121.0,
-                amount = 1452.0,
+                amount = Money.ofRupees(142252),
                 hsnCode = "731815"
             )
 
@@ -259,7 +259,7 @@ private fun LandingScreen(
                 description = "Cold Rolled Coil (CRCA Sheet)",
                 quantity = 5.0,
                 rate = 450.0,
-                amount = 2250.0,
+                amount = Money.ofRupees(2250),
                 hsnCode = "7209"
             )
         }
@@ -275,7 +275,7 @@ private fun LandingScreen(
             var rate by remember { mutableStateOf("") }
 
             VerityEditBlock(
-                title = "Lisdfsdfsnes",
+                title = "Il1O0 123456789 ₹₹₹",
                 mode = VerityEditMode.Add,
                 expanded = expanded,
                 collapsedActionLabel = "Add Line Item",

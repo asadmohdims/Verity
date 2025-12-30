@@ -15,6 +15,7 @@ import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.dp
+import com.verity.core.formatting.money.Money
 
 /**
  * VerityInvoiceLineItemRow
@@ -48,7 +49,7 @@ fun VerityInvoiceLineItemRow(
     description: String,
     quantity: Double,
     rate: Double,
-    amount: Double,
+    amount: Money,
     hsnCode: String?,
     modifier: Modifier = Modifier
 ) {
@@ -83,37 +84,92 @@ fun VerityInvoiceLineItemRow(
 
                     // Right: Line total amount (visual anchor)
                     VerityText(
-                        text = amount.toString(),
+                        text = amount.format(),
                         style = VerityTextStyle.Body
                     )
                 }
 
-                VeritySpacer(size = VeritySpace.ExtraSmall)
+                VeritySpacer(size = VeritySpace.Large)
 
                 // ─────────────────────────────────────────────
-                // Row 2 — Secondary information
+                // Row 2 — Secondary information (micro-metrics layout, compact)
                 // ─────────────────────────────────────────────
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-
-                    // Left: HSN code (optional, muted semantics via typography)
                     if (!hsnCode.isNullOrBlank()) {
-                        VerityText(
-                            text = "HSN $hsnCode",
-                            style = VerityTextStyle.Label,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            VerityText(
+                                text = "HSN",
+                                style = VerityTextStyle.Caption
+                            )
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = hsnCode.toString(),
+                                style = VerityTextStyle.Label
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            VerityText(
+                                text = "QTY",
+                                style = VerityTextStyle.Caption
+                            )
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = quantity.toString(),
+                                style = VerityTextStyle.Label
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            VerityText(
+                                text = "RATE",
+                                style = VerityTextStyle.Caption
+                            )
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = rate.toString(),
+                                style = VerityTextStyle.Label
+                            )
+                        }
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            VerityText(
+                                text = "QTY",
+                                style = VerityTextStyle.Caption
+                            )
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = quantity.toString(),
+                                style = VerityTextStyle.Label
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            VerityText(
+                                text = "RATE",
+                                style = VerityTextStyle.Caption
+                            )
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = rate.toString(),
+                                style = VerityTextStyle.Label
+                            )
+                        }
                     }
-
-                    // Right: Quantity × Rate
-                    VerityText(
-                        text = "${quantity} × ${rate}",
-                        style = VerityTextStyle.Label
-                    )
                 }
             }
         }
