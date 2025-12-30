@@ -85,11 +85,11 @@ fun VerityInvoiceLineItemRow(
                     // Right: Line total amount (visual anchor)
                     VerityText(
                         text = amount.format(),
-                        style = VerityTextStyle.Body
+                        style = VerityTextStyle.Title
                     )
                 }
 
-                VeritySpacer(size = VeritySpace.Large)
+                VeritySpacer(size = VeritySpace.Medium)
 
                 // ─────────────────────────────────────────────
                 // Row 2 — Secondary information (micro-metrics layout, compact)
@@ -122,7 +122,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toString(),
+                                text = quantity.toLong().toString(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -136,7 +136,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = rate.toString(),
+                                text = Money.ofRupees(rate.toLong()).format(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -151,7 +151,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toString(),
+                                text = quantity.toLong().toString(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -165,7 +165,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = rate.toString(),
+                                text = Money.ofRupees(rate.toLong()).format(),
                                 style = VerityTextStyle.Label
                             )
                         }

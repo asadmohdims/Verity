@@ -248,19 +248,41 @@ private fun LandingScreen(
 
         VeritySection(title = "DEBUG · Invoice Line Item Review") {
             VerityInvoiceLineItemRow(
-                description = "Stainless Steel Bolt M12 — High tensile, zinc coated, suitable for outdoor structural applications",
-                quantity = 12.0,
-                rate = 121.0,
-                amount = Money.ofRupees(142252),
+                description = "Stainless Steel Bolt M12 — High tensile, zinc coated, suitable for outdoor structural applications as per IS 1367 / DIN 933 specification",
+                quantity = 10000.0,
+                rate = 125000.0,
+                amount = Money.ofRupees(98765432),
                 hsnCode = "731815"
             )
 
+            VeritySpacer(size = VeritySpace.Small)
+
             VerityInvoiceLineItemRow(
-                description = "Cold Rolled Coil (CRCA Sheet)",
-                quantity = 5.0,
-                rate = 450.0,
-                amount = Money.ofRupees(2250),
-                hsnCode = "7209"
+                description = "Nut",
+                quantity = 1.0,
+                rate = 5.0,
+                amount = Money.ofRupees(5),
+                hsnCode = "731816"
+            )
+
+            VeritySpacer(size = VeritySpace.Small)
+
+            VerityInvoiceLineItemRow(
+                description = "Packing Material",
+                quantity = 0.0,
+                rate = 0.0,
+                amount = Money.ofRupees(0),
+                hsnCode = "481910"
+            )
+
+            VeritySpacer(size = VeritySpace.Small)
+
+            VerityInvoiceLineItemRow(
+                description = "Custom Fabrication Charge",
+                quantity = 2.0,
+                rate = 15000.0,
+                amount = Money.ofRupees(30000),
+                hsnCode = ""
             )
         }
 
