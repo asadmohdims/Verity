@@ -32,6 +32,8 @@ Status:
 • Document Type (Invoice / Challan) is draft-level and end-to-end.
 • Draft-level GST tax is implemented, reducer-derived, and Invoice/Challan aware.
 
+• Line Item Row is now a first‑class, dedicated UI molecule (read‑only projection) and no longer uses generic list items.
+
 This amendment records achieved facts only.
 No frozen law is weakened or reinterpreted.
 ──────────────────────────────
@@ -114,6 +116,10 @@ core/
 • no feature knowledge.
 • Pure Compose library. No platform, database, or UI state ownership.
 
+core/formatting:
+• Money formatting utilities are introduced as first‑class core formatting primitives.
+• All monetary values are represented internally as `Long` (minor units), never `Double`.
+
 features/
 • Each feature isolated — Invoice, Search, Customers, Ledger, Payments.
 • Communication only via navigation contracts or IDs.
@@ -153,6 +159,9 @@ Rules:
 • ViewModels coordinate user intent but contain no business rules.
 • UI must never mutate draft state directly.
 
+Clarification:
+• Draft-level monetary fields MUST align with domain monetary representation (Long minor units) even though drafts are UI-only.
+
 ──────────────────────────────
 
 3A. Namespace & Module Identity Laws (Frozen)
@@ -183,6 +192,9 @@ Clarification:
 • Drafts, UI state, summaries, and editors are NOT domain models.
 • They are disposable workflow state and may be discarded without consequence.
 • Domain truth is represented exclusively by immutable events.
+
+Clarification — Monetary Correctness Invariant:
+All persisted and projected monetary amounts use integer minor units (e.g. paise) to guarantee determinism and rounding safety.
 
 Clarification — Customer Identity Model
 --------------------------------------
@@ -398,6 +410,8 @@ Rules:
 • EditBlocks MUST NOT exist inside list rows or projections.
 • EditBlocks MUST NOT directly mutate draft or domain state.
 
+• Read-only projections include tappable molecules (e.g. line items) but never embed editors, calculations, or draft mutation logic.
+
 ──────────────────────────────
 Add vs Edit Semantics
 ──────────────────────────────
@@ -479,6 +493,7 @@ Implemented sections:
   – Inline editing with Save / Cancel
   – Single editor at a time
   – Deterministic recalculation via reducer
+  – Invoice items are rendered via a dedicated financial projection molecule with explicit HSN, Quantity, Rate, and Amount presentation using Verity money formatting.
 
 • Transportation Mode
   – Treated as a single semantic unit

@@ -282,13 +282,18 @@ fun InvoiceWorkspaceScreen(
                                     itemHsn = item.hsnCode
                                     itemQuantity = item.quantity.toString()
                                     itemUnit = item.unit
-                                    itemRate = item.rate.toString()
+                                    // Set itemRate as rupees string from paise
+                                    itemRate = (item.ratePaise / 100.0).toString()
                                 }
                         ) {
+                            // Compute rupees strings for display
+                            val rateRupees = "%.2f".format(item.ratePaise / 100.0)
+                            val amountPaise = (item.quantity * item.ratePaise).toLong()
+                            val amountRupees = "%.2f".format(amountPaise / 100.0)
                             VerityListItem(
                                 title = item.description,
                                 subtitle =
-                                    "HSN ${item.hsnCode} · ${item.quantity} ${item.unit} × ${item.rate}  |  Amount: ${item.amount}"
+                                    "HSN ${item.hsnCode} · ${item.quantity} ${item.unit} × $rateRupees  |  Amount: $amountRupees"
                             )
                         }
 
@@ -312,16 +317,16 @@ fun InvoiceWorkspaceScreen(
                         isAddingLineItem = true
                     },
                     onAdd = {
+                        val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
+                        val parsedRateRupees = itemRate.toDoubleOrNull() ?: 0.0
+                        val ratePaise = (parsedRateRupees * 100).toLong()
                         viewModel.onAddLineItem(
                             DraftLineItem(
                                 description = itemDescription,
                                 hsnCode = itemHsn,
-                                quantity = itemQuantity.toDoubleOrNull() ?: 0.0,
+                                quantity = parsedQuantity,
                                 unit = itemUnit,
-                                rate = itemRate.toDoubleOrNull() ?: 0.0,
-                                amount =
-                                    (itemQuantity.toDoubleOrNull() ?: 0.0) *
-                                    (itemRate.toDoubleOrNull() ?: 0.0)
+                                ratePaise = ratePaise
                             )
                         )
 
@@ -334,17 +339,17 @@ fun InvoiceWorkspaceScreen(
                         itemRate = ""
                     },
                     onSave = {
+                        val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
+                        val parsedRateRupees = itemRate.toDoubleOrNull() ?: 0.0
+                        val ratePaise = (parsedRateRupees * 100).toLong()
                         viewModel.onUpdateLineItem(
                             index = editingLineItemIndex!!,
                             item = DraftLineItem(
                                 description = itemDescription,
                                 hsnCode = itemHsn,
-                                quantity = itemQuantity.toDoubleOrNull() ?: 0.0,
+                                quantity = parsedQuantity,
                                 unit = itemUnit,
-                                rate = itemRate.toDoubleOrNull() ?: 0.0,
-                                amount =
-                                    (itemQuantity.toDoubleOrNull() ?: 0.0) *
-                                    (itemRate.toDoubleOrNull() ?: 0.0)
+                                ratePaise = ratePaise
                             )
                         )
 
@@ -452,7 +457,7 @@ fun InvoiceWorkspaceScreen(
                 var transporterName by remember { mutableStateOf("") }
                 var vehicleNumber by remember { mutableStateOf("") }
                 var grOrLrNumber by remember { mutableStateOf("") }
-                var freightAmount by remember { mutableStateOf("") }
+                var freightPaise by remember { mutableStateOf("") }
 
                 if (draft.transportDetails == null) {
                     VerityText(
@@ -471,7 +476,7 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = draft.transportDetails.transporterName ?: ""
                                 vehicleNumber = draft.transportDetails.vehicleNumber ?: ""
                                 grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
-                                freightAmount = draft.transportDetails.freightAmount?.toString() ?: ""
+                                freightPaise = draft.transportDetails.freightPaise?.let { (it / 100.0).toString() } ?: ""
                             }
                     ) {
                         VerityListItem(
@@ -484,10 +489,11 @@ fun InvoiceWorkspaceScreen(
                                 ).joinToString(" · ")
                         )
 
-                        draft.transportDetails.freightAmount?.let {
+                        draft.transportDetails.freightPaise?.let {
                             VeritySpacer(size = VeritySpace.ExtraSmall)
+                            val freightRupees = "%.2f".format(it / 100.0)
                             VerityText(
-                                text = "Freight: $it",
+                                text = "Freight: $freightRupees",
                                 style = VerityTextStyle.Body
                             )
                         }
@@ -513,12 +519,14 @@ fun InvoiceWorkspaceScreen(
                         isEditingTransport = true
                     },
                     onAdd = {
+                        val parsedFreightRupees = freightPaise.toDoubleOrNull() ?: 0.0
+                        val freightPaiseLong = (parsedFreightRupees * 100).toLong()
                         viewModel.onTransportDetailsChanged(
                             DraftTransportDetails(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
-                                freightAmount = freightAmount.toDoubleOrNull()
+                                freightPaise = freightPaiseLong
                             )
                         )
 
@@ -526,15 +534,17 @@ fun InvoiceWorkspaceScreen(
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
-                        freightAmount = ""
+                        freightPaise = ""
                     },
                     onSave = {
+                        val parsedFreightRupees = freightPaise.toDoubleOrNull() ?: 0.0
+                        val freightPaiseLong = (parsedFreightRupees * 100).toLong()
                         viewModel.onTransportDetailsChanged(
                             DraftTransportDetails(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
-                                freightAmount = freightAmount.toDoubleOrNull()
+                                freightPaise = freightPaiseLong
                             )
                         )
 
@@ -542,14 +552,14 @@ fun InvoiceWorkspaceScreen(
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
-                        freightAmount = ""
+                        freightPaise = ""
                     },
                     onCancel = {
                         isEditingTransport = false
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
-                        freightAmount = ""
+                        freightPaise = ""
                     }
                 ) {
                     VerityTextField(
@@ -597,8 +607,8 @@ fun InvoiceWorkspaceScreen(
                     VerityTextField(
                         role = VerityTextFieldRole.Basic,
                         label = "Freight Amount",
-                        value = freightAmount,
-                        onValueChange = { freightAmount = it },
+                        value = freightPaise,
+                        onValueChange = { freightPaise = it },
                         editing = true,
                         onEnterEdit = null,
                         onExitEdit = null,
@@ -620,14 +630,14 @@ fun InvoiceWorkspaceScreen(
         ) {
             VeritySection(title = "Summary") {
                 VerityText(
-                    text = "Subtotal: ${draft.summary.subtotal}",
+                    text = "Subtotal: ${"%.2f".format(draft.summary.subtotalPaise / 100.0)}",
                     style = VerityTextStyle.Body
                 )
 
                 VeritySpacer(size = VeritySpace.ExtraSmall)
 
                 VerityText(
-                    text = "Freight: ${draft.transportDetails?.freightAmount ?: 0}",
+                    text = "Freight: ${"%.2f".format((draft.transportDetails?.freightPaise ?: 0L) / 100.0)}",
                     style = VerityTextStyle.Body
                 )
 
@@ -637,13 +647,13 @@ fun InvoiceWorkspaceScreen(
                         com.verity.invoice.draft.DraftTaxMode.INTRA_STATE -> {
                             tax.cgst?.let {
                                 VerityText(
-                                    text = "CGST (${it.ratePercent}%): ${it.amount}",
+                                    text = "CGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
                                     style = VerityTextStyle.Body
                                 )
                             }
                             tax.sgst?.let {
                                 VerityText(
-                                    text = "SGST (${it.ratePercent}%): ${it.amount}",
+                                    text = "SGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
                                     style = VerityTextStyle.Body
                                 )
                             }
@@ -651,7 +661,7 @@ fun InvoiceWorkspaceScreen(
                         com.verity.invoice.draft.DraftTaxMode.INTER_STATE -> {
                             tax.igst?.let {
                                 VerityText(
-                                    text = "IGST (${it.ratePercent}%): ${it.amount}",
+                                    text = "IGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
                                     style = VerityTextStyle.Body
                                 )
                             }
@@ -659,7 +669,7 @@ fun InvoiceWorkspaceScreen(
                     }
                     VeritySpacer(size = VeritySpace.ExtraSmall)
                     VerityText(
-                        text = "Tax Total: ${draft.summary.taxTotal}",
+                        text = "Tax Total: ${"%.2f".format(draft.summary.taxTotalPaise / 100.0)}",
                         style = VerityTextStyle.Body
                     )
                 }
@@ -668,7 +678,7 @@ fun InvoiceWorkspaceScreen(
 
                 VeritySpacer(size = VeritySpace.Small)
                 VerityText(
-                    text = "Grand Total: ${draft.summary.grandTotal}",
+                    text = "Grand Total: ${"%.2f".format(draft.summary.grandTotalPaise / 100.0)}",
                     style = VerityTextStyle.Title
                 )
             }
@@ -771,39 +781,37 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
         ),
         lineItems = listOf(
             DraftLineItem(
-                description = "Metl Sheet",
+                description = "Metal Sheet",
                 hsnCode = "7208",
-                quantity = 10.0,
+                quantity = 10,
                 unit = "PCS",
-                rate = 320.0,
-                amount = 3200.0
+                ratePaise = 32000
             ),
             DraftLineItem(
                 description = "Cold Rolled Coil",
                 hsnCode = "7209",
-                quantity = 5.0,
+                quantity = 5,
                 unit = "KG",
-                rate = 450.0,
-                amount = 2250.0
+                ratePaise = 45000
             )
         ),
         transportDetails = DraftTransportDetails(
-            freightAmount = 500.0
+            freightPaise = 50000
         ),
         summary = DraftSummary(
-            subtotal = 5950.0,
+            subtotalPaise = 595000,
             tax = com.verity.invoice.draft.DraftTaxBreakdown(
                 mode = com.verity.invoice.draft.DraftTaxMode.INTRA_STATE,
                 cgst = com.verity.invoice.draft.DraftTaxComponent(
-                    ratePercent = 9.0,
-                    amount = 535.5
+                    ratePercent = 9,
+                    amountPaise = 53550
                 ),
                 sgst = com.verity.invoice.draft.DraftTaxComponent(
-                    ratePercent = 9.0,
-                    amount = 535.5
+                    ratePercent = 9,
+                    amountPaise = 53550
                 )
             ),
-            taxTotal = 1071.0,
-            grandTotal = 7021.0
+            taxTotalPaise = 107100,
+            grandTotalPaise = 702100
         )
     )

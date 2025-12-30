@@ -11,8 +11,16 @@ package com.verity.invoice.draft
 object InvoiceDraftReducer {
 
     private const val ASSUMED_SELLER_STATE_CODE = "27"
-    private const val GST_RATE_TOTAL = 18.0
-    private const val GST_RATE_HALF = 9.0
+    /**
+     * GST rates expressed as whole-number percentages.
+     *
+     * IMPORTANT:
+     * - Represented as Long to preserve deterministic, integer-only math.
+     * - Avoids floating-point rounding and replay instability.
+     * - Draft-level only; finalization may introduce jurisdictional variants.
+     */
+    private const val GST_RATE_TOTAL_PERCENT: Long = 18L
+    private const val GST_RATE_HALF_PERCENT: Long = 9L
 
     fun setCustomer(
         draft: InvoiceDraftUiState,
@@ -50,15 +58,28 @@ object InvoiceDraftReducer {
         return recalculate(draft.copy(lineItems = updatedItems))
     }
 
+    /**
+     * TEMPORARY (Draft Spine v1)
+     *
+     * This function exists to support incremental editing flows
+     * in the current Invoice Workspace implementation.
+     *
+     * IMPORTANT:
+     * - Monetary amounts are NOT authoritative here.
+     * - All financial totals MUST be derived in `recalculate(...)`.
+     * - This function will become redundant once line-item editing
+     *   is unified to submit full DraftLineItem updates only.
+     *
+     * Do NOT add business logic or financial derivation here.
+     */
     fun updateLineItemQuantity(
         draft: InvoiceDraftUiState,
         index: Int,
-        quantity: Double
+        quantity: Long
     ): InvoiceDraftUiState {
         val updatedItems = draft.lineItems.mapIndexed { i, item ->
             if (i == index) {
-                val newAmount = quantity * item.rate
-                item.copy(quantity = quantity, amount = newAmount)
+                item.copy(quantity = quantity)
             } else {
                 item
             }
@@ -66,15 +87,28 @@ object InvoiceDraftReducer {
         return recalculate(draft.copy(lineItems = updatedItems))
     }
 
+    /**
+     * TEMPORARY (Draft Spine v1)
+     *
+     * This function exists to support incremental editing flows
+     * in the current Invoice Workspace implementation.
+     *
+     * IMPORTANT:
+     * - Monetary amounts are NOT authoritative here.
+     * - All financial totals MUST be derived in `recalculate(...)`.
+     * - This function will become redundant once line-item editing
+     *   is unified to submit full DraftLineItem updates only.
+     *
+     * Do NOT add business logic or financial derivation here.
+     */
     fun updateLineItemRate(
         draft: InvoiceDraftUiState,
         index: Int,
-        rate: Double
+        ratePaise: Long
     ): InvoiceDraftUiState {
         val updatedItems = draft.lineItems.mapIndexed { i, item ->
             if (i == index) {
-                val newAmount = item.quantity * rate
-                item.copy(rate = rate, amount = newAmount)
+                item.copy(ratePaise = ratePaise)
             } else {
                 item
             }
@@ -127,9 +161,9 @@ object InvoiceDraftReducer {
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {
 
-        val itemsTotal = draft.lineItems.sumOf { it.amount }
-        val freight = draft.transportDetails?.freightAmount ?: 0.0
-        val subtotal = itemsTotal + freight
+        val itemsTotalPaise: Long = draft.lineItems.sumOf { it.quantity * it.ratePaise }
+        val freightPaise: Long = draft.transportDetails?.freightPaise ?: 0L
+        val subtotalPaise: Long = itemsTotalPaise + freightPaise
 
         // -----------------------------
         // Draft Tax Calculation (Atom 6.2)
@@ -153,40 +187,40 @@ object InvoiceDraftReducer {
                     DraftTaxBreakdown(
                         mode = DraftTaxMode.INTRA_STATE,
                         cgst = DraftTaxComponent(
-                            ratePercent = GST_RATE_HALF,
-                            amount = subtotal * GST_RATE_HALF / 100
+                            ratePercent = GST_RATE_HALF_PERCENT,
+                            amountPaise = (subtotalPaise * GST_RATE_HALF_PERCENT) / 100
                         ),
                         sgst = DraftTaxComponent(
-                            ratePercent = GST_RATE_HALF,
-                            amount = subtotal * GST_RATE_HALF / 100
+                            ratePercent = GST_RATE_HALF_PERCENT,
+                            amountPaise = (subtotalPaise * GST_RATE_HALF_PERCENT) / 100
                         )
                     )
                 } else {
                     DraftTaxBreakdown(
                         mode = DraftTaxMode.INTER_STATE,
                         igst = DraftTaxComponent(
-                            ratePercent = GST_RATE_TOTAL,
-                            amount = subtotal * GST_RATE_TOTAL / 100
+                            ratePercent = GST_RATE_TOTAL_PERCENT,
+                            amountPaise = (subtotalPaise * GST_RATE_TOTAL_PERCENT) / 100
                         )
                     )
                 }
             }
 
-        val taxTotal =
+        val taxTotalPaise: Long =
             taxBreakdown?.let {
-                (it.cgst?.amount ?: 0.0) +
-                (it.sgst?.amount ?: 0.0) +
-                (it.igst?.amount ?: 0.0)
-            } ?: 0.0
+                (it.cgst?.amountPaise ?: 0L) +
+                (it.sgst?.amountPaise ?: 0L) +
+                (it.igst?.amountPaise ?: 0L)
+            } ?: 0L
 
-        val grandTotal = subtotal + taxTotal
+        val grandTotalPaise = subtotalPaise + taxTotalPaise
 
         return draft.copy(
             summary = DraftSummary(
-                subtotal = subtotal,
+                subtotalPaise = subtotalPaise,
                 tax = taxBreakdown,
-                taxTotal = taxTotal,
-                grandTotal = grandTotal
+                taxTotalPaise = taxTotalPaise,
+                grandTotalPaise = grandTotalPaise
             )
         )
     }

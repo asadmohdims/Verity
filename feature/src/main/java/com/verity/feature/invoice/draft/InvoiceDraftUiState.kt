@@ -46,9 +46,18 @@ enum class DraftTaxMode {
     INTER_STATE  // IGST
 }
 
+/**
+ * DraftTaxComponent
+ *
+ * Draft-level tax component.
+ *
+ * - ratePercent is a whole-number percentage (Long) to preserve
+ *   deterministic, integer-only math.
+ * - amountPaise is the derived monetary value in paise.
+ */
 data class DraftTaxComponent(
-    val ratePercent: Double,
-    val amount: Double
+    val ratePercent: Long,
+    val amountPaise: Long
 )
 
 data class DraftTaxBreakdown(
@@ -73,27 +82,55 @@ data class DraftAddress(
     val pincode: String
 )
 
+/**
+ * DraftLineItem
+ *
+ * Represents a single invoice line item in draft state.
+ *
+ * NOTES:
+ * - This is UI-only workflow state, not domain truth.
+ * - Monetary values are represented in paise (Long) to align with
+ *   Money, projections, and persistence.
+ * - Line amount is intentionally NOT stored; it is always derived
+ *   as (quantity × ratePaise).
+ */
 data class DraftLineItem(
     val description: String,
     val hsnCode: String,
-    val quantity: Double,
+    val quantity: Long,
     val unit: String,
-    val rate: Double,
-    val amount: Double        // UI-calculated convenience value
+    val ratePaise: Long
 )
 
+/**
+ * DraftTransportDetails
+ *
+ * Draft-only logistics metadata.
+ *
+ * NOTE:
+ * - freightPaise is monetary and therefore represented in paise (Long).
+ * - Draft-only; finalization rules apply later.
+ */
 data class DraftTransportDetails(
     val transporterName: String? = null,
     val vehicleNumber: String? = null,
     val supplyDate: LocalDate? = null,
     val grOrLrNumber: String? = null,
-    val freightAmount: Double? = null,
+    val freightPaise: Long? = null,
     val notes: String? = null
 )
 
+/**
+ * DraftSummary
+ *
+ * Derived financial summary for the draft invoice.
+ *
+ * All monetary values are represented in paise (Long) to ensure
+ * deterministic behavior and consistency with domain projections.
+ */
 data class DraftSummary(
-    val subtotal: Double = 0.0,
+    val subtotalPaise: Long = 0L,
     val tax: DraftTaxBreakdown? = null,
-    val taxTotal: Double = 0.0,
-    val grandTotal: Double = 0.0
+    val taxTotalPaise: Long = 0L,
+    val grandTotalPaise: Long = 0L
 )
