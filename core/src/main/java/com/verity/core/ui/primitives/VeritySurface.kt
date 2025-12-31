@@ -18,7 +18,8 @@ enum class VeritySurfaceType {
     Base,
     Raised,
     Assist,
-    AssistInteractive
+    AssistInteractive,
+    FloatingPill
 }
 
 /**
@@ -47,17 +48,28 @@ fun VeritySurface(
         VeritySurfaceType.Raised -> colors.surface.raised
         VeritySurfaceType.Assist -> colors.surface.assist
         VeritySurfaceType.AssistInteractive -> colors.surface.assistInteractive
+        VeritySurfaceType.FloatingPill -> colors.surface.raised
     }
 
     val shape = when (type) {
         VeritySurfaceType.Base -> RectangleShape
+        VeritySurfaceType.FloatingPill -> RoundedCornerShape(999.dp)
         else -> RoundedCornerShape(8.dp)
+    }
+
+    val tonalElevation = when (type) {
+        VeritySurfaceType.Base -> 0.dp
+        VeritySurfaceType.Raised -> 1.dp
+        VeritySurfaceType.Assist -> 0.dp
+        VeritySurfaceType.AssistInteractive -> 0.dp
+        VeritySurfaceType.FloatingPill -> 4.dp
     }
 
     Surface(
         modifier = modifier,
         color = backgroundColor,
         shape = shape,
+        tonalElevation = tonalElevation,
         content = content
     )
 }

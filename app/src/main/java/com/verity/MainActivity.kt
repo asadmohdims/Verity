@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.Arrangement
 import com.verity.core.ui.molecules.VerityEditBlock
 import com.verity.core.ui.molecules.VerityEditMode
 import com.verity.core.formatting.money.Money
+import kotlinx.coroutines.launch
 
 /**
  * MainActivity
@@ -69,7 +70,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VerityTheme(
-                darkTheme = true,
+                darkTheme = false
+                ,
                 typography = VerityBaseTypography
             ) {
                 VeritySurface(
@@ -316,6 +318,8 @@ private fun LandingScreen(
 
         VeritySection(title = "DEBUG · VerityButton Variants") {
 
+            val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+            val coroutineScope = rememberCoroutineScope()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -374,6 +378,31 @@ private fun LandingScreen(
                     role = VerityButtonRole.Destructive,
                     state = VerityButtonState.Disabled,
                     onClick = {}
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Medium)
+
+            VerityButton(
+                label = "Show Snackbar (DEBUG)",
+                role = VerityButtonRole.Secondary,
+                state = VerityButtonState.Enabled,
+                onClick = {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Line item deleted"
+                        )
+                    }
+                }
+            )
+
+
+
+            androidx.compose.material3.SnackbarHost(
+                hostState = snackbarHostState
+            ) { data ->
+                com.verity.core.ui.molecules.VeritySnackbar(
+                    snackbarData = data
                 )
             }
         }

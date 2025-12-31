@@ -1,5 +1,11 @@
 package com.verity.feature.invoice.ui
 
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.verity.core.ui.molecules.VeritySnackbar
+
 import com.verity.core.ui.primitives.VerityTextField
 import com.verity.core.ui.primitives.VerityTextFieldRole
 import com.verity.core.ui.primitives.VeritySuggestion
@@ -15,6 +21,8 @@ import com.verity.invoice.draft.DraftTransportDetails
 import com.verity.invoice.draft.DraftSummary
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,11 +36,13 @@ import com.verity.core.ui.primitives.VerityTextStyle
 import com.verity.core.formatting.money.Money
 import com.verity.invoice.draft.InvoiceDraftUiState
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.dp
+import androidx.compose.ui.unit.dp
 import com.verity.core.ui.molecules.VerityListItem
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +58,8 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 
 import com.verity.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
+
+import androidx.compose.material3.SnackbarDuration
 
 private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
     val secondaryText =
@@ -105,11 +117,27 @@ fun InvoiceWorkspaceScreen(
     val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
     val isShippedToSearching by viewModel.isShippedToSearching.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp)
+        ) { data ->
+            VeritySnackbar(snackbarData = data)
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+        ) {
 
         // ─────────────────────────────────────────────
         // Screen Header
@@ -360,6 +388,13 @@ fun InvoiceWorkspaceScreen(
                         val index = editingLineItemIndex
                         if (index != null) {
                             viewModel.onRemoveLineItem(index)
+
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Line item deleted",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
                         }
 
                         editingLineItemIndex = null
@@ -692,7 +727,8 @@ fun InvoiceWorkspaceScreen(
                 )
             }
         }
-    } // closes Column
+        } // closes Column
+    } // closes Box
 } // closes InvoiceWorkspaceScreen
 
 @Preview(
