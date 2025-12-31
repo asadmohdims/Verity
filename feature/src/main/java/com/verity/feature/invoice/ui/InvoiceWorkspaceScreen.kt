@@ -43,7 +43,7 @@ import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
-import com.verity.core.ui.molecules.VerityListItem
+import com.verity.core.ui.molecules.VerityTransportSummaryRow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.TextField
@@ -324,7 +324,7 @@ fun InvoiceWorkspaceScreen(
                     }
                 }
 
-                VeritySpacer(size = VeritySpace.Small)
+         //       VeritySpacer(size = VeritySpace.Small)
 
                 VerityEditBlock(
                     title = null,
@@ -375,6 +375,13 @@ fun InvoiceWorkspaceScreen(
                                 ratePaise = ratePaise
                             )
                         )
+
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Line item updated",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
 
                         editingLineItemIndex = null
                         isAddingLineItem = false
@@ -503,16 +510,12 @@ fun InvoiceWorkspaceScreen(
                 var grOrLrNumber by remember { mutableStateOf("") }
                 var freightPaise by remember { mutableStateOf("") }
 
-                if (draft.transportDetails == null) {
-                    VerityText(
-                        text = "No transportation details",
-                        style = VerityTextStyle.Caption,
-                        modifier = Modifier.clickable {
-                            isEditingTransport = true
-                        }
-                    )
-                } else {
-                    Column(
+                if (draft.transportDetails != null) {
+                    VerityTransportSummaryRow(
+                        transporterName = draft.transportDetails.transporterName ?: "",
+                        vehicleNumber = draft.transportDetails.vehicleNumber,
+                        grOrLrNumber = draft.transportDetails.grOrLrNumber,
+                        freight = draft.transportDetails.freightPaise?.let { Money.ofPaise(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -520,31 +523,13 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = draft.transportDetails.transporterName ?: ""
                                 vehicleNumber = draft.transportDetails.vehicleNumber ?: ""
                                 grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
-                                freightPaise = draft.transportDetails.freightPaise?.let { (it / 100.0).toString() } ?: ""
+                                freightPaise =
+                                    draft.transportDetails.freightPaise?.let { (it / 100.0).toString() } ?: ""
                             }
-                    ) {
-                        VerityListItem(
-                            title = "Transportation",
-                            subtitle =
-                                listOfNotNull(
-                                    draft.transportDetails.transporterName,
-                                    draft.transportDetails.vehicleNumber,
-                                    draft.transportDetails.grOrLrNumber
-                                ).joinToString(" · ")
-                        )
+                    )
 
-                        draft.transportDetails.freightPaise?.let {
-                            VeritySpacer(size = VeritySpace.ExtraSmall)
-                            val freightRupees = "%.2f".format(it / 100.0)
-                            VerityText(
-                                text = "Freight: $freightRupees",
-                                style = VerityTextStyle.Body
-                            )
-                        }
-                    }
+                    VeritySpacer(size = VeritySpace.Small)
                 }
-
-                VeritySpacer(size = VeritySpace.Small)
 
                 VerityEditBlock(
                     title = null,
