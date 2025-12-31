@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import com.verity.core.ui.molecules.VerityHeader
 import com.verity.core.ui.molecules.VeritySection
 import com.verity.core.ui.primitives.VeritySpacer
+import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
 import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
+import com.verity.core.formatting.money.Money
 import com.verity.invoice.draft.InvoiceDraftUiState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -263,13 +265,7 @@ fun InvoiceWorkspaceScreen(
                 var itemUnit by remember { mutableStateOf("") }
                 var itemRate by remember { mutableStateOf("") }
 
-                if (draft.lineItems.isEmpty()) {
-                    VerityText(
-                        text = "No line items added",
-                        style = VerityTextStyle.Caption
-                    )
-                    VeritySpacer(size = VeritySpace.Small)
-                } else {
+                if (!draft.lineItems.isEmpty()) {
                     draft.lineItems.forEachIndexed { index, item ->
                         Column(
                             modifier = Modifier
@@ -286,14 +282,13 @@ fun InvoiceWorkspaceScreen(
                                     itemRate = (item.ratePaise / 100.0).toString()
                                 }
                         ) {
-                            // Compute rupees strings for display
-                            val rateRupees = "%.2f".format(item.ratePaise / 100.0)
                             val amountPaise = (item.quantity * item.ratePaise).toLong()
-                            val amountRupees = "%.2f".format(amountPaise / 100.0)
-                            VerityListItem(
-                                title = item.description,
-                                subtitle =
-                                    "HSN ${item.hsnCode} · ${item.quantity} ${item.unit} × $rateRupees  |  Amount: $amountRupees"
+                            VerityInvoiceLineItemRow(
+                                description = item.description,
+                                quantity = item.quantity,
+                                rate = Money.ofPaise(item.ratePaise),
+                                amount = Money.ofPaise(amountPaise),
+                                hsnCode = item.hsnCode
                             )
                         }
 
@@ -352,6 +347,20 @@ fun InvoiceWorkspaceScreen(
                                 ratePaise = ratePaise
                             )
                         )
+
+                        editingLineItemIndex = null
+                        isAddingLineItem = false
+                        itemDescription = ""
+                        itemHsn = ""
+                        itemQuantity = ""
+                        itemUnit = ""
+                        itemRate = ""
+                    },
+                    onDelete = {
+                        val index = editingLineItemIndex
+                        if (index != null) {
+                            viewModel.onRemoveLineItem(index)
+                        }
 
                         editingLineItemIndex = null
                         isAddingLineItem = false

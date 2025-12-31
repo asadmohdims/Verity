@@ -23,7 +23,8 @@ import com.verity.core.theme.VerityTheme
 
 enum class VerityButtonRole {
     Primary,
-    Secondary
+    Secondary,
+    Destructive
 }
 
 enum class VerityButtonState {
@@ -48,20 +49,21 @@ fun VerityButton(
         VerityButtonRole.Primary ->
             when {
                 !enabled ->
-                    VerityTheme.colors.primary.copy(alpha = 0.38f)
+                    VerityTheme.colors.cta.primaryDisabled
 
                 isPressed ->
-                    VerityTheme.colors.primary.copy(
-                        red = 0.82f * VerityTheme.colors.primary.red,
-                        green = 0.82f * VerityTheme.colors.primary.green,
-                        blue = 0.82f * VerityTheme.colors.primary.blue
+                    VerityTheme.colors.cta.primary.copy(
+                        red = 0.82f * VerityTheme.colors.cta.primary.red,
+                        green = 0.82f * VerityTheme.colors.cta.primary.green,
+                        blue = 0.82f * VerityTheme.colors.cta.primary.blue
                     )
 
                 else ->
-                    VerityTheme.colors.primary
+                    VerityTheme.colors.cta.primary
             }
 
-        VerityButtonRole.Secondary ->
+        VerityButtonRole.Secondary,
+        VerityButtonRole.Destructive ->
             when {
                 !enabled ->
                     Color.Transparent
@@ -75,12 +77,17 @@ fun VerityButton(
     }
 
     val borderModifier =
-        if (role == VerityButtonRole.Secondary && enabled) {
-            val borderColor =
-                if (isPressed)
+        if (role == VerityButtonRole.Secondary || role == VerityButtonRole.Destructive) {
+            val borderColor = when {
+                isPressed ->
                     VerityTheme.colors.borders.strong
-                else
-                    VerityTheme.colors.borders.subtle
+
+                role == VerityButtonRole.Destructive && enabled ->
+                    VerityTheme.colors.cta.destructive
+
+                else ->
+                    VerityTheme.colors.cta.secondaryBorder
+            }
 
             Modifier.border(
                 width = 1.dp,
@@ -93,12 +100,22 @@ fun VerityButton(
 
     val textColor = when (role) {
         VerityButtonRole.Primary ->
-            if (enabled) VerityTheme.colors.text.inverse
-            else VerityTheme.colors.text.inverse.copy(alpha = 0.6f)
+            if (enabled)
+                VerityTheme.colors.text.inverse
+            else
+                VerityTheme.colors.text.inverse.copy(alpha = 0.6f)
 
         VerityButtonRole.Secondary ->
-            if (enabled) VerityTheme.colors.text.primary
-            else VerityTheme.colors.text.disabled
+            if (enabled)
+                VerityTheme.colors.cta.secondaryText
+            else
+                VerityTheme.colors.cta.secondaryTextDisabled
+
+        VerityButtonRole.Destructive ->
+            if (enabled)
+                VerityTheme.colors.cta.destructive
+            else
+                VerityTheme.colors.cta.destructiveDisabled
     }
 
     Box(

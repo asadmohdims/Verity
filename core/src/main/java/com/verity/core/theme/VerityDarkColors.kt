@@ -56,7 +56,7 @@ val VerityDarkColors = VerityColors(
     borders = VerityColors.Borders(
         // Default outlines for inputs, cards, secondary buttons
         // Must be visible on dark surfaces but never dominant
-        subtle = Color(0xFF2A3142),
+        subtle = Color(0xFF6E7686),
 
         // Stronger emphasis border (pressed / focused / selected)
         // Used sparingly to reinforce interaction
@@ -64,6 +64,21 @@ val VerityDarkColors = VerityColors(
 
         // Hairline dividers between list items and sections
         divider = Color(0xFF323A4E)
+    ),
+
+    cta = VerityColors.CTA(
+        // Primary CTA (filled)
+        primary = Color(0xFF5FB3A2),
+        primaryDisabled = Color(0xFF5FB3A2).copy(alpha = 0.38f),
+
+        // Secondary CTA (outlined)
+        secondaryBorder = Color(0xFF6E7686),
+        secondaryText = Color(0xFFE6EAF0),
+        secondaryTextDisabled = Color(0xFF6E7686),
+
+        // Destructive CTA (outlined)
+        destructive = Color(0xFFEF6A6A),
+        destructiveDisabled = Color(0xFF6E7686)
     ),
 
     text = VerityColors.Text(

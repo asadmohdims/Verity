@@ -13,14 +13,17 @@ FOUNDATION PHASES — COMPLETED & LOCKED
 DELIVERY PHASES — IN PROGRESS
 • D1 — Invoice Workspace (Read-only semantics) ✅ COMPLETED & LOCKED
 • D2 — Draft Creation & Core Workflows ▶️ ACTIVE
+    – Financial correctness (Money + tax determinism) is now partially implemented and being stabilized.
 • D3 — Experience, Sync & Production ▶️ UPCOMING
 
 ──────────────────────────────────────
 Current Focus:
-D2 execution is now centered on completing financial correctness
-(Tax model) and preparing the Draft → Final boundary.
-UX polish, preview generation, and finalization are explicitly deferred
-until tax correctness is achieved.
+- D2 execution is focused on stabilizing draft‑level financial correctness:
+  • Money represented as Long (minor units) end‑to‑end
+  • Deterministic rounding rules
+  • Line item → summary → tax consistency
+- UI polish is limited strictly to reinforcing financial clarity (line items, money formatting).
+- Preview and finalization remain deferred.
 
 Toolchain Status (Operational, Confirmed)
 
@@ -104,6 +107,9 @@ D2.2.A — Atom Inventory (Authoritative for D2)
   – Inline editor with Save / Cancel
   – Draft mutation: lineItems[]
   – Status: COMPLETE & LOCKED
+  • Line items are rendered via a dedicated financial projection molecule (read‑only).
+  • Money formatting is applied consistently via core/formatting utilities.
+  • Visual hierarchy and spacing for line items are considered stable.
 
 • Atom 4 — Transportation Mode
   – Unified transport details (transporter, vehicle, supply date, GR/LR, freight)
@@ -181,6 +187,14 @@ Explicit Exclusions in D2:
 • No cloud sync enablement.
 • No multi-draft support.
 • No event-sourced customer lifecycle or customer projections in D2.
+• No introduction of alternative money abstractions beyond core/formatting Money v1.
+• No preview PDF or document rendering changes until financial stabilization is complete.
+
+D2.4 — Financial Representation Stabilization (ACTIVE)
+• Alignment of Draft, UI, and projection monetary representations.
+• Elimination of floating‑point money in draft and UI paths.
+• Validation of formatting (currency symbol, grouping, prominence).
+• This work is prerequisite to final tax hardening and preview work.
 
 D2.3 — Pre-Finalization Document Preview (OPERATIONAL, LOCKED)
 
@@ -395,6 +409,8 @@ UI Design System — Operational Status (AMENDED)
       * Suggestions are visually continuous with the input field
   – Filtering and ranking remain upstream responsibilities
   – UI primitives receive pre-filtered suggestion lists only
+
+• Financial UI components (invoice line items, amounts) are now validated against real draft data and considered production‑directional.
 
 • These primitives are no longer experimental.
 • Future UI work must compose from these primitives, not bypass or replace them.

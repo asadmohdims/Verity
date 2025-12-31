@@ -47,8 +47,8 @@ import com.verity.core.formatting.money.Money
 @Composable
 fun VerityInvoiceLineItemRow(
     description: String,
-    quantity: Double,
-    rate: Double,
+    quantity: Long,
+    rate: Money,
     amount: Money,
     hsnCode: String?,
     modifier: Modifier = Modifier
@@ -122,7 +122,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toLong().toString(),
+                                text = quantity.toString(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -136,7 +136,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = Money.ofRupees(rate.toLong()).format(),
+                                text = rate.format(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -151,7 +151,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toLong().toString(),
+                                text = quantity.toString(),
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -165,7 +165,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = Money.ofRupees(rate.toLong()).format(),
+                                text = rate.format(),
                                 style = VerityTextStyle.Label
                             )
                         }

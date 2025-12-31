@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VerityTheme(
-                darkTheme = false,
+                darkTheme = true,
                 typography = VerityBaseTypography
             ) {
                 VeritySurface(
@@ -244,49 +244,10 @@ private fun LandingScreen(
 
         }
 
-        VeritySpacer(size = VeritySpace.Large)
 
-        VeritySection(title = "DEBUG · Invoice Line Item Review") {
-            VerityInvoiceLineItemRow(
-                description = "Stainless Steel Bolt M12 — High tensile, zinc coated, suitable for outdoor structural applications as per IS 1367 / DIN 933 specification",
-                quantity = 10000.0,
-                rate = 125000.0,
-                amount = Money.ofRupees(98765432),
-                hsnCode = "731815"
-            )
-
-            VeritySpacer(size = VeritySpace.Small)
-
-            VerityInvoiceLineItemRow(
-                description = "Nut",
-                quantity = 1.0,
-                rate = 5.0,
-                amount = Money.ofRupees(5),
-                hsnCode = "731816"
-            )
-
-            VeritySpacer(size = VeritySpace.Small)
-
-            VerityInvoiceLineItemRow(
-                description = "Packing Material",
-                quantity = 0.0,
-                rate = 0.0,
-                amount = Money.ofRupees(0),
-                hsnCode = "481910"
-            )
-
-            VeritySpacer(size = VeritySpace.Small)
-
-            VerityInvoiceLineItemRow(
-                description = "Custom Fabrication Charge",
-                quantity = 2.0,
-                rate = 15000.0,
-                amount = Money.ofRupees(30000),
-                hsnCode = ""
-            )
-        }
 
         VeritySpacer(size = VeritySpace.ExtraLarge)
+
 
         VeritySection(title = "DEBUG · VerityEditBlock") {
 
@@ -297,7 +258,7 @@ private fun LandingScreen(
             var rate by remember { mutableStateOf("") }
 
             VerityEditBlock(
-                title = "Il1O0 123456789 ₹₹₹",
+                title = "Il1O0 123456789 ₹ ₹ ₹",
                 mode = VerityEditMode.Add,
                 expanded = expanded,
                 collapsedActionLabel = "Add Line Item",
@@ -350,5 +311,71 @@ private fun LandingScreen(
             }
         }
         // --- END DEBUG SANDBOX ---
+
+        VeritySpacer(size = VeritySpace.Large)
+
+        VeritySection(title = "DEBUG · VerityButton Variants") {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                VerityButton(
+                    label = "Primary",
+                    role = VerityButtonRole.Primary,
+                    state = VerityButtonState.Enabled,
+                    onClick = {}
+                )
+
+                VerityButton(
+                    label = "Secondary",
+                    role = VerityButtonRole.Secondary,
+                    state = VerityButtonState.Enabled,
+                    onClick = {}
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Small)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                VerityButton(
+                    label = "Primary (Disabled)",
+                    role = VerityButtonRole.Primary,
+                    state = VerityButtonState.Disabled,
+                    onClick = {}
+                )
+
+                VerityButton(
+                    label = "Secondary (Disabled)",
+                    role = VerityButtonRole.Secondary,
+                    state = VerityButtonState.Disabled,
+                    onClick = {}
+                )
+            }
+
+            VeritySpacer(size = VeritySpace.Small)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                VerityButton(
+                    label = "Destructive",
+                    role = VerityButtonRole.Destructive,
+                    state = VerityButtonState.Enabled,
+                    onClick = {}
+                )
+
+                VerityButton(
+                    label = "Destructive (Disabled)",
+                    role = VerityButtonRole.Destructive,
+                    state = VerityButtonState.Disabled,
+                    onClick = {}
+                )
+            }
+        }
     }
 }

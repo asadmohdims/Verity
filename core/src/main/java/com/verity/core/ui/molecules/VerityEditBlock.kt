@@ -43,6 +43,7 @@ fun VerityEditBlock(
     onAdd: (() -> Unit)? = null,
     onSave: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -113,12 +114,52 @@ fun VerityEditBlock(
                     }
 
                     VerityEditMode.Edit -> {
-                        renderActionRow(
-                            primaryLabel = "Save",
-                            secondaryLabel = "Cancel",
-                            onPrimary = onSave,
-                            onSecondary = onCancel
-                        )
+                        VeritySpacer(size = VeritySpace.Small)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Destructive delete on far left (optional)
+                            if (onDelete != null) {
+                                VerityButton(
+                                    label = "Delete",
+                                    role = VerityButtonRole.Destructive,
+                                    onClick = onDelete
+                                )
+                            }
+                            if (onDelete != null) {
+                                VeritySpacer(
+                                    size = VeritySpace.Medium,
+                                    horizontal = true
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (onCancel != null) {
+                                VerityButton(
+                                    label = "Cancel",
+                                    role = VerityButtonRole.Secondary,
+                                    onClick = onCancel
+                                )
+                            }
+
+                            if (onCancel != null && onSave != null) {
+                                VeritySpacer(
+                                    size = VeritySpace.Medium,
+                                    horizontal = true
+                                )
+                            }
+
+                            if (onSave != null) {
+                                VerityButton(
+                                    label = "Save",
+                                    role = VerityButtonRole.Primary,
+                                    onClick = onSave
+                                )
+                            }
+                        }
                     }
 
                     VerityEditMode.View -> {

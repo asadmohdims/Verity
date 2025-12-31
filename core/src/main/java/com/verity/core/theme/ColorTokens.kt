@@ -17,6 +17,7 @@ data class VerityColors(
     val background: Background,
     val surface: Surface,
     val borders: Borders,
+    val cta: CTA,
     val text: Text,
     val state: State,
     val finance: Finance
@@ -63,6 +64,36 @@ data class VerityColors(
         val subtle: Color,
         val strong: Color,
         val divider: Color
+    )
+
+    /**
+     * Call‑to‑Action (CTA) colors.
+     *
+     * Encodes interaction intent, not domain meaning.
+     * These colors are used exclusively by buttons and
+     * other explicit user actions.
+     */
+    data class CTA(
+        /** Primary filled action */
+        val primary: Color,
+
+        /** Disabled primary action */
+        val primaryDisabled: Color,
+
+        /** Secondary / outlined action border */
+        val secondaryBorder: Color,
+
+        /** Secondary / outlined action text */
+        val secondaryText: Color,
+
+        /** Disabled secondary text */
+        val secondaryTextDisabled: Color,
+
+        /** Destructive action (outlined, enabled) */
+        val destructive: Color,
+
+        /** Disabled destructive action */
+        val destructiveDisabled: Color
     )
 
     data class Text(
