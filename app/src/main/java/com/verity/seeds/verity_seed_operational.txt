@@ -13,17 +13,37 @@ FOUNDATION PHASES — COMPLETED & LOCKED
 DELIVERY PHASES — IN PROGRESS
 • D1 — Invoice Workspace (Read-only semantics) ✅ COMPLETED & LOCKED
 • D2 — Draft Creation & Core Workflows ▶️ ACTIVE
-    – Financial correctness (Money + tax determinism) is now partially implemented and being stabilized.
+    – Draft-level financial correctness (Money + tax determinism) is implemented, verified, and test-locked.
 • D3 — Experience, Sync & Production ▶️ UPCOMING
 
 ──────────────────────────────────────
+D2 — PRIMARY EXECUTION FOCUS (AUTHORITATIVE)
+
+D2 is now focused on EXPERIENCE CONSOLIDATION of the Invoice Workspace.
+
+This includes:
+• Screen-level structure and chrome (top app bar, headings, navigation affordances)
+• Visual hierarchy for dense financial information
+• Interaction reassurance (snackbars, confirmations, feedback)
+• Alignment of all UI surfaces with the Verity design system
+• Preparing the Workspace for preview and finalization (without enabling them)
+
+This explicitly excludes:
+• Any new financial or tax logic
+• Any reducer or Draft Spine changes
+• Any persistence, projection, or replay work
+• Any invoice finalization or numbering workflows
+• Any cloud sync enablement
+
+──────────────────────────────────────
 Current Focus:
-- D2 execution is focused on stabilizing draft‑level financial correctness:
-  • Money represented as Long (minor units) end‑to‑end
-  • Deterministic rounding rules
-  • Line item → summary → tax consistency
-- UI polish is limited strictly to reinforcing financial clarity (line items, money formatting).
-- Preview and finalization remain deferred.
+- Draft-level financial correctness is LOCKED and must not be modified.
+- Current execution effort is directed at Workspace experience and clarity:
+  • Screen chrome and navigation affordances
+  • Information hierarchy and scanability
+  • Interaction feedback and reassurance
+- All work must preserve reducer-derived correctness invariants.
+- Preview and finalization remain explicitly deferred.
 
 Toolchain Status (Operational, Confirmed)
 
@@ -75,6 +95,21 @@ D2 — Core Workflows (Operational Clarifications)
 D2 introduces interactive draft creation while preserving all domain, replay, and projection laws.
 Drafts are explicitly UI-only workflow state and are not domain truth.
 
+──────────────────────────────────────
+Draft Lifecycle & Volatility (Operational, Locked)
+
+• Drafts are UI-only workflow state and are not domain truth.
+• Drafts are in-memory and disposable by design.
+• Process death, background eviction, or app restart results in complete draft loss.
+• Draft recovery or autosave semantics are explicitly out of scope unless
+  reintroduced by future, explicit design.
+• Only one active draft may exist at any time.
+• Parallel drafts, multi-window draft editing, or background draft duplication
+  are prohibited.
+• External navigation or deep-links while a draft exists must require explicit
+  user choice (continue or discard).
+
+
 D2.1 — Draft Spine (COMPLETE & LOCKED)
 • In-memory, single-draft model owned by a Draft Store.
 • Draft mutation flows exclusively through Draft Store APIs.
@@ -117,8 +152,8 @@ D2.2.A — Atom Inventory (Authoritative for D2)
   – Draft mutation: transportDetails
   – Status: COMPLETE & LOCKED
 
-• Atom 5 — Summary (Derived)
-  – Subtotal, tax placeholder, grand total
+• Atom 5 — Summary (Derived) (Context / Locked)
+  – Items subtotal, freight inclusion, GST tax (CGST/SGST/IGST), grand total
   – Derived exclusively in reducer
   – Status: COMPLETE & LOCKED
 
@@ -127,21 +162,15 @@ D2.2.A — Atom Inventory (Authoritative for D2)
   – Propagated end-to-end
   – Status: COMPLETE & LOCKED
 
-• Atom 6.2 — Tax Model (GST)
+• Atom 6.2 — Tax Model (GST) (Context / Locked)
   – CGST / SGST / IGST breakdown
   – DocumentType-aware (Invoice vs Challan)
   – Draft-derived only (reducer-owned)
   – Buyer-state–aware via Customer.stateCode
   – Seller-state temporarily assumed (explicit TODO)
   – Status: COMPLETE & LOCKED
+  – Financial invariants are enforced via JVM reducer tests
 
-• Atom 1 — Billed To (Customer selection):
-  – Draft mutation path implemented via Draft Store.
-  – Read path defined via CustomerAutocompleteDataSource (CRUD-backed).
-  – Data source reads from a designated read-only Customer CRUD table.
-  – ViewModel wiring complete; no replay or projection dependency.
-  – Subsequent atoms (Shipped To, Line Items, Freight, Summary) are gated behind Atom 1 completion.
-  – Atom 1 is considered complete once UI → ViewModel → Draft Store wiring is functional and visible on screen.
 
 Resolved UX Direction — Autocomplete & Input Interactions (Locked)
 
@@ -190,11 +219,11 @@ Explicit Exclusions in D2:
 • No introduction of alternative money abstractions beyond core/formatting Money v1.
 • No preview PDF or document rendering changes until financial stabilization is complete.
 
-D2.4 — Financial Representation Stabilization (ACTIVE)
-• Alignment of Draft, UI, and projection monetary representations.
-• Elimination of floating‑point money in draft and UI paths.
-• Validation of formatting (currency symbol, grouping, prominence).
-• This work is prerequisite to final tax hardening and preview work.
+D2.4 — Financial Representation Stabilization (COMPLETE & LOCKED) (Context / Locked)
+• Draft monetary representation (Long minor units) is enforced end‑to‑end.
+• UI, reducer, and formatting layers are aligned and verified.
+• Floating‑point money is fully eliminated from draft and UI paths.
+• Tax computation semantics are hardened and test‑backed.
 
 D2.3 — Pre-Finalization Document Preview (OPERATIONAL, LOCKED)
 
@@ -247,6 +276,352 @@ Document Viewing Law
 • Authoritative PDF generation occurs only after finalization (D2+).
 • All finalized documents are rendered via a single read‑only PDF viewer.
 • Documents are never edited in place after finalization.
+
+NAVIGATION & WORKSPACE SEMANTICS (OPERATIONAL, LOCKED)
+
+The Invoice / Challan Workspace is the gravitational center of the application.
+It is a long-lived workbench, not a menu destination or dashboard.
+
+Landing & Gravity:
+• Application launch always lands in the Workspace.
+• There is no separate Home or Main screen.
+• Workspace gravity is preserved across all navigation scenarios.
+
+Empty-State Guidance:
+• When no draft exists, the Workspace may present guidance actions
+  (e.g. Create Document, Search, Customers).
+• Empty-state guidance is instructional, not navigational.
+• Guidance disappears immediately once a draft is created.
+
+Active Draft Semantics:
+• When a draft exists, the Workspace canvas is reserved exclusively
+  for document content.
+• No dashboards, summaries, or navigation surfaces may appear inside
+  the Workspace body during an active draft.
+
+Chrome-Level Access:
+• Access to Search, Customers, and future supporting spaces must be
+  provided only via application chrome (top app bar / overflow).
+• Chrome-level access must require explicit user intent and must not
+  visually compete with Workspace content.
+
+Bottom Navigation:
+• Persistent bottom navigation is prohibited during active drafts.
+• The Workspace is a state, not a tab, and must not be treated as a peer
+  to supporting surfaces.
+
+Back Navigation:
+• Back navigation may not cross domain finalization boundaries.
+• Back navigation must return to the originating context, not a hub.
+• Back navigation must never implicitly resolve business intent.
+
+──────────────────────────────────────
+CANONICAL NAVIGATION SCENARIOS (AUTHORITATIVE)
+
+These scenarios define the *intent-preserving navigation guarantees* of Verity.
+They describe allowed state transitions and cognitive flows.
+They are binding for all UI, navigation, and interaction design.
+They do not prescribe UI components or visual layout.
+
+──────────────────────────────────────
+Scenario N1 — Draft → Search → Draft (In‑Workflow Reference)
+
+Intent:
+While creating an invoice, the user may need to reference historical billing
+information without abandoning or mutating the active draft.
+
+Flow:
+• User is actively working inside the Invoice Workspace with an in‑progress draft.
+• A question arises (e.g. prior rate, tax structure, freight).
+• User navigates to Search directly from the Workspace.
+• Search opens in read‑only mode, scoped to historical invoices.
+• User refines search hierarchically (e.g. Product → Customer or Customer → Product).
+• User opens one or more historical invoices in read‑only view.
+• No mutation or editing is possible in Search or document view.
+• User exits Search and returns to the same draft Workspace.
+
+Guarantees:
+• The active draft is fully preserved in memory.
+• No draft state is lost, recomputed, or reset.
+• Returning to the draft feels seamless and continuous.
+• Search acts as a reference tool, not a task switch.
+
+──────────────────────────────────────
+Scenario N2 — Search → Read‑Only Invoice → Create From Existing
+
+Intent:
+The user begins with historical recall and chooses to reuse a known billing
+pattern as the basis for a new invoice.
+
+Flow:
+• User starts in Search mode.
+• User searches for historical invoices by product, customer, or both.
+• User opens a historical invoice in read‑only mode.
+• From the read‑only invoice, user explicitly chooses “Create new invoice from this”.
+• A new draft is created and opened in the Invoice Workspace.
+
+Copy Semantics:
+Copied into the new draft:
+• Customer (Billed To / Shipped To configuration)
+• Line items, quantities, rates
+• Tax model and GST configuration
+• Freight and transportation details (if present)
+
+Explicitly not copied:
+• Invoice number
+• Dates
+• Payments or ledger effects
+• E‑way bill or compliance identifiers
+• Finalized / immutable state
+
+Guarantees:
+• The original invoice remains immutable and unmodified.
+• The new invoice is a fresh draft with no historical side effects.
+• The transition is explicit and intentional.
+• The user clearly understands they are creating, not editing.
+
+──────────────────────────────────────
+Scenario N3 — Job Work via Challan → Invoice (Asymmetric Finalization)
+
+──────────────────────────────────────
+AUTHORITATIVE STATE DIAGRAMS (DOCUMENT & ARTIFACT LIFECYCLES)
+
+These diagrams describe **domain truth and artifact lifecycles**, not UI screens.
+They are authoritative references for correctness, failure handling, and replay safety.
+Draft state is UI-only and excluded from domain truth.
+
+──────────────────────────────────────
+Challan — Domain & Artifact Lifecycle
+
+[ Draft ]
+    |
+    | Finalize
+    v
+[ Finalized ]
+    |
+    | (Intent declared at finalization)
+    |
+    +-----------------------------+
+    |                             |
+    |                             |
+    v                             v
+[ Standalone Path ]          [ Invoice-Linked Path ]
+    |                             |
+    | Generate PDF                | Create Invoice
+    v                             v
+[ PDF Generated ]           [ Awaiting Invoice ]
+                                  |
+                                  | Invoice Finalized
+                                  | + Linkage Atomic
+                                  v
+                           [ Linked ]
+                                  |
+                                  | Generate PDF
+                                  v
+                           [ PDF Generated ]
+
+Properties:
+• Exactly one domain finalization per Challan.
+• PDF generation is post-finalization and artifact-only.
+• “Awaiting Invoice” is a finalized Challan with incomplete business process.
+• PDF absence is a recoverable, non-corrupt state.
+• PDF generation never mutates domain truth.
+
+──────────────────────────────────────
+Invoice — Domain Lifecycle
+
+[ Draft ]
+    |
+    | Finalize
+    v
+[ Finalized ]
+
+Special Rule:
+• If the Invoice originates from a Challan, Invoice finalization and
+  DocumentLinkCreated emission must be atomic.
+
+
+AMENDMENT VS NEW DOCUMENT SEMANTICS (FUTURE, LOCKED)
+
+This section defines forward-looking but constitutionally locked semantics
+for document correction and must not be violated by future implementation phases.
+
+New Document (Reuse):
+• Create from existing always produces a new, independent document.
+• The source document remains immutable and historically correct.
+• Reuse copies structure and values, never identity or compliance fields.
+• This flow is forward-only and non-corrective.
+
+Amendment (Correction):
+• An amendment represents correction of a previously finalized document.
+• Amendments are new documents, never edits or replacements.
+• The original document is never mutated or deleted.
+• Amendment relationships are additive domain facts
+  (e.g. DocumentAmended events).
+• Amendments must be explicitly initiated and clearly labelled.
+• Amendments must never reuse Create-from-existing semantics.
+• Projection layers may reflect supersession or net effects, but
+  domain truth remains append-only.
+
+Amendment workflows are deferred to D3+ but their semantics are locked.
+
+──────────────────────────────────────
+Document Linkage — Domain Fact (Not a State)
+
+DocumentLinkCreated
+  sourceDocument = Challan
+  targetDocument = Invoice
+  relationType   = JobWorkInvoice
+
+Notes:
+• Linkage is an independent, append-only domain fact.
+• Neither document is mutated by linkage.
+• Projections derive bidirectional visibility from linkage events.
+
+──────────────────────────────────────
+Artifact (PDF) Lifecycle — Derived
+
+[ Not Generated ]
+        |
+        | (Derivation conditions satisfied)
+        v
+[ Generated ]
+
+Derivation Conditions:
+• Standalone Challan → immediately after finalization.
+• Invoice-Linked Challan → after atomic linkage exists.
+• Invoice → immediately after Invoice finalization.
+
+Rules:
+• Artifacts are derivable, idempotent, and retriable.
+• Artifacts are never sources of truth.
+• Missing artifacts are recoverable via replay or retry.
+
+──────────────────────────────────────
+Mental Model Summary
+
+• Documents finalize once.
+• Business processes may continue after finalization.
+• Relationships evolve via additive facts.
+• Artifacts appear when processes complete.
+
+---
+
+Intent:
+Support job‑work / repair workflows where goods move without sale,
+work is performed later, and billing occurs independently of movement,
+while preserving document immutability and legal correctness.
+
+This scenario explicitly resolves circular reference concerns between
+Challan and Invoice by enforcing asymmetric finalization and event‑driven linkage.
+
+Flow:
+• User creates a Challan draft representing movement of goods for job work
+  (e.g. product value ₹50,000; no sale).
+• User finalizes the Challan.
+• Challan receives its own document number and becomes immutable.
+• No invoice reference is required at Challan finalization time.
+
+• From the finalized Challan, user explicitly chooses
+  “Create Job Work Invoice from this Challan”.
+• A new Invoice draft is created and opened in the Workspace.
+
+Draft Initialization Semantics:
+Copied into the Invoice draft:
+• Customer (Billed To / Shipped To configuration)
+• Referenced product / goods description from the Challan
+• Challan number as a source reference
+• Applicable tax context (document‑type aware)
+
+Not copied into the Invoice draft:
+• Challan monetary value (goods value is not billed)
+• Any finalized monetary totals
+• Dates, payments, ledger effects
+• Immutable or compliance identifiers
+
+• User adds job‑work / service line items to the Invoice draft
+  (e.g. ₹1,000 of work performed).
+• User previews and finalizes the Invoice.
+• Invoice receives its own document number and becomes immutable.
+
+
+Linkage Semantics (Post‑Finalization):
+• After Invoice finalization, a DocumentLinkCreated domain event is emitted:
+  – sourceDocument: Challan
+  – targetDocument: Invoice
+  – relationType: JobWorkInvoice
+• The Challan itself is never mutated.
+• Linkage is derived into projections for navigation and visibility.
+
+Artifact Generation Semantics (Bifurcated)
+
+Challan artifact (PDF) generation is explicitly decoupled from Challan
+domain finalization and follows one of two authoritative paths based on
+declared business intent.
+
+Path A — Standalone Challan
+
+Intent:
+The Challan represents goods movement without any associated Invoice.
+
+Semantics:
+• User creates and finalizes the Challan.
+• Challan becomes immutable domain truth.
+• A Challan PDF is generated immediately upon finalization.
+• The generated PDF is authoritative and final.
+• No Invoice linkage is expected or required.
+
+Path B — Invoice‑Linked Challan (Job Work Flow)
+
+Intent:
+The Challan represents goods movement that will be billed via a subsequent
+Job Work Invoice.
+
+Semantics:
+• User creates and finalizes the Challan with explicit linkage intent.
+• Challan becomes immutable domain truth.
+• No Challan PDF is generated at this stage.
+• User creates an Invoice from the finalized Challan.
+• User finalizes the Invoice.
+• Document linkage is finalized via a DocumentLinkCreated event.
+• Only after successful linkage is established:
+  – A Challan PDF is generated.
+  – The generated PDF includes the linked Invoice reference.
+• The generated Challan PDF is authoritative and final.
+
+Resolution Rules:
+• A finalized Challan must explicitly declare whether it is Standalone or
+  Invoice‑Linked at finalization time.
+• An Invoice‑Linked Challan may not be dispatched or externally shared
+  until its PDF artifact is generated.
+• If an Invoice‑Linked Challan is abandoned (no Invoice created),
+  the system must require an explicit resolution:
+  – Convert to Standalone and generate PDF, or
+  – Cancel the Challan.
+• Challan PDFs are immutable once generated and are never regenerated.
+
+Guarantees:
+• Challan and Invoice are finalized independently.
+• No document depends on future facts for finalization.
+• Immutability is preserved for both documents.
+• Circular dependency is resolved via additive linkage events.
+• Search and document views clearly display the relationship once linked.
+• Users never experience dual‑draft or co‑finalization ambiguity.
+
+Constraints:
+• Challan must always be finalized before its job‑work Invoice.
+• An Invoice created via this flow must reference exactly one Challan.
+• A Challan may link to at most one Invoice.
+• Editing or mutating finalized documents is strictly prohibited.
+
+──────────────────────────────────────
+Navigation Law (Derived)
+
+• Search is a read‑only historical memory surface.
+• Search may be entered from Workspace or as a starting context.
+• Workspace ↔ Search transitions must preserve draft continuity.
+• Creation from history is explicit and never implicit.
+• Draft creation and historical documents are never visually or semantically conflated.
 
 ──────────────────────────────────────
 DOCUMENT LINKAGE (INVOICE ↔ CHALLAN) — OPERATIONAL, LOCKED
@@ -350,6 +725,21 @@ Operational Laws (Frozen for Foundation Phases)
 • Projection writers must never be invoked directly outside the PlatformReplayCoordinator.
 • Replay execution order is deterministic and centrally enforced.
 • Introduction of alternate replay entry points is a constitutional violation.
+
+• **Invoice-from-Challan Linkage Atomicity Law**
+  – When an Invoice is created from a Challan, the creation of the
+    Invoice finalization event and the corresponding
+    DocumentLinkCreated event **must be atomic**.
+  – It must be impossible for a finalized Invoice originating from a
+    Challan to exist without its linkage fact.
+  – Linkage creation may not be asynchronous, best-effort, or deferred.
+  – If atomicity cannot be guaranteed, Invoice finalization must fail.
+
+Rationale:
+This law guarantees that document relationships are never partially
+materialized, preserves replay determinism, and ensures that all
+derived artifacts (including PDFs) remain safely derivable from domain
+truth.
 
 ──────────────────────────────────────
 Behavioural Laws for the Assistant:

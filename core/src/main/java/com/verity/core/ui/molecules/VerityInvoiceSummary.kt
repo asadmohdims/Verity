@@ -101,14 +101,14 @@ fun VerityInvoiceSummary(
                     VeritySpacer(size = VeritySpace.Medium)
 
                     SummaryRow(
-                        label = "Add CGST @ ${cgst.first}%",
+                        label = "CGST @ ${cgst.first}%",
                         value = cgst.second.format()
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
 
                     SummaryRow(
-                        label = "Add SGST @ ${sgst.first}%",
+                        label = "SGST @ ${sgst.first}%",
                         value = sgst.second.format()
                     )
                 }
@@ -117,7 +117,7 @@ fun VerityInvoiceSummary(
                     VeritySpacer(size = VeritySpace.Medium)
 
                     SummaryRow(
-                        label = "Add IGST @ ${igst.first}%",
+                        label = "IGST @ ${igst.first}%",
                         value = igst.second.format()
                     )
                 }

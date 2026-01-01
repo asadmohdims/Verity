@@ -32,6 +32,11 @@ Status:
 • Document Type (Invoice / Challan) is draft-level and end-to-end.
 • Draft-level GST tax is implemented, reducer-derived, and Invoice/Challan aware.
 
+• Draft-level financial correctness is reducer-derived and test-locked.
+• No UI layer may derive, recompute, or reinterpret monetary values.
+• All draft-level totals (items subtotal, freight inclusion, tax, grand total)
+  are single-sourced from the Draft Reducer.
+
 • Line Item Row is now a first‑class, dedicated UI molecule (read‑only projection) and no longer uses generic list items.
 
 This amendment records achieved facts only.
@@ -161,6 +166,14 @@ Rules:
 
 Clarification:
 • Draft-level monetary fields MUST align with domain monetary representation (Long minor units) even though drafts are UI-only.
+
+Draft Reducer Testing Requirement (Locked)
+
+• All Draft Reducers that derive financial or document-critical state
+  MUST be covered by JVM unit tests.
+• Financial invariants must be enforced by tests, not UI validation.
+• UI correctness must depend exclusively on reducer output.
+• A Draft Reducer without tests is considered incomplete.
 
 ──────────────────────────────
 
@@ -503,10 +516,13 @@ Implemented sections:
   – Freight participates in summary math
 
 • Summary
-  – Subtotal derived from line items
-  – Freight derived from Transportation Mode
-  – GST tax derived via Draft Reducer (CGST / SGST / IGST)
-  – Grand total recalculated deterministically
+  – Follows real-world GST invoice calculation narrative:
+      1. Items Subtotal (line items only)
+      2. Additions (Freight from Transportation Mode)
+      3. Tax Application (CGST+SGST or IGST, draft-level)
+      4. Final Payable Amount
+  – Summary is a verification surface, not a calculation surface.
+  – All values are reducer-derived, read-only, and test-locked.
 ──────────────────────────────
 
 5A-A. Transportation Mode Law (Locked)
