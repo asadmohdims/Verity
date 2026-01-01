@@ -44,6 +44,7 @@ import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
 import com.verity.core.ui.molecules.VerityTransportSummaryRow
+import com.verity.core.ui.molecules.VerityInvoiceSummary
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.TextField
@@ -111,11 +112,9 @@ fun InvoiceWorkspaceScreen(
 ) {
     val billedToQuery by viewModel.billedToQuery.collectAsState()
     val billedToSuggestions by viewModel.billedToSuggestions.collectAsState()
-    val isBilledToSearching by viewModel.isBilledToSearching.collectAsState()
 
     val shippedToQuery by viewModel.shippedToQuery.collectAsState()
     val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
-    val isShippedToSearching by viewModel.isShippedToSearching.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -653,64 +652,32 @@ fun InvoiceWorkspaceScreen(
         // ─────────────────────────────────────────────
         // Summary Section
         // ─────────────────────────────────────────────
-        VeritySurface(
-            type = VeritySurfaceType.Assist,
+        VeritySection(
+            title = "Summary",
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
-            VeritySection(title = "Summary") {
-                VerityText(
-                    text = "Subtotal: ${"%.2f".format(draft.summary.subtotalPaise / 100.0)}",
-                    style = VerityTextStyle.Body
-                )
-
-                VeritySpacer(size = VeritySpace.ExtraSmall)
-
-                VerityText(
-                    text = "Freight: ${"%.2f".format((draft.transportDetails?.freightPaise ?: 0L) / 100.0)}",
-                    style = VerityTextStyle.Body
-                )
-
-                draft.summary.tax?.let { tax ->
-                    VeritySpacer(size = VeritySpace.Small)
-                    when (tax.mode) {
-                        com.verity.invoice.draft.DraftTaxMode.INTRA_STATE -> {
-                            tax.cgst?.let {
-                                VerityText(
-                                    text = "CGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
-                                    style = VerityTextStyle.Body
-                                )
-                            }
-                            tax.sgst?.let {
-                                VerityText(
-                                    text = "SGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
-                                    style = VerityTextStyle.Body
-                                )
-                            }
-                        }
-                        com.verity.invoice.draft.DraftTaxMode.INTER_STATE -> {
-                            tax.igst?.let {
-                                VerityText(
-                                    text = "IGST (${it.ratePercent}%): ${"%.2f".format(it.amountPaise / 100.0)}",
-                                    style = VerityTextStyle.Body
-                                )
-                            }
-                        }
-                    }
-                    VeritySpacer(size = VeritySpace.ExtraSmall)
-                    VerityText(
-                        text = "Tax Total: ${"%.2f".format(draft.summary.taxTotalPaise / 100.0)}",
-                        style = VerityTextStyle.Body
-                    )
-                }
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                VeritySpacer(size = VeritySpace.Small)
-                VerityText(
-                    text = "Grand Total: ${"%.2f".format(draft.summary.grandTotalPaise / 100.0)}",
-                    style = VerityTextStyle.Title
-                )
-            }
+            VerityInvoiceSummary(
+                itemsSubtotal = Money.ofPaise(draft.summary.subtotalPaise),
+                freight = draft.transportDetails?.freightPaise?.let { Money.ofPaise(it) },
+                taxableSubtotal =
+                    Money.ofPaise(
+                        draft.summary.subtotalPaise +
+                            (draft.transportDetails?.freightPaise ?: 0L)
+                    ),
+                cgst =
+                    draft.summary.tax?.cgst?.let {
+                        it.ratePercent.toInt() to Money.ofPaise(it.amountPaise)
+                    },
+                sgst =
+                    draft.summary.tax?.sgst?.let {
+                        it.ratePercent.toInt() to Money.ofPaise(it.amountPaise)
+                    },
+                igst =
+                    draft.summary.tax?.igst?.let {
+                        it.ratePercent.toInt() to Money.ofPaise(it.amountPaise)
+                    },
+                totalAfterTax = Money.ofPaise(draft.summary.grandTotalPaise)
+            )
         }
         } // closes Column
     } // closes Box
@@ -808,6 +775,14 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
         customer = DraftCustomer(
             displayName = "Bhargava Industries",
             gstin = "27AAACB1234Z1Z"
+        ),
+        billedTo = com.verity.invoice.draft.DraftAddress(
+            name = "Bhargava Industries",
+            addressLine1 = "Industrial Area",
+            city = "Mumbai",
+            state = "Maharashtra",
+            stateCode = "27",
+            pincode = "400001"
         ),
         lineItems = listOf(
             DraftLineItem(

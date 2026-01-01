@@ -70,8 +70,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             VerityTheme(
-                darkTheme = false
-                ,
+                darkTheme = false,
                 typography = VerityBaseTypography
             ) {
                 VeritySurface(

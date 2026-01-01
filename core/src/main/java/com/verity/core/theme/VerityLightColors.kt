@@ -44,7 +44,7 @@ val VerityLightColors = VerityColors(
 
         // Dense / summary / conclusion zones
         // Clearly recessed from base (≈ −12% luminance)
-        assist = Color(0xFFE3E7EE),
+        assist = Color(0xFFE6F0ED),
 
         // Interactive edit blocks (scoped brand tint)
         assistInteractive = Color(0xFFE0F4F1),

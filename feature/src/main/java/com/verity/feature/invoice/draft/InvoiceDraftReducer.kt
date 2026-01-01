@@ -161,9 +161,12 @@ object InvoiceDraftReducer {
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {
 
-        val itemsTotalPaise: Long = draft.lineItems.sumOf { it.quantity * it.ratePaise }
-        val freightPaise: Long = draft.transportDetails?.freightPaise ?: 0L
-        val subtotalPaise: Long = itemsTotalPaise + freightPaise
+        val itemsSubtotalPaise: Long =
+            draft.lineItems.sumOf { it.quantity * it.ratePaise }
+        val freightPaise: Long =
+            draft.transportDetails?.freightPaise ?: 0L
+        val taxableSubtotalPaise: Long =
+            itemsSubtotalPaise + freightPaise
 
         // -----------------------------
         // Draft Tax Calculation (Atom 6.2)
@@ -188,11 +191,11 @@ object InvoiceDraftReducer {
                         mode = DraftTaxMode.INTRA_STATE,
                         cgst = DraftTaxComponent(
                             ratePercent = GST_RATE_HALF_PERCENT,
-                            amountPaise = (subtotalPaise * GST_RATE_HALF_PERCENT) / 100
+                            amountPaise = (taxableSubtotalPaise * GST_RATE_HALF_PERCENT) / 100
                         ),
                         sgst = DraftTaxComponent(
                             ratePercent = GST_RATE_HALF_PERCENT,
-                            amountPaise = (subtotalPaise * GST_RATE_HALF_PERCENT) / 100
+                            amountPaise = (taxableSubtotalPaise * GST_RATE_HALF_PERCENT) / 100
                         )
                     )
                 } else {
@@ -200,7 +203,7 @@ object InvoiceDraftReducer {
                         mode = DraftTaxMode.INTER_STATE,
                         igst = DraftTaxComponent(
                             ratePercent = GST_RATE_TOTAL_PERCENT,
-                            amountPaise = (subtotalPaise * GST_RATE_TOTAL_PERCENT) / 100
+                            amountPaise = (taxableSubtotalPaise * GST_RATE_TOTAL_PERCENT) / 100
                         )
                     )
                 }
@@ -213,11 +216,11 @@ object InvoiceDraftReducer {
                 (it.igst?.amountPaise ?: 0L)
             } ?: 0L
 
-        val grandTotalPaise = subtotalPaise + taxTotalPaise
+        val grandTotalPaise = taxableSubtotalPaise + taxTotalPaise
 
         return draft.copy(
             summary = DraftSummary(
-                subtotalPaise = subtotalPaise,
+                subtotalPaise = itemsSubtotalPaise, // items ONLY
                 tax = taxBreakdown,
                 taxTotalPaise = taxTotalPaise,
                 grandTotalPaise = grandTotalPaise

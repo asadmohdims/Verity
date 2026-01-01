@@ -83,7 +83,7 @@ fun VerityTransportSummaryRow(
                     if (freight != null) {
                         VerityText(
                             text = freight.format(),
-                            style = VerityTextStyle.Body
+                            style = VerityTextStyle.Title
                         )
                     }
                 }
@@ -92,28 +92,41 @@ fun VerityTransportSummaryRow(
                     VeritySpacer(size = VeritySpace.Medium)
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (!vehicleNumber.isNullOrBlank()) {
-                            VerityText(
-                                text = "Vehicle: $vehicleNumber",
-                                style = VerityTextStyle.Caption
-                            )
-                        }
 
-                        if (!vehicleNumber.isNullOrBlank() && !grOrLrNumber.isNullOrBlank()) {
-                            VerityText(
-                                text = " · ",
-                                style = VerityTextStyle.Caption
-                            )
+                        if (!vehicleNumber.isNullOrBlank()) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                VerityText(
+                                    text = "VEHICLE",
+                                    style = VerityTextStyle.Caption
+                                )
+                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                VerityText(
+                                    text = vehicleNumber,
+                                    style = VerityTextStyle.Label
+                                )
+                            }
                         }
 
                         if (!grOrLrNumber.isNullOrBlank()) {
-                            VerityText(
-                                text = "GR: $grOrLrNumber",
-                                style = VerityTextStyle.Caption
-                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                VerityText(
+                                    text = "GR",
+                                    style = VerityTextStyle.Caption
+                                )
+                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                VerityText(
+                                    text = grOrLrNumber,
+                                    style = VerityTextStyle.Label
+                                )
+                            }
                         }
                     }
                 }
