@@ -1,3 +1,4 @@
+
 package com.verity
 
 import android.os.Bundle
@@ -39,6 +40,8 @@ import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Scaffold
+import com.verity.core.ui.molecules.VerityTopAppBar
 import java.util.UUID
 import com.verity.platform.database.entities.CustomerEntity
 import androidx.compose.foundation.layout.Row
@@ -47,6 +50,8 @@ import com.verity.core.ui.molecules.VerityEditBlock
 import com.verity.core.ui.molecules.VerityEditMode
 import com.verity.core.formatting.money.Money
 import kotlinx.coroutines.launch
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * MainActivity
@@ -69,15 +74,33 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val isDarkTheme = false
+            val view = androidx.compose.ui.platform.LocalView.current
+            androidx.compose.runtime.SideEffect {
+                val controller = WindowInsetsControllerCompat(window, view)
+                controller.isAppearanceLightStatusBars = !isDarkTheme
+                controller.isAppearanceLightNavigationBars = !isDarkTheme
+            }
             VerityTheme(
-                darkTheme = false,
+                darkTheme = isDarkTheme,
                 typography = VerityBaseTypography
             ) {
-                VeritySurface(
-                    type = VeritySurfaceType.Base,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    MainEntry()
+
+                Scaffold(
+                    topBar = {
+                        VerityTopAppBar(
+                            title = "Verity"
+                        )
+                    }
+                ) { innerPadding ->
+                    VeritySurface(
+                        type = VeritySurfaceType.Base,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        MainEntry()
+                    }
                 }
             }
         }

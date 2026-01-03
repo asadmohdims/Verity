@@ -12,12 +12,13 @@ import androidx.compose.ui.unit.TextUnit
  * No UI should reference Material typography directly.
  *
  * Rules enforced by this contract:
- * - Max 5 text styles
+ * - Max 6 text styles
  * - Numbers use tabular numerals
  * - Weight > color for hierarchy
  */
 data class VerityTypography(
     val display: TextStyle,
+    val chromeTitle: TextStyle,
     val title: TextStyle,
     val body: TextStyle,
     val label: TextStyle,

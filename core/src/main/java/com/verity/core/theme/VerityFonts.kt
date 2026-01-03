@@ -21,8 +21,14 @@ import com.verity.core.R
  * - Regular (400)
  * - Medium (500)
  * - SemiBold (600)
+ * - ExtraBold (800) — identity-only (application chrome)
  *
- * This enforces hierarchy discipline and avoids visual noise.
+ * ExtraBold is reserved exclusively for application identity
+ * (e.g. Top App Bar title) and must never be used in
+ * document, form, or financial content.
+ *
+ * This enforces hierarchy discipline while allowing
+ * a strong, recognisable Verity identity.
  */
 val VerityFontFamily = FontFamily(
     Font(
@@ -36,5 +42,9 @@ val VerityFontFamily = FontFamily(
     Font(
         resId = R.font.inter_semibold,
         weight = FontWeight.SemiBold
+    ),
+    Font(
+        resId = R.font.inter_extrabold,
+        weight = FontWeight.ExtraBold
     )
 )

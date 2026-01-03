@@ -29,6 +29,15 @@ val VerityBaseTypography = VerityTypography(
         letterSpacing = (-0.01).sp
     ),
 
+    // Application chrome identity (Top App Bar, app-level anchors)
+    chromeTitle = TextStyle(
+        fontFamily = VerityFontFamily,
+        fontSize = 26.sp,
+        lineHeight = 24.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = (-0.005).sp
+    ),
+
     // Section titles, important headings
     title = TextStyle(
         fontFamily = VerityFontFamily,
