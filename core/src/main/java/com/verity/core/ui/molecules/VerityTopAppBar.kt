@@ -1,5 +1,9 @@
 package com.verity.core.ui.molecules
 
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+
 
 import androidx.compose.foundation.layout.Column
 import com.verity.core.ui.primitives.VerityDivider
@@ -36,7 +40,8 @@ import com.verity.core.ui.primitives.VeritySurfaceType
  */
 sealed interface VerityChromeMode {
     object Brand : VerityChromeMode
-    object Task : VerityChromeMode
+    object Workspace : VerityChromeMode
+    object Support : VerityChromeMode
 }
 
 /**
@@ -67,38 +72,56 @@ fun VerityTopAppBar(
         type = VeritySurfaceType.Base
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
         ) {
-            Row(
+            val navZoneWidth = 56.dp   // icon + tap target + optical gap
+            val brandTitleStart = 16.dp
+            val workspaceTitleStart = navZoneWidth + 8.dp
+
+            val barHeight = when (chromeMode) {
+                VerityChromeMode.Brand -> 50.dp
+                VerityChromeMode.Workspace -> 60.dp
+                VerityChromeMode.Support -> 50.dp
+            }
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .height(barHeight)
             ) {
-
-                // Navigation slot (Task chrome only)
-                if (chromeMode is VerityChromeMode.Task && navigationIcon is VerityNavIcon.Back) {
+                // Navigation overlay (start-aligned, optional)
+                if ((chromeMode is VerityChromeMode.Workspace || chromeMode is VerityChromeMode.Support)
+                    && navigationIcon is VerityNavIcon.Back
+                ) {
                     Box(
-                        modifier = Modifier.width(48.dp),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .width(navZoneWidth),
                         contentAlignment = Alignment.Center
                     ) {
                         IconButton(onClick = navigationIcon.onClick) {
                             Icon(
                                 imageVector = VerityIcons.Back,
-                                contentDescription = navigationIcon.contentDescription
+                                contentDescription = navigationIcon.contentDescription,
+                                tint = VerityTheme.colors.primary
                             )
                         }
                     }
                 }
 
-                // Title + subtitle slot
+                // Title anchor (fixed optical position)
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .align(Alignment.CenterStart)
+                        .fillMaxWidth()
                         .padding(
-                            top = 20.dp,
-                            bottom = 8.dp
-                        ),
+                            start = when (chromeMode) {
+                                VerityChromeMode.Brand -> brandTitleStart
+                                VerityChromeMode.Workspace -> workspaceTitleStart
+                                VerityChromeMode.Support -> workspaceTitleStart
+                            }
+                        )
+                        .padding(end = 110.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
@@ -109,8 +132,9 @@ fun VerityTopAppBar(
                         color = VerityTheme.colors.primary
                     )
 
+                    Spacer(modifier = Modifier.height(2.dp))
+
                     if (subtitle != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = subtitle,
                             maxLines = 1,
@@ -121,8 +145,11 @@ fun VerityTopAppBar(
                     }
                 }
 
-                // Actions slot
+                // Actions overlay (end-aligned)
                 Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     actions.forEach { action ->
@@ -131,7 +158,8 @@ fun VerityTopAppBar(
                                 IconButton(onClick = action.onClick) {
                                     Icon(
                                         imageVector = action.icon,
-                                        contentDescription = action.contentDescription
+                                        contentDescription = action.contentDescription,
+                                        tint = VerityTheme.colors.primary
                                     )
                                 }
                             }
@@ -194,7 +222,8 @@ private fun OverflowMenu(action: VerityTopBarAction.Overflow) {
     IconButton(onClick = { expandedState.value = true }) {
         Icon(
             imageVector = VerityIcons.Overflow,
-            contentDescription = "More options"
+            contentDescription = "More options",
+            tint = VerityTheme.colors.primary
         )
     }
 

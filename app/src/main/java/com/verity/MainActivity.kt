@@ -1,56 +1,21 @@
-
 package com.verity
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import com.verity.core.ui.molecules.VerityTopBarAction
+import com.verity.core.ui.icons.VerityIcons
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.compose.ui.unit.dp
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
-import com.verity.core.ui.molecules.VeritySection
-import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
-import com.verity.core.ui.primitives.VeritySpace
-import com.verity.core.ui.primitives.VeritySpacer
-import com.verity.core.ui.primitives.VeritySurface
-import com.verity.core.ui.primitives.VeritySurfaceType
-import com.verity.core.ui.primitives.VerityText
-import com.verity.core.ui.primitives.VerityTextStyle
-import com.verity.core.ui.primitives.VerityTextField
-import com.verity.core.ui.primitives.VerityTextFieldRole
-import com.verity.core.ui.primitives.VeritySuggestion
-import com.verity.core.ui.primitives.VerityButton
-import com.verity.core.ui.primitives.VerityButtonState
-import com.verity.core.ui.primitives.VerityButtonRole
-import com.verity.feature.invoice.ui.InvoiceWorkspaceScreen
-import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
-import com.verity.invoice.draft.InvoiceDraftStore
-import com.verity.invoice.draft.InvoiceDraftUiState
-import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
-import com.verity.platform.database.PlatformDatabaseFactory
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Scaffold
 import com.verity.core.ui.molecules.VerityTopAppBar
-import java.util.UUID
-import com.verity.platform.database.entities.CustomerEntity
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import com.verity.core.ui.molecules.VerityEditBlock
-import com.verity.core.ui.molecules.VerityEditMode
-import com.verity.core.formatting.money.Money
-import kotlinx.coroutines.launch
-import androidx.core.view.WindowCompat
+import com.verity.core.ui.molecules.VerityChromeMode
+import com.verity.core.ui.molecules.VerityNavIcon
+import com.verity.core.ui.primitives.*
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
@@ -85,11 +50,80 @@ class MainActivity : ComponentActivity() {
                 darkTheme = isDarkTheme,
                 typography = VerityBaseTypography
             ) {
+                var chromeMode by remember { mutableStateOf<VerityChromeMode>(VerityChromeMode.Brand) }
+
+                // --- Stress-test state variables ---
+                var testCase by remember { mutableStateOf(0) }
+
+                val stressTitles = listOf(
+                    "Invoice",
+                    "Invoice for ACME",
+                    "Invoice for ACME Manufacturing Pvt Ltd",
+                    "Invoice for ACME Manufacturing Pvt Ltd – Bangalore Unit"
+                )
+
+                val stressSubtitles = listOf(
+                    null,
+                    "Draft",
+                    "Draft · Not Final",
+                    "Draft · Pending Tax Validation"
+                )
+                val stressActions: List<List<VerityTopBarAction>> = listOf(
+                    emptyList<VerityTopBarAction>(),
+                    listOf(
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Search,
+                            contentDescription = "Search",
+                            onClick = {}
+                        )
+                    ),
+                    listOf(
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Search,
+                            contentDescription = "Search",
+                            onClick = {}
+                        ),
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Overflow,
+                            contentDescription = "More",
+                            onClick = {}
+                        )
+                    ),
+                    listOf(
+                        VerityTopBarAction.Overflow(
+                            items = emptyList()
+                        )
+                    )
+                )
+                // --- End stress-test state variables ---
+
+                val goToInvoiceWorkspace = {
+                    chromeMode = VerityChromeMode.Workspace
+                }
 
                 Scaffold(
                     topBar = {
                         VerityTopAppBar(
-                            title = "Verity"
+                            chromeMode = chromeMode,
+                            title = when (chromeMode) {
+                                VerityChromeMode.Brand -> "Verity"
+                                else -> stressTitles[testCase % stressTitles.size]
+                            },
+                            subtitle = when (chromeMode) {
+                                VerityChromeMode.Workspace ->
+                                    stressSubtitles[testCase % stressSubtitles.size]
+                                else -> null
+                            },
+                            navigationIcon = when (chromeMode) {
+                                VerityChromeMode.Brand -> VerityNavIcon.None
+                                else -> VerityNavIcon.Back(
+                                    onClick = {
+                                        // no-op for chrome testing
+                                    },
+                                    contentDescription = "Back"
+                                )
+                            },
+                            actions = stressActions[testCase % stressActions.size],
                         )
                     }
                 ) { innerPadding ->
@@ -99,333 +133,79 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        MainEntry()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+
+                            VerityText(
+                                text = "DEBUG · Chrome Mode Tester",
+                                style = VerityTextStyle.Caption
+                            )
+
+                            // --- Stress-test controls ---
+                            VerityText(
+                                text = "DEBUG · Stress Test Case ${testCase + 1}",
+                                style = VerityTextStyle.Caption
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                VerityButton(
+                                    label = "Next Case",
+                                    role = VerityButtonRole.Secondary,
+                                    state = VerityButtonState.Enabled,
+                                    onClick = { testCase++ }
+                                )
+
+                                VerityButton(
+                                    label = "Prev Case",
+                                    role = VerityButtonRole.Secondary,
+                                    state = VerityButtonState.Enabled,
+                                    onClick = { if (testCase > 0) testCase-- }
+                                )
+                            }
+                            // --- End stress-test controls ---
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                VerityButton(
+                                    label = "Brand",
+                                    role = VerityButtonRole.Secondary,
+                                    state = VerityButtonState.Enabled,
+                                    onClick = { chromeMode = VerityChromeMode.Brand }
+                                )
+
+                                VerityButton(
+                                    label = "Workspace",
+                                    role = VerityButtonRole.Secondary,
+                                    state = VerityButtonState.Enabled,
+                                    onClick = { chromeMode = VerityChromeMode.Workspace }
+                                )
+
+                                VerityButton(
+                                    label = "Support",
+                                    role = VerityButtonRole.Secondary,
+                                    state = VerityButtonState.Enabled,
+                                    onClick = { chromeMode = VerityChromeMode.Support }
+                                )
+                            }
+
+                            VeritySpacer(size = VeritySpace.Medium)
+
+                            VerityButton(
+                                label = "Create Invoice",
+                                role = VerityButtonRole.Primary,
+                                state = VerityButtonState.Enabled,
+                                onClick = goToInvoiceWorkspace
+                            )
+                        }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MainEntry() {
-    var showInvoiceWorkspace by remember { mutableStateOf(false) }
-
-    if (showInvoiceWorkspace) {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val database = remember { PlatformDatabaseFactory.create(context) }
-        val customerDao = remember { database.customerDao() }
-
-        LaunchedEffect(Unit) {
-            // DEBUG‑ONLY seed data for autocomplete testing
-            if (customerDao.count() == 0) {
-                customerDao.insert(
-                    CustomerEntity(
-                        customerId = UUID.randomUUID().toString(),
-                        customerName = "Bhargava Industries",
-                        phone = null,
-                        gstin = "27AAACB1234Z1Z",
-                        city = "Pune",
-                        state = "Maharashtra",
-                        stateCode = "27",
-                        isActive = true,
-                        updatedAt = System.currentTimeMillis()
-                    )
-                )
-                customerDao.insert(
-                    CustomerEntity(
-                        customerId = UUID.randomUUID().toString(),
-                        customerName = "Apex Engineering",
-                        phone = null,
-                        gstin = "29AABCA9999Q1Z",
-                        city = "Bengaluru",
-                        state = "Karnataka",
-                        stateCode = "29",
-                        isActive = true,
-                        updatedAt = System.currentTimeMillis()
-                    )
-                )
-            }
-        }
-
-        val viewModel: InvoiceWorkspaceViewModel = viewModel(
-            factory = object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    // Reuse DB / DAO created in composable scope
-                    val autocompleteDataSource =
-                        DefaultCustomerAutocompleteDataSource(customerDao)
-
-                    @Suppress("UNCHECKED_CAST")
-                    return InvoiceWorkspaceViewModel(
-                        draftStore = InvoiceDraftStore(),
-                        customerAutocompleteDataSource = autocompleteDataSource
-                    ) as T
-                }
-            }
-        )
-
-        InvoiceWorkspaceScreen(
-            draft = viewModel.uiState.collectAsState().value,
-            viewModel = viewModel
-        )
-    } else {
-        LandingScreen(
-            onGoToInvoice = { showInvoiceWorkspace = true }
-        )
-    }
-}
-
-@Composable
-private fun LandingScreen(
-    onGoToInvoice: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        VeritySection(title = "Verity") {
-
-            VerityText(
-                text = "Create Invoice",
-                style = VerityTextStyle.Title,
-                modifier = Modifier.clickable { onGoToInvoice() }
-            )
-
-            VeritySpacer(size = VeritySpace.Medium)
-
-            VerityText(
-                text = "Search (coming soon)",
-                style = VerityTextStyle.Caption
-            )
-
-            VerityText(
-                text = "Customers (coming soon)",
-                style = VerityTextStyle.Caption
-            )
-        }
-
-        // --- DEBUG · VerityTextField Sandbox ---
-        VeritySpacer(size = VeritySpace.Large)
-
-        VeritySection(title = "DEBUG · VerityTextField Sandbox") {
-
-            var editing by remember { mutableStateOf(false) }
-            var query by remember { mutableStateOf("") }
-
-            val suggestions = listOf(
-                VeritySuggestion(
-                    id = "1",
-                    primary = "Bhargava Industries",
-                    secondary = "Pune · Maharashtra"
-                ),
-                VeritySuggestion(
-                    id = "2",
-                    primary = "Apex Engineering",
-                    secondary = "Bengaluru · Karnataka"
-                ),
-                VeritySuggestion(
-                    id = "3",
-                    primary = "Sunrise Tools Pvt Ltd",
-                    secondary = "Mumbai · Maharashtra"
-                ),
-                VeritySuggestion(
-                    id = "4",
-                    primary = "Nova Tech Solutions",
-                    secondary = "Hyderabad · Telangana"
-                ),
-                VeritySuggestion(
-                    id = "5",
-                    primary = "Kaveri Hydraulics",
-                    secondary = "Coimbatore · Tamil Nadu"
-                ),
-                VeritySuggestion(
-                    id = "6",
-                    primary = "Zenith Industrial Works",
-                    secondary = "Ahmedabad · Gujarat"
-                )
-            ).filter {
-                query.isNotBlank() && it.primary.contains(query, ignoreCase = true)
-            }
-
-            VerityTextField(
-                role = VerityTextFieldRole.SelectionSearch,
-                label = "Selection Search",
-                placeholder = "Select customer",
-                value = query,
-                onValueChange = { query = it },
-                editing = editing,
-                onEnterEdit = { editing = true },
-                onExitEdit = { editing = false },
-                suggestions = suggestions,
-                onSelectSuggestion = {
-                    query = it.primary
-                    editing = false
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-        }
-
-
-
-        VeritySpacer(size = VeritySpace.ExtraLarge)
-
-
-        VeritySection(title = "DEBUG · VerityEditBlock") {
-
-            var expanded by remember { mutableStateOf(false) }
-
-            var itemName by remember { mutableStateOf("") }
-            var quantity by remember { mutableStateOf("") }
-            var rate by remember { mutableStateOf("") }
-
-            VerityEditBlock(
-                title = "Il1O0 123456789 ₹ ₹ ₹",
-                mode = VerityEditMode.Add,
-                expanded = expanded,
-                collapsedActionLabel = "Add Line Item",
-                onCollapsedAction = { expanded = true },
-                onAdd = { /* no-op */ },
-                onCancel = { expanded = false }
-            ) {
-                VerityTextField(
-                    role = VerityTextFieldRole.Basic,
-                    label = "Item Name",
-                    value = itemName,
-                    onValueChange = { itemName = it },
-                    editing = true,
-                    onEnterEdit = null,
-                    onExitEdit = null,
-                    suggestions = emptyList(),
-                    onSelectSuggestion = null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                VerityTextField(
-                    role = VerityTextFieldRole.Basic,
-                    label = "Quantity",
-                    value = quantity,
-                    onValueChange = { quantity = it },
-                    editing = true,
-                    onEnterEdit = null,
-                    onExitEdit = null,
-                    suggestions = emptyList(),
-                    onSelectSuggestion = null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                VerityTextField(
-                    role = VerityTextFieldRole.Basic,
-                    label = "Rate",
-                    value = rate,
-                    onValueChange = { rate = it },
-                    editing = true,
-                    onEnterEdit = null,
-                    onExitEdit = null,
-                    suggestions = emptyList(),
-                    onSelectSuggestion = null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-        // --- END DEBUG SANDBOX ---
-
-        VeritySpacer(size = VeritySpace.Large)
-
-        VeritySection(title = "DEBUG · VerityButton Variants") {
-
-            val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
-            val coroutineScope = rememberCoroutineScope()
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                VerityButton(
-                    label = "Primary",
-                    role = VerityButtonRole.Primary,
-                    state = VerityButtonState.Enabled,
-                    onClick = {}
-                )
-
-                VerityButton(
-                    label = "Secondary",
-                    role = VerityButtonRole.Secondary,
-                    state = VerityButtonState.Enabled,
-                    onClick = {}
-                )
-            }
-
-            VeritySpacer(size = VeritySpace.Small)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                VerityButton(
-                    label = "Primary (Disabled)",
-                    role = VerityButtonRole.Primary,
-                    state = VerityButtonState.Disabled,
-                    onClick = {}
-                )
-
-                VerityButton(
-                    label = "Secondary (Disabled)",
-                    role = VerityButtonRole.Secondary,
-                    state = VerityButtonState.Disabled,
-                    onClick = {}
-                )
-            }
-
-            VeritySpacer(size = VeritySpace.Small)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                VerityButton(
-                    label = "Destructive",
-                    role = VerityButtonRole.Destructive,
-                    state = VerityButtonState.Enabled,
-                    onClick = {}
-                )
-
-                VerityButton(
-                    label = "Destructive (Disabled)",
-                    role = VerityButtonRole.Destructive,
-                    state = VerityButtonState.Disabled,
-                    onClick = {}
-                )
-            }
-
-            VeritySpacer(size = VeritySpace.Medium)
-
-            VerityButton(
-                label = "Show Snackbar (DEBUG)",
-                role = VerityButtonRole.Secondary,
-                state = VerityButtonState.Enabled,
-                onClick = {
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Line item deleted"
-                        )
-                    }
-                }
-            )
-
-
-
-            androidx.compose.material3.SnackbarHost(
-                hostState = snackbarHostState
-            ) { data ->
-                com.verity.core.ui.molecules.VeritySnackbar(
-                    snackbarData = data
-                )
             }
         }
     }

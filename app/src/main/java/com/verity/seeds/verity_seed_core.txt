@@ -391,7 +391,56 @@ Changing aggregate boundaries requires an explicit constitutional amendment.
 
 ──────────────────────────────
 
+
 5. UI & UX Foundations (Frozen)
+
+──────────────────────────────
+5Y. Application Chrome Law (LOCKED)
+
+Verity enforces an explicit, finite set of application chrome modes.
+Chrome is structural UI, not screen content.
+
+Authoritative Chrome Modes:
+
+1. Brand
+   • Used only at the global entry surface.
+   • Displays brand title (“Verity”) prominently.
+   • No navigation affordance.
+   • Taller vertical rhythm is permitted.
+   • Establishes trust and identity.
+
+2. Workspace
+   • Used for primary task surfaces (Invoice / Challan workspace).
+   • MUST show back navigation affordance.
+   • Title reflects document type (Invoice / Challan).
+   • Subtitle MAY be present (e.g. Draft, Awaiting Invoice).
+   • Vertical rhythm is tighter and task‑focused.
+   • Must never visually compete with content.
+
+3. Support
+   • Used for auxiliary task surfaces (Search, Customers, Ledger).
+   • MUST show back navigation affordance.
+   • Title reflects utility context.
+   • Subtitle is optional and typically absent.
+   • Visual weight matches Workspace chrome, not Brand.
+
+Structural Rules (Non‑Negotiable):
+
+• Exactly one chrome mode is active at any time.
+• Chrome mode is derived from navigation context, never inferred heuristically.
+• Chrome must not change height dynamically based on content.
+• Spacing differences between modes are intentional and limited to padding only.
+• Chrome must never embed screen logic, state, or business meaning.
+• Content must not compensate for chrome spacing via ad‑hoc padding.
+
+Implementation Notes (Non‑Authoritative):
+
+• Chrome modes may be tested via a dedicated harness.
+• Production navigation will later derive chrome mode from destination.
+• Testing scaffolds may temporarily host multiple modes for comparison.
+
+Deviation from this law requires reopening the Core Seed.
+──────────────────────────────
 
 ──────────────────────────────
 

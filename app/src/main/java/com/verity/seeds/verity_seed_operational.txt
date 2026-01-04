@@ -39,9 +39,12 @@ This explicitly excludes:
 Current Focus:
 - Draft-level financial correctness is LOCKED and must not be modified.
 - Current execution effort is directed at Workspace experience and clarity:
-  • Screen chrome and navigation affordances
+  • Screen chrome and navigation affordances (Top App Bar variants)
+  • Visual rhythm, spacing, and typography within chrome
   • Information hierarchy and scanability
   • Interaction feedback and reassurance
+- Top App Bar behavior, spacing, and typography are being actively refined
+  but are not yet considered visually locked.
 - All work must preserve reducer-derived correctness invariants.
 - Preview and finalization remain explicitly deferred.
 
