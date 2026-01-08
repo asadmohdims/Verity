@@ -1,5 +1,10 @@
 package com.verity.feature.invoice.ui
 
+import com.verity.core.ui.chrome.WorkspaceChromeSpec
+import com.verity.core.ui.molecules.VerityNavIcon
+import com.verity.core.ui.molecules.VerityTopBarAction
+import com.verity.core.ui.icons.VerityIcons
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
@@ -38,6 +43,45 @@ class InvoiceWorkspaceViewModel(
 
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
     val uiState: StateFlow<InvoiceDraftUiState> = _uiState.asStateFlow()
+
+    /**
+     * Workspace chrome specification.
+     *
+     * This exposes the *semantic intent* for application chrome
+     * when the Invoice Workspace is active.
+     *
+     * Responsibilities:
+     * - Declare title, subtitle, navigation affordance, and actions
+     * - Reflect workspace state (draft, search, etc.) over time
+     *
+     * Non-responsibilities:
+     * - Does not execute navigation
+     * - Does not render UI
+     * - Does not know about Scaffold or VerityTopAppBar
+     *
+     * Ownership:
+     * - Produced here (workspace domain)
+     * - Consumed by root UI frame (MainActivity / NavHost)
+     */
+    private val _chromeSpec = MutableStateFlow(
+        WorkspaceChromeSpec(
+            title = "Invoice",
+            subtitle = "Draft",
+            navigationIcon = VerityNavIcon.Back(
+                onClick = { /* handled at root */ },
+                contentDescription = "Back"
+            ),
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Search,
+                    contentDescription = "Search",
+                    onClick = { /* handled at root */ }
+                )
+            )
+        )
+    )
+
+    val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
 
     // Autocomplete UI state (Atom 1 contract)
     private val _billedToQuery = MutableStateFlow("")

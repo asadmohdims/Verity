@@ -106,6 +106,18 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
  * • Section composition
  */
 @Composable
+fun InvoiceWorkspaceRoute(
+    viewModel: InvoiceWorkspaceViewModel
+) {
+    val draft: InvoiceDraftUiState by viewModel.uiState.collectAsState()
+
+    InvoiceWorkspaceScreen(
+        draft = draft,
+        viewModel = viewModel
+    )
+}
+
+@Composable
 fun InvoiceWorkspaceScreen(
     draft: InvoiceDraftUiState,
     viewModel: InvoiceWorkspaceViewModel
