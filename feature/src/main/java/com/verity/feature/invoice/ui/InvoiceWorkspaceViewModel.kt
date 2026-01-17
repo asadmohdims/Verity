@@ -1,6 +1,7 @@
 package com.verity.feature.invoice.ui
 
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
+import com.verity.core.ui.molecules.VerityChromeMode
 import com.verity.core.ui.molecules.VerityNavIcon
 import com.verity.core.ui.molecules.VerityTopBarAction
 import com.verity.core.ui.icons.VerityIcons
@@ -44,6 +45,9 @@ class InvoiceWorkspaceViewModel(
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
     val uiState: StateFlow<InvoiceDraftUiState> = _uiState.asStateFlow()
 
+    private val _hasActiveDraft = MutableStateFlow(false)
+    val hasActiveDraft: StateFlow<Boolean> = _hasActiveDraft.asStateFlow()
+
     /**
      * Workspace chrome specification.
      *
@@ -65,6 +69,27 @@ class InvoiceWorkspaceViewModel(
      */
     private val _chromeSpec = MutableStateFlow(
         WorkspaceChromeSpec(
+            title = "Verity",
+            subtitle = null,
+            navigationIcon = VerityNavIcon.None,
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Search,
+                    contentDescription = "Search",
+                    onClick = { /* handled at root */ }
+                )
+            ),
+            chromeMode = VerityChromeMode.Workspace
+        )
+    )
+
+    val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
+
+    fun onCreateInvoice() {
+        _hasActiveDraft.value = true
+        _uiState.value = draftStore.currentDraft
+
+        _chromeSpec.value = WorkspaceChromeSpec(
             title = "Invoice",
             subtitle = "Draft",
             navigationIcon = VerityNavIcon.Back(
@@ -79,9 +104,26 @@ class InvoiceWorkspaceViewModel(
                 )
             )
         )
-    )
+    }
 
-    val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
+    fun onDiscardDraft() {
+        _hasActiveDraft.value = false
+        _uiState.value = draftStore.currentDraft
+
+        _chromeSpec.value = WorkspaceChromeSpec(
+            title = "Verity",
+            subtitle = null,
+            navigationIcon = VerityNavIcon.None,
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Search,
+                    contentDescription = "Search",
+                    onClick = { /* handled at root */ }
+                )
+            ),
+            chromeMode = VerityChromeMode.Workspace
+        )
+    }
 
     // Autocomplete UI state (Atom 1 contract)
     private val _billedToQuery = MutableStateFlow("")
@@ -152,6 +194,7 @@ class InvoiceWorkspaceViewModel(
     fun onBilledToSelected(item: CustomerAutocompleteItem) {
         val address = DraftAddress(
             name = item.customerName,
+            gstin = item.gstin,
             addressLine1 = "",
             city = item.city ?: "",
             state = item.state ?: "",
@@ -205,6 +248,7 @@ class InvoiceWorkspaceViewModel(
     fun onShippedToSelected(item: CustomerAutocompleteItem) {
         val address = DraftAddress(
             name = item.customerName,
+            gstin = item.gstin,
             addressLine1 = "",
             city = item.city ?: "",
             state = item.state ?: "",

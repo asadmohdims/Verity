@@ -74,6 +74,7 @@ data class DraftCustomer(
 
 data class DraftAddress(
     val name: String,
+    val gstin: String?,
     val addressLine1: String,
     val addressLine2: String? = null,
     val city: String,

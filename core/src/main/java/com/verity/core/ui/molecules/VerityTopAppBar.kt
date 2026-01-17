@@ -3,13 +3,10 @@ package com.verity.core.ui.molecules
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
-
-
 import androidx.compose.foundation.layout.Column
 import com.verity.core.ui.primitives.VerityDivider
 import com.verity.core.ui.primitives.VerityDividerStrength
 import com.verity.core.ui.icons.VerityIcons
-
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -115,10 +112,10 @@ fun VerityTopAppBar(
                         .align(Alignment.CenterStart)
                         .fillMaxWidth()
                         .padding(
-                            start = when (chromeMode) {
-                                VerityChromeMode.Brand -> brandTitleStart
-                                VerityChromeMode.Workspace -> workspaceTitleStart
-                                VerityChromeMode.Support -> workspaceTitleStart
+                            start = if (navigationIcon is VerityNavIcon.Back) {
+                                workspaceTitleStart
+                            } else {
+                                brandTitleStart
                             }
                         )
                         .padding(end = 110.dp),

@@ -131,6 +131,43 @@ features/
 • No shared UI, ViewModels, or repositories.
 • Compose-first feature libraries. No Activities, no databases, no cross-feature state.
 
+──────────────────────────────
+3C. Route, Screen, and ViewModel Ownership (Clarification — Locked)
+
+Purpose:
+To remove ambiguity around Compose Route patterns and ViewModel ownership.
+
+Definitions:
+
+• Route:
+  – A composable boundary responsible for:
+    • Obtaining ViewModels from the composition root
+    • Collecting StateFlow / Flow
+    • Passing state and callbacks downward
+  – Routes MAY reference ViewModels.
+  – Routes MUST NOT create business logic or draft mutations.
+
+• Screen:
+  – A pure UI renderer.
+  – Receives state and callbacks only.
+  – MUST NOT obtain or create ViewModels.
+  – MUST NOT collect Flows directly from repositories or stores.
+
+• ViewModel:
+  – Owned by the application or navigation root (e.g. MainActivity / NavHost).
+  – Injected into Routes, never into Screens.
+  – Features MUST NOT instantiate their own ViewModels implicitly.
+
+Structural Rules (Non‑Negotiable):
+
+• MainActivity / NavHost is the authoritative lifecycle owner of ViewModels.
+• Features may define ViewModel types but do not control their instantiation.
+• Preview helpers and fake data are UI-only and MUST NOT leak into app or platform layers.
+• Routes exist to bridge lifecycle‑aware state into pure screens.
+
+Violation of these rules is an architectural defect.
+──────────────────────────────
+
 platform/
 • database (Room + KSP)
 • cloud (Firebase / APIs)

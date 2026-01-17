@@ -109,12 +109,53 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
 fun InvoiceWorkspaceRoute(
     viewModel: InvoiceWorkspaceViewModel
 ) {
-    val draft: InvoiceDraftUiState by viewModel.uiState.collectAsState()
+    val draft by viewModel.uiState.collectAsState()
+    val hasActiveDraft by viewModel.hasActiveDraft.collectAsState()
 
-    InvoiceWorkspaceScreen(
-        draft = draft,
-        viewModel = viewModel
-    )
+    if (hasActiveDraft) {
+        InvoiceWorkspaceScreen(
+            draft = draft,
+            viewModel = viewModel
+        )
+    } else {
+        WorkspaceEmptyScreen(
+            onCreateInvoice = { viewModel.onCreateInvoice() }
+        )
+    }
+}
+
+@Composable
+private fun WorkspaceEmptyScreen(
+    onCreateInvoice: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        VeritySurface(
+            type = VeritySurfaceType.Raised,
+            modifier = Modifier
+                .padding(VeritySpace.Medium.dp)
+                .clickable { onCreateInvoice() }
+        ) {
+            Column(
+                modifier = Modifier.padding(VeritySpace.Large.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                VerityText(
+                    text = "Create Invoice",
+                    style = VerityTextStyle.Title
+                )
+
+                VeritySpacer(size = VeritySpace.Small)
+
+                VerityText(
+                    text = "Start a new invoice from scratch",
+                    style = VerityTextStyle.Body
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -149,21 +190,6 @@ fun InvoiceWorkspaceScreen(
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
         ) {
-
-        // ─────────────────────────────────────────────
-        // Screen Header
-        // ─────────────────────────────────────────────
-
-        VerityHeader(
-            title = "Invoice Workspace",
-            subtitle = draft.documentType.name.lowercase().replaceFirstChar { it.uppercase() },
-            trailing = {
-                VerityText(
-                    text = "Search",
-                    style = VerityTextStyle.Label
-                )
-            }
-        )
 
         VeritySpacer(size = VeritySpace.Large)
 
@@ -794,6 +820,7 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
             city = "Mumbai",
             state = "Maharashtra",
             stateCode = "27",
+            gstin = "27AAACB1234Z1Z",
             pincode = "400001"
         ),
         lineItems = listOf(

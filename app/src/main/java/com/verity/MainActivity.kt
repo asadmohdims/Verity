@@ -23,6 +23,10 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.InvoiceDraftUiState
 
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 /**
  * MainActivity
  *
@@ -44,8 +48,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val chromeCoordinator = remember { WorkspaceChromeViewModel() }
-            val isDarkTheme = true
+            val isDarkTheme = false
+            val navController = rememberNavController()
             val view = androidx.compose.ui.platform.LocalView.current
             androidx.compose.runtime.SideEffect {
                 val controller = WindowInsetsControllerCompat(window, view)
@@ -75,7 +79,7 @@ class MainActivity : ComponentActivity() {
                 typography = VerityBaseTypography
             ) {
 
-                val workspaceChromeSpec by chromeCoordinator
+                val workspaceChromeSpec by invoiceWorkspaceViewModel
                     .chromeSpec
                     .collectAsState()
 
@@ -96,9 +100,16 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        InvoiceWorkspaceRoute(
-                            viewModel = invoiceWorkspaceViewModel
-                        )
+                        NavHost(
+                            navController = navController,
+                            startDestination = "workspace"
+                        ) {
+                            composable("workspace") {
+                                InvoiceWorkspaceRoute(
+                                    viewModel = invoiceWorkspaceViewModel
+                                )
+                            }
+                        }
                     }
                 }
             }

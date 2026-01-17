@@ -27,6 +27,7 @@ This includes:
 • Interaction reassurance (snackbars, confirmations, feedback)
 • Alignment of all UI surfaces with the Verity design system
 • Preparing the Workspace for preview and finalization (without enabling them)
+• Canonical document modeling and draft → document projection to support pre-finalization preview
 
 This explicitly excludes:
 • Any new financial or tax logic
@@ -36,6 +37,8 @@ This explicitly excludes:
 • Any cloud sync enablement
 
 ──────────────────────────────────────
+
+
 Current Focus:
 - Draft-level financial correctness is LOCKED and must not be modified.
 - Current execution effort is directed at Workspace experience and clarity:
@@ -47,6 +50,87 @@ Current Focus:
   but are not yet considered visually locked.
 - All work must preserve reducer-derived correctness invariants.
 - Preview and finalization remain explicitly deferred.
+- Canonical Invoice / Challan document model (InvoiceDocumentModel) is implemented and locked.
+- Draft → Document projection is implemented, pure, deterministic, and feature-scoped.
+- Draft snapshots customer GSTIN and identity explicitly; document projection enforces completeness.
+- Invoice vs Challan identity semantics are normalized via documentNumber (not invoice-specific naming).
+- The system is now structurally ready for pre-finalization document preview.
+
+──────────────────────────────────────
+EXECUTION CHECKPOINT (OPERATIONAL)
+
+Current execution step:
+• STEP 3 — Invoice Preview Renderer (DESIGN → IMPLEMENTATION)
+
+Status:
+• Canonical document model: COMPLETE
+• Draft → Document projection: COMPLETE
+• Preview semantics: LOCKED
+• Preview rendering: NOT STARTED
+
+Next action:
+• Design and implement a read-only Invoice / Challan Preview screen
+  rendered from InvoiceDocumentModel.
+• Preview must be side-effect free:
+  – No PDF generation
+  – No persistence
+  – No numbering side effects
+
+This checkpoint exists solely to preserve execution context
+across sessions and chats. It does not alter scope, phase,
+or any locked architectural or domain laws.
+──────────────────────────────────────
+
+──────────────────────────────────────
+D2 — ROUTE, CHROME, AND VIEWMODEL BOUNDARIES (CLARIFICATION)
+
+Context:
+During D2 execution, ambiguity was encountered around where Workspace chrome,
+ViewModel ownership, and Compose Route boundaries should live.
+
+This section records the clarified, law‑correct interpretation for D2+ work.
+
+Authoritative Clarifications:
+
+• The Invoice Workspace remains the *conceptual anchor* of the app,
+  but it is NOT the lifecycle owner of application chrome.
+
+• MainActivity (or a future NavHost root) remains the single lifecycle root.
+  It owns:
+  – ViewModel instantiation
+  – Chrome rendering (Top App Bar, global navigation affordances)
+  – System UI integration (insets, status bar, back handling)
+
+• Feature modules (e.g. feature/invoice):
+  – MAY define ViewModel types
+  – MAY expose Route composables
+  – MUST NOT own ViewModel lifecycles
+  – MUST NOT decide chrome rendering directly
+
+• A Route is the ONLY place where:
+  – ViewModels are referenced
+  – StateFlows are collected
+  – UI state is adapted for rendering
+
+• Screens remain pure UI and never reference ViewModels or Flows.
+
+Chrome-Specific Rule (Locked):
+
+• Workspace chrome intent (title, subtitle, actions) is expressed
+  declaratively via WorkspaceChromeSpec.
+• WorkspaceChromeSpec is PRODUCED by workspace‑related ViewModels
+  and CONSUMED by the root UI frame.
+• The root frame decides *how* chrome is rendered, not *what* it is.
+
+Operational Outcome:
+
+• InvoiceWorkspaceViewModel producing WorkspaceChromeSpec is VALID.
+• MainActivity collecting chromeSpec and rendering VerityTopAppBar is VALID.
+• Embedding chrome rendering inside the Workspace screen is INVALID.
+
+This clarification does not change any D2 scope or deliverables.
+It removes ambiguity to prevent architectural drift during execution.
+──────────────────────────────────────
 
 Toolchain Status (Operational, Confirmed)
 
@@ -221,6 +305,7 @@ Explicit Exclusions in D2:
 • No event-sourced customer lifecycle or customer projections in D2.
 • No introduction of alternative money abstractions beyond core/formatting Money v1.
 • No preview PDF or document rendering changes until financial stabilization is complete.
+• No PDF generation or artifact creation during preview (preview remains render-only).
 
 D2.4 — Financial Representation Stabilization (COMPLETE & LOCKED) (Context / Locked)
 • Draft monetary representation (Long minor units) is enforced end‑to‑end.
@@ -233,18 +318,24 @@ D2.3 — Pre-Finalization Document Preview (OPERATIONAL, LOCKED)
 Before finalization, users must be able to preview the document
 (Invoice or Challan) exactly as it will appear once finalized.
 
+The preview pipeline is backed by a canonical InvoiceDocumentModel derived via a pure Draft → Document projection; preview and finalization share this projection.
+
 Preview semantics are strictly defined:
 
-• Preview is a visual, read-only representation rendered directly from
-  the current draft snapshot.
-• No PDF is generated during preview.
-• No document number, persistence, or projection occurs during preview.
-• Preview rendering uses the same canonical layout system as the
-  finalized document to ensure visual fidelity.
-• Preview exists solely to allow user confirmation before irreversible
-  finalization.
-• Exiting preview returns the user to the editable draft without side
-  effects.
+• Preview is a visual, read-only representation rendered from a deterministic
+  snapshot of the current draft via a canonical document projection.
+• Preview renders the authoritative document layout that will be used for
+  final artifact generation, but NO PDF is generated during preview.
+• Preview rendering is strictly side-effect free:
+  – No persistence
+  – No domain events
+  – No artifact creation
+• Preview displays the invoice number that will be used if the document is
+  finalized. This number is tentatively allocated during draft creation and
+  becomes authoritative only upon finalization.
+• Preview contains no draft markings, watermarks, or “pending” indicators.
+• Exiting preview always returns the user to the editable draft workspace
+  without mutation, numbering side effects, or lifecycle transitions.
 
 Preview is not a persistence step and produces no domain facts.
 It is a UI-level, deterministic rendering of draft-derived state.
