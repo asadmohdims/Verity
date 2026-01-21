@@ -3,6 +3,92 @@ Inherits from: verity_seed_core.txt
 ──────────────────────────────────────
 PROJECT PHASE MODEL (AUTHORITATIVE)
 
+SESSION AMENDMENT — PREVIEW & FINALIZATION ARCHITECTURE (LOCKED)
+
+This amendment records decisions made during the extended Preview + Finalization
+design session. It is additive and does not modify or invalidate any previously
+locked phases, scope boundaries, or laws.
+
+──────────────────────────────────────
+D2 — FINALIZATION PIPELINE (DESIGN LOCKED, IMPLEMENTATION PENDING)
+
+The draft → preview → finalization pipeline is now explicitly locked as:
+
+InvoiceDraftUiState (UI-only, mutable)
+        ↓
+InvoiceDraftSnapshot (frozen intent)
+        ↓
+InvoiceDocumentModel (canonical, authoritative)
+        ↓
+InvoiceFinalized domain event
+
+Rules:
+• InvoiceDraftUiState must NEVER be consumed directly by:
+  – Document mappers
+  – Finalization logic
+  – Domain event construction
+• InvoiceDraftSnapshot is the ONLY permitted input to:
+  – FinalizeInvoiceUseCase
+  – Canonical document projection
+  – InvoiceFinalized event payload creation
+• Preview renders InvoiceDocumentModel but produces NO domain facts.
+
+Status:
+• InvoiceDraftSnapshot: IMPLEMENTED & LOCKED
+• InvoiceDocumentModel: IMPLEMENTED & LOCKED
+• Draft → Document projection: IMPLEMENTED & LOCKED
+• Preview rendering: FUNCTIONAL & SIDE-EFFECT FREE
+• Finalization use-case: NOT IMPLEMENTED
+• Domain event contract: NOT IMPLEMENTED
+
+──────────────────────────────────────
+PREVIEW SEMANTICS (RECONFIRMED)
+
+• Preview is read-only and deterministic.
+• Preview performs NO persistence, NO PDF generation, NO event emission.
+• Preview renders exactly the document representation that will be used at
+  finalization time.
+• Exiting Preview always returns to the active Workspace draft without mutation.
+• Preview uses Support chrome mode; no new chrome variants are introduced.
+
+──────────────────────────────────────
+FINALIZATION OWNERSHIP & PLACEMENT (LOCKED)
+
+• Finalization logic is owned by a dedicated use-case:
+  – FinalizeInvoiceUseCase
+• UI → Snapshot adapters are part of the finalization workflow and MUST NOT
+  live in core.document.mapping.
+• core.document.mapping is reserved strictly for document construction logic.
+
+
+──────────────────────────────────────
+NAVIGATION & CHROME (RECONFIRMED)
+
+• The Invoice Workspace remains the gravitational anchor of the app.
+• Preview is a reversible, non-mutating navigation.
+• Back navigation from Preview always returns to Workspace.
+• Chrome intent is expressed via WorkspaceChromeSpec.
+• Chrome rendering is owned by the root UI frame (MainActivity / NavHost).
+• Chrome modes remain limited to:
+  – Brand
+  – Workspace
+  – Support
+
+──────────────────────────────────────
+NEXT EXECUTION STEP (AUTHORITATIVE)
+
+D2 / STEP 4 — Invoice Finalization
+
+The next work must begin with:
+1. Defining the InvoiceFinalized domain event contract.
+2. Implementing FinalizeInvoiceUseCase (pure, snapshot-based).
+3. Implementing DraftUiToSnapshotAdapter with fail-loud validation.
+4. Wiring Preview → Finalize trigger with post-success UI feedback only.
+
+No other work is permitted before STEP 4 is completed.
+
+End of amendment.
+
 FOUNDATION PHASES — COMPLETED & LOCKED
 • F0 — Reset & Intent ✅
 • F1 — Business & Domain Fundamentals ✅

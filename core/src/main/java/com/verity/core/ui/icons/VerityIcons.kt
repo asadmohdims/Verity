@@ -1,5 +1,6 @@
-package com.verity.core.ui.icons
 
+package com.verity.core.ui.icons
+import com.verity.core.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -7,6 +8,17 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed interface VerityIcon {
+
+    data class Material(
+        val imageVector: ImageVector
+    ) : VerityIcon
+
+    data class VectorRes(
+        val resId: Int
+    ) : VerityIcon
+}
 
 /**
  * VerityIcons
@@ -29,24 +41,26 @@ object VerityIcons {
     /**
      * Navigation
      */
-    val Back: ImageVector =
-        Icons.AutoMirrored.Filled.ArrowBack
+    val Back: VerityIcon =
+        VerityIcon.Material(Icons.AutoMirrored.Filled.ArrowBack)
 
     /**
      * Chrome / Global actions
      */
-    val Search: ImageVector =
-        Icons.Filled.Search
+    val Preview: VerityIcon =
+        VerityIcon.VectorRes(R.drawable.preview)
+    val Search: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Search)
 
-    val Overflow: ImageVector =
-        Icons.Filled.MoreVert
+    val Overflow: VerityIcon =
+        VerityIcon.Material(Icons.Filled.MoreVert)
 
     /**
      * Explicit draft actions
      */
-    val Add: ImageVector =
-        Icons.Filled.Add
+    val Add: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Add)
 
-    val Edit: ImageVector =
-        Icons.Filled.Edit
+    val Edit: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Edit)
 }

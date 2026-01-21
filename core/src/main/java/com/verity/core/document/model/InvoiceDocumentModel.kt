@@ -13,6 +13,17 @@ import java.time.LocalDate
  * - Contains no mutability or side effects
  * - Is safe to snapshot, cache, or persist after finalization
  */
+
+/**
+ * FUTURE:
+ * - Used as input to PDF generation
+ * - Used as input to finalization event emission
+ *
+ * NOT YET:
+ * - No persistence
+ * - No numbering authority
+ * - No lifecycle semantics
+ */
 data class InvoiceDocumentModel(
     val identity: DocumentIdentity,
     val parties: DocumentParties,

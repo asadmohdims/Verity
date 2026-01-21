@@ -8,6 +8,17 @@ package com.verity.invoice.draft
  * - Do NOT enforce domain rules
  * - Do NOT persist anything
  */
+
+/**
+ * PREVIEW SAFETY NOTE
+ * -------------------
+ * All derived financial values here are:
+ * - Draft-level only
+ * - Non-authoritative
+ *
+ * Preview MUST consume InvoiceDocumentModel,
+ * never this reducer output directly.
+ */
 object InvoiceDraftReducer {
 
     private const val ASSUMED_SELLER_STATE_CODE = "27"

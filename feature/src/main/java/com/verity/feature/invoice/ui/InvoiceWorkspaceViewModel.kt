@@ -1,5 +1,13 @@
 package com.verity.feature.invoice.ui
 
+import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.document.model.SellerDetails
+import com.verity.feature.invoice.projection.DraftToInvoiceDocument
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import java.time.Clock
+
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import com.verity.core.ui.molecules.VerityChromeMode
 import com.verity.core.ui.molecules.VerityNavIcon
@@ -48,6 +56,97 @@ class InvoiceWorkspaceViewModel(
     private val _hasActiveDraft = MutableStateFlow(false)
     val hasActiveDraft: StateFlow<Boolean> = _hasActiveDraft.asStateFlow()
 
+    // ------------------------------------------------------------
+    // Preview (D2) — Draft → Document projection
+    // ------------------------------------------------------------
+    /**
+     * Preview-safe projection.
+     *
+     * This MUST be tolerant of incomplete drafts.
+     * Preview is a lens on current state, not a validation gate.
+     */
+    private fun buildPreviewDocument(
+        draft: InvoiceDraftUiState
+    ): InvoiceDocumentModel {
+        return try {
+            DraftToInvoiceDocument.project(
+                draft = draft,
+                documentNumber = "PREVIEW",
+                seller = SellerDetails(
+                    name = "Preview Seller",
+                    gstin = null,
+                    addressLine1 = "",
+                    addressLine2 = null,
+                    city = "",
+                    state = "",
+                    stateCode = "",
+                    pincode = ""
+                ),
+                clock = Clock.systemDefaultZone()
+            )
+        } catch (e: IllegalArgumentException) {
+            // Draft is incomplete (e.g. Billed To missing).
+            // Return a minimal, non-authoritative preview document.
+            InvoiceDocumentModel(
+                identity = com.verity.core.document.model.DocumentIdentity(
+                    documentType = com.verity.core.document.model.DocumentType.INVOICE,
+                    documentNumber = "PREVIEW",
+                    issueDate = java.time.LocalDate.now(),
+                    seller = SellerDetails(
+                        name = "Preview Seller",
+                        gstin = null,
+                        addressLine1 = "",
+                        addressLine2 = null,
+                        city = "",
+                        state = "",
+                        stateCode = "",
+                        pincode = ""
+                    )
+                ),
+                parties = com.verity.core.document.model.DocumentParties(
+                    billedTo = com.verity.core.document.model.DocumentParty(
+                        name = "(Not set)",
+                        gstin = "",
+                        addressLines = emptyList(),
+                        state = "",
+                        stateCode = ""
+                    ),
+                    shippedTo = com.verity.core.document.model.DocumentParty(
+                        name = "(Not set)",
+                        gstin = "",
+                        addressLines = emptyList(),
+                        state = "",
+                        stateCode = ""
+                    )
+                ),
+                lineItems = emptyList(),
+                logistics = null,
+                taxation = null,
+                totals = com.verity.core.document.model.DocumentTotals(
+                    itemsSubtotalPaise = 0L,
+                    freightPaise = 0L,
+                    taxTotalPaise = 0L,
+                    grandTotalPaise = 0L
+                ),
+                footer = com.verity.core.document.model.DocumentFooter(
+                    declarationText = "",
+                    notes = null
+                )
+            )
+        }
+    }
+
+    val previewDocument: StateFlow<InvoiceDocumentModel> =
+        uiState
+            .map { draft ->
+                buildPreviewDocument(draft)
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = buildPreviewDocument(draftStore.currentDraft)
+            )
+
     /**
      * Workspace chrome specification.
      *
@@ -74,6 +173,11 @@ class InvoiceWorkspaceViewModel(
             navigationIcon = VerityNavIcon.None,
             actions = listOf(
                 VerityTopBarAction.Icon(
+                    icon = VerityIcons.Preview,
+                    contentDescription = "Preview invoice",
+                    onClick = { /* handled at root */ }
+                ),
+                VerityTopBarAction.Icon(
                     icon = VerityIcons.Search,
                     contentDescription = "Search",
                     onClick = { /* handled at root */ }
@@ -97,6 +201,11 @@ class InvoiceWorkspaceViewModel(
                 contentDescription = "Back"
             ),
             actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Preview,
+                    contentDescription = "Preview invoice",
+                    onClick = { /* handled at root */ }
+                ),
                 VerityTopBarAction.Icon(
                     icon = VerityIcons.Search,
                     contentDescription = "Search",

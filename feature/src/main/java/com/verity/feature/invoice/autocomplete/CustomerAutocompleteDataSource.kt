@@ -38,19 +38,40 @@ interface CustomerAutocompleteDataSource {
 }
 
 /**
- * Lightweight read-model for customer autocomplete rows.
+ * CustomerAutocompleteItem
  *
- * This model is derived from CustomerEntity and is optimized
- * for fast, read-only display in autocomplete UIs.
+ * Invoice-ready, authoritative customer snapshot.
  *
- * It must not be treated as a domain or persistence model.
+ * IMPORTANT INVARIANTS
+ * --------------------
+ * • Selecting a customer MUST yield all information required to:
+ *   - Render Invoice Preview
+ *   - Finalize an Invoice without additional fetches
+ *
+ * • All fields here are expected to be populated from
+ *   authoritative Customer CRUD storage.
+ *
+ * • Missing or blank fields represent a DATA INTEGRITY BUG,
+ *   not a workflow or UI state.
+ *
+ * NON-GOALS
+ * ---------
+ * • This is NOT a domain entity
+ * • This is NOT persisted
+ * • This is NOT editable in the Invoice Workspace
  */
 data class CustomerAutocompleteItem(
     val customerId: String,
     val customerName: String,
-    val gstin: String?,
-    val city: String?,
-    val state: String?,
+
+    // Tax identity (mandatory for invoice)
+    val gstin: String,
+
+    // Address (invoice-relevant)
+    val addressLine1: String,
+    val city: String,
+    val state: String,
+
     // GST state code as 2-digit numeric string (e.g. "27")
-    val stateCode: String?
+    val stateCode: String
 )

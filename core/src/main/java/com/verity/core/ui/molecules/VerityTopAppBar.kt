@@ -13,7 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import com.verity.core.ui.icons.VerityIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -97,11 +98,18 @@ fun VerityTopAppBar(
                         contentAlignment = Alignment.Center
                     ) {
                         IconButton(onClick = navigationIcon.onClick) {
-                            Icon(
-                                imageVector = VerityIcons.Back,
-                                contentDescription = navigationIcon.contentDescription,
-                                tint = VerityTheme.colors.primary
-                            )
+                            when (val icon = VerityIcons.Back) {
+                                is VerityIcon.Material -> Icon(
+                                    imageVector = icon.imageVector,
+                                    contentDescription = navigationIcon.contentDescription,
+                                    tint = VerityTheme.colors.primary
+                                )
+                                is VerityIcon.VectorRes -> Icon(
+                                    painter = painterResource(icon.resId),
+                                    contentDescription = navigationIcon.contentDescription,
+                                    tint = VerityTheme.colors.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -153,11 +161,18 @@ fun VerityTopAppBar(
                         when (action) {
                             is VerityTopBarAction.Icon -> {
                                 IconButton(onClick = action.onClick) {
-                                    Icon(
-                                        imageVector = action.icon,
-                                        contentDescription = action.contentDescription,
-                                        tint = VerityTheme.colors.primary
-                                    )
+                                    when (val icon = action.icon) {
+                                        is VerityIcon.Material -> Icon(
+                                            imageVector = icon.imageVector,
+                                            contentDescription = action.contentDescription,
+                                            tint = VerityTheme.colors.primary
+                                        )
+                                        is VerityIcon.VectorRes -> Icon(
+                                            painter = painterResource(icon.resId),
+                                            contentDescription = action.contentDescription,
+                                            tint = VerityTheme.colors.primary
+                                        )
+                                    }
                                 }
                             }
 
@@ -194,7 +209,7 @@ sealed interface VerityNavIcon {
 sealed interface VerityTopBarAction {
 
     data class Icon(
-        val icon: ImageVector,
+        val icon: VerityIcon,
         val contentDescription: String?,
         val onClick: () -> Unit
     ) : VerityTopBarAction
@@ -217,11 +232,18 @@ private fun OverflowMenu(action: VerityTopBarAction.Overflow) {
     val expandedState = remember { mutableStateOf(false) }
 
     IconButton(onClick = { expandedState.value = true }) {
-        Icon(
-            imageVector = VerityIcons.Overflow,
-            contentDescription = "More options",
-            tint = VerityTheme.colors.primary
-        )
+        when (val icon = VerityIcons.Overflow) {
+            is VerityIcon.Material -> Icon(
+                imageVector = icon.imageVector,
+                contentDescription = "More options",
+                tint = VerityTheme.colors.primary
+            )
+            is VerityIcon.VectorRes -> Icon(
+                painter = painterResource(icon.resId),
+                contentDescription = "More options",
+                tint = VerityTheme.colors.primary
+            )
+        }
     }
 
     DropdownMenu(

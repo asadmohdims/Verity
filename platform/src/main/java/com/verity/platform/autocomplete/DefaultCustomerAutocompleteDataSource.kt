@@ -48,14 +48,46 @@ class DefaultCustomerAutocompleteDataSource(
             .toList()
     }
 
+    /**
+     * Maps a CustomerEntity to an invoice-ready CustomerAutocompleteItem.
+     *
+     * This is a GUARANTEE boundary.
+     * Missing data here indicates a Customer data integrity bug.
+     */
     private fun CustomerEntity.toAutocompleteItem(): CustomerAutocompleteItem {
+
+        require(customerName.isNotBlank()) {
+            "CustomerEntity.customerName must not be blank"
+        }
+
+        require(!gstin.isNullOrBlank()) {
+            "CustomerEntity.gstin must be present for invoice generation"
+        }
+
+        require(!addressLine1.isNullOrBlank()) {
+            "CustomerEntity.addressLine1 must be present for invoice generation"
+        }
+
+        require(!city.isNullOrBlank()) {
+            "CustomerEntity.city must be present for invoice generation"
+        }
+
+        require(!state.isNullOrBlank()) {
+            "CustomerEntity.state must be present for invoice generation"
+        }
+
+        require(!stateCode.isNullOrBlank()) {
+            "CustomerEntity.stateCode must be present for invoice generation"
+        }
+
         return CustomerAutocompleteItem(
             customerId = customerId,
             customerName = customerName,
-            gstin = gstin,
-            city = city,
-            state = state,
-            stateCode = stateCode
+            gstin = gstin!!,
+            addressLine1 = addressLine1!!,
+            city = city!!,
+            state = state!!,
+            stateCode = stateCode!!
         )
     }
 }

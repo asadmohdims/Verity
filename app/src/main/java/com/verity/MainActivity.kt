@@ -23,9 +23,15 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.InvoiceDraftUiState
 
+import com.verity.feature.invoice.preview.InvoicePreviewScreen
+
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.verity.core.ui.molecules.VerityNavIcon
+import com.verity.core.ui.molecules.VerityChromeMode
+import com.verity.core.ui.chrome.WorkspaceChromeSpec
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 /**
  * MainActivity
@@ -50,6 +56,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val isDarkTheme = false
             val navController = rememberNavController()
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
             val view = androidx.compose.ui.platform.LocalView.current
             androidx.compose.runtime.SideEffect {
                 val controller = WindowInsetsControllerCompat(window, view)
@@ -83,14 +91,45 @@ class MainActivity : ComponentActivity() {
                     .chromeSpec
                     .collectAsState()
 
+                val chromeSpecWithNavigation = remember(workspaceChromeSpec) {
+                    workspaceChromeSpec.copy(
+                        actions = workspaceChromeSpec.actions.map { action ->
+                            if (
+                                action is com.verity.core.ui.molecules.VerityTopBarAction.Icon &&
+                                action.contentDescription == "Preview invoice"
+                            ) {
+                                action.copy(
+                                    onClick = { navController.navigate("preview") }
+                                )
+                            } else {
+                                action
+                            }
+                        }
+                    )
+                }
+
+                val effectiveChromeSpec = when (currentRoute) {
+                    "preview" -> WorkspaceChromeSpec(
+                        title = "Invoice Preview",
+                        subtitle = null,
+                        navigationIcon = VerityNavIcon.Back(
+                            onClick = { navController.popBackStack() },
+                            contentDescription = "Back"
+                        ),
+                        actions = emptyList(),
+                        chromeMode = VerityChromeMode.Support
+                    )
+                    else -> chromeSpecWithNavigation
+                }
+
                 Scaffold(
                     topBar = {
                         VerityTopAppBar(
-                            title = workspaceChromeSpec.title,
-                            subtitle = workspaceChromeSpec.subtitle,
-                            navigationIcon = workspaceChromeSpec.navigationIcon,
-                            actions = workspaceChromeSpec.actions,
-                            chromeMode = workspaceChromeSpec.chromeMode
+                            title = effectiveChromeSpec.title,
+                            subtitle = effectiveChromeSpec.subtitle,
+                            navigationIcon = effectiveChromeSpec.navigationIcon,
+                            actions = effectiveChromeSpec.actions,
+                            chromeMode = effectiveChromeSpec.chromeMode
                         )
                     }
                 ) { innerPadding ->
@@ -107,6 +146,21 @@ class MainActivity : ComponentActivity() {
                             composable("workspace") {
                                 InvoiceWorkspaceRoute(
                                     viewModel = invoiceWorkspaceViewModel
+                                )
+                            }
+
+                            composable("preview") {
+                                val previewDocument by invoiceWorkspaceViewModel
+                                    .previewDocument
+                                    .collectAsState()
+
+                                requireNotNull(previewDocument) {
+                                    "Preview route entered without an active draft"
+                                }
+
+                                InvoicePreviewScreen(
+                                    document = previewDocument!!,
+                                    onBack = { navController.popBackStack() }
                                 )
                             }
                         }

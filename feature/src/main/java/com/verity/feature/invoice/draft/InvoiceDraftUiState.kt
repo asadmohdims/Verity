@@ -8,6 +8,18 @@ import java.time.LocalDate
  * This model is NOT authoritative.
  * It exists only while the user is editing.
  */
+
+/**
+ * NOTE:
+ * This draft model is consumed ONLY by:
+ * - Invoice Workspace UI
+ * - Draft reducer
+ *
+ * It must NEVER be consumed directly by:
+ * - Preview rendering
+ * - Finalization logic
+ * - Persistence or domain events
+ */
 data class InvoiceDraftUiState(
     val documentType: DraftDocumentType = DraftDocumentType.INVOICE,
     val customer: DraftCustomer? = null,

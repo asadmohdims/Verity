@@ -23,6 +23,10 @@ import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
 import com.verity.core.ui.primitives.VeritySpace
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Divider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +77,101 @@ fun InvoicePreviewScreen(
                 }
             }
 
-            // Other sections will be added incrementally
+            VeritySpacer(size = VeritySpace.Medium)
+
+            // ─────────────────────────────────────────────
+            // Section 2: Parties (Billed To / Shipped To)
+            // ─────────────────────────────────────────────
+            VeritySurface(
+                type = VeritySurfaceType.Base,
+                modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            ) {
+                VeritySection {
+                    VerityText(
+                        text = "Billed To",
+                        style = VerityTextStyle.Label
+                    )
+                    VerityText(
+                        text = document.parties.billedTo.name,
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = document.parties.billedTo.addressLines.joinToString(", "),
+                        style = VerityTextStyle.Body
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityText(
+                        text = "Shipped To",
+                        style = VerityTextStyle.Label
+                    )
+                    VerityText(
+                        text = document.parties.shippedTo.name,
+                        style = VerityTextStyle.Body
+                    )
+                    VerityText(
+                        text = document.parties.shippedTo.addressLines.joinToString(", "),
+                        style = VerityTextStyle.Body
+                    )
+                }
+            }
+
+            VeritySpacer(size = VeritySpace.Medium)
+
+            // ─────────────────────────────────────────────
+            // Section 3: Line Items
+            // ─────────────────────────────────────────────
+            VeritySurface(
+                type = VeritySurfaceType.Base,
+                modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            ) {
+                VeritySection {
+                    VerityText(
+                        text = "Line Items",
+                        style = VerityTextStyle.Label
+                    )
+
+                    document.lineItems.forEach { item ->
+                        VeritySpacer(size = VeritySpace.ExtraSmall)
+
+                        Row {
+                            VerityText(
+                                text = item.description,
+                                style = VerityTextStyle.Body
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            VerityText(
+                                text = "₹${item.amountPaise / 100}",
+                                style = VerityTextStyle.Body
+                            )
+                        }
+                    }
+                }
+            }
+
+            VeritySpacer(size = VeritySpace.Medium)
+
+            // ─────────────────────────────────────────────
+            // Section 4: Totals
+            // ─────────────────────────────────────────────
+            VeritySurface(
+                type = VeritySurfaceType.Base,
+                modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            ) {
+                VeritySection {
+                    VerityText(
+                        text = "Grand Total",
+                        style = VerityTextStyle.Label
+                    )
+                    VerityText(
+                        text = "₹${document.totals.grandTotalPaise / 100}",
+                        style = VerityTextStyle.Title
+                    )
+                }
+            }
         }
     }
 }
