@@ -87,7 +87,8 @@ class DefaultCustomerAutocompleteDataSource(
             addressLine1 = addressLine1!!,
             city = city!!,
             state = state!!,
-            stateCode = stateCode!!
+            stateCode = stateCode!!,
+            pincode = pincode
         )
     }
 }

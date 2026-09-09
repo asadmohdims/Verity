@@ -92,7 +92,13 @@ data class DraftAddress(
     val city: String,
     val state: String,
     val stateCode: String,
-    val pincode: String
+    val pincode: String?,
+    /**
+     * Identifier of the CustomerEntity this address was selected from, if any.
+     * Null for a manually-typed address with no autocomplete selection behind it.
+     * Required (on billedTo) to finalize a document — see InvoiceFinalizer.
+     */
+    val customerId: String? = null
 )
 
 /**

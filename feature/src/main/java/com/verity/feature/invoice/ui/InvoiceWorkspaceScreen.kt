@@ -779,8 +779,21 @@ private fun InvoiceWorkspacePreviewDark() {
 private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
     return InvoiceWorkspaceViewModel(
         draftStore = previewDraftStore(),
-        customerAutocompleteDataSource = previewCustomerAutocompleteDataSource()
+        customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
+        invoiceFinalizer = previewInvoiceFinalizer()
     )
+}
+
+@Composable
+private fun previewInvoiceFinalizer(): com.verity.feature.invoice.finalize.InvoiceFinalizer {
+    return object : com.verity.feature.invoice.finalize.InvoiceFinalizer {
+        override suspend fun finalize(
+            draft: com.verity.invoice.draft.InvoiceDraftUiState,
+            customerId: String
+        ): com.verity.core.document.model.InvoiceDocumentModel {
+            error("Finalize is not available in @Preview")
+        }
+    }
 }
 
 @Composable

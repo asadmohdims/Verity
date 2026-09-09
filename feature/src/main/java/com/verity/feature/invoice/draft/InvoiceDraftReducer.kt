@@ -168,6 +168,14 @@ object InvoiceDraftReducer {
         )
     }
 
+    /**
+     * Returns a fresh, empty draft.
+     *
+     * Used after finalize (the just-finalized draft must not resurface as the next draft) and
+     * after discard (fixes a prior bug where discarding left the old draft's data in the store).
+     */
+    fun reset(): InvoiceDraftUiState = InvoiceDraftUiState()
+
     private fun recalculate(
         draft: InvoiceDraftUiState
     ): InvoiceDraftUiState {

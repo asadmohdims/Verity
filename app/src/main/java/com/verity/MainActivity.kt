@@ -5,10 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
@@ -19,9 +21,12 @@ import com.verity.platform.chrome.WorkspaceChromeViewModel
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
 import com.verity.invoice.draft.InvoiceDraftStore
-import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
-import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.invoice.draft.InvoiceDraftUiState
+import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
+import com.verity.platform.database.PlatformDatabaseFactory
+import com.verity.platform.database.seed.CustomerSeedLoader
+import com.verity.platform.database.seed.toEntity
+import com.verity.platform.finalize.DefaultInvoiceFinalizer
 
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 
@@ -32,6 +37,7 @@ import com.verity.core.ui.molecules.VerityNavIcon
 import com.verity.core.ui.molecules.VerityChromeMode
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import androidx.navigation.compose.currentBackStackEntryAsState
+import java.time.Clock
 
 /**
  * MainActivity
@@ -64,22 +70,31 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightStatusBars = !isDarkTheme
                 controller.isAppearanceLightNavigationBars = !isDarkTheme
             }
+
+            val context = LocalContext.current
+            val database = remember { PlatformDatabaseFactory.create(context) }
+
+            // One-time seed bootstrap: populate customers from the fixture asset on first run.
+            LaunchedEffect(Unit) {
+                if (database.customerDao().count() == 0) {
+                    val seedCustomers = CustomerSeedLoader.load(context).map { it.toEntity() }
+                    database.customerDao().upsertAll(seedCustomers)
+                }
+            }
+
             // Construct InvoiceWorkspaceViewModel for the feature route.
             val invoiceWorkspaceViewModel = remember {
                 InvoiceWorkspaceViewModel(
                     draftStore = InvoiceDraftStore(
                         initialDraft = InvoiceDraftUiState()
                     ),
-                    customerAutocompleteDataSource = object : CustomerAutocompleteDataSource {
-                        override suspend fun recentCustomers(limit: Int): List<CustomerAutocompleteItem> =
-                            emptyList()
-
-                        override suspend fun searchCustomers(
-                            query: String,
-                            limit: Int
-                        ): List<CustomerAutocompleteItem> =
-                            emptyList()
-                    }
+                    customerAutocompleteDataSource = DefaultCustomerAutocompleteDataSource(
+                        customerDao = database.customerDao()
+                    ),
+                    invoiceFinalizer = DefaultInvoiceFinalizer(
+                        database = database,
+                        clock = Clock.systemDefaultZone()
+                    )
                 )
             }
             VerityTheme(
@@ -99,7 +114,11 @@ class MainActivity : ComponentActivity() {
                                 action.contentDescription == "Preview invoice"
                             ) {
                                 action.copy(
-                                    onClick = { navController.navigate("preview") }
+                                    onClick = {
+                                        if (invoiceWorkspaceViewModel.previewDocument.value != null) {
+                                            navController.navigate("preview")
+                                        }
+                                    }
                                 )
                             } else {
                                 action
@@ -111,6 +130,16 @@ class MainActivity : ComponentActivity() {
                 val effectiveChromeSpec = when (currentRoute) {
                     "preview" -> WorkspaceChromeSpec(
                         title = "Invoice Preview",
+                        subtitle = null,
+                        navigationIcon = VerityNavIcon.Back(
+                            onClick = { navController.popBackStack() },
+                            contentDescription = "Back"
+                        ),
+                        actions = emptyList(),
+                        chromeMode = VerityChromeMode.Support
+                    )
+                    "finalized" -> WorkspaceChromeSpec(
+                        title = "Invoice Finalized",
                         subtitle = null,
                         navigationIcon = VerityNavIcon.Back(
                             onClick = { navController.popBackStack() },
@@ -153,6 +182,24 @@ class MainActivity : ComponentActivity() {
                                 val previewDocument by invoiceWorkspaceViewModel
                                     .previewDocument
                                     .collectAsState()
+                                val finalizedDocument by invoiceWorkspaceViewModel
+                                    .finalizedDocument
+                                    .collectAsState()
+                                val isFinalizing by invoiceWorkspaceViewModel
+                                    .isFinalizing
+                                    .collectAsState()
+
+                                // Finalize completes asynchronously in the ViewModel; once it
+                                // publishes a result, move forward to the finalized screen and
+                                // drop "preview" from the back stack (the draft it showed no
+                                // longer exists — back must not be able to return to it).
+                                LaunchedEffect(finalizedDocument) {
+                                    if (finalizedDocument != null) {
+                                        navController.navigate("finalized") {
+                                            popUpTo("preview") { inclusive = true }
+                                        }
+                                    }
+                                }
 
                                 requireNotNull(previewDocument) {
                                     "Preview route entered without an active draft"
@@ -160,6 +207,23 @@ class MainActivity : ComponentActivity() {
 
                                 InvoicePreviewScreen(
                                     document = previewDocument!!,
+                                    onBack = { navController.popBackStack() },
+                                    onFinalize = { invoiceWorkspaceViewModel.onFinalizeInvoice() },
+                                    isFinalizing = isFinalizing
+                                )
+                            }
+
+                            composable("finalized") {
+                                val finalizedDocument by invoiceWorkspaceViewModel
+                                    .finalizedDocument
+                                    .collectAsState()
+
+                                requireNotNull(finalizedDocument) {
+                                    "Finalized route entered without a finalized document"
+                                }
+
+                                InvoicePreviewScreen(
+                                    document = finalizedDocument!!,
                                     onBack = { navController.popBackStack() }
                                 )
                             }

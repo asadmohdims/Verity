@@ -81,6 +81,15 @@ data class CustomerEntity(
     val stateCode: String,
 
     /**
+     * Postal pincode associated with the customer's address.
+     *
+     * OPTIONAL:
+     * - Not required for invoice validity in v1
+     * - Included for future logistics, analytics, and address enrichment
+     */
+    val pincode: String?,
+
+    /**
      * Indicates whether the customer is active.
      */
     val isActive: Boolean,

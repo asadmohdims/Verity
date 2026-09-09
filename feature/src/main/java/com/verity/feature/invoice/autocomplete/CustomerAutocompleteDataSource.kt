@@ -73,5 +73,14 @@ data class CustomerAutocompleteItem(
     val state: String,
 
     // GST state code as 2-digit numeric string (e.g. "27")
-    val stateCode: String
+    val stateCode: String,
+
+    /**
+     * Optional postal pincode.
+     *
+     * NOTE:
+     * - Not required for invoice validity in v1
+     * - Passed through for future logistics / enrichment
+     */
+    val pincode: String?
 )

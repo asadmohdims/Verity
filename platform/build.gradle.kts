@@ -10,7 +10,14 @@ android {
     compileSdk {
         version = release(36)
     }
-
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("src/main/assets")
+        }
+        getByName("androidTest") {
+            assets.srcDirs("src/androidTest/assets")
+        }
+    }
     defaultConfig {
         minSdk = 26
 
@@ -45,6 +52,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.serialization.json)
+    implementation("com.google.code.gson:gson:2.10.1")
     testImplementation("org.json:json:20240303")
     implementation(project(":core"))
     implementation(project(":feature"))

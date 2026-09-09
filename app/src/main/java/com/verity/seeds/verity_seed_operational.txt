@@ -3,7 +3,85 @@ Inherits from: verity_seed_core.txt
 ──────────────────────────────────────
 PROJECT PHASE MODEL (AUTHORITATIVE)
 
+
 SESSION AMENDMENT — PREVIEW & FINALIZATION ARCHITECTURE (LOCKED)
+
+SESSION AMENDMENT — CUSTOMER DATA ENABLEMENT (D2 CLARIFICATION)
+
+This amendment records the current execution reality encountered while
+exercising D2 workflows with real data. It is clarificatory only and does
+not modify any locked architectural, domain, or phase laws.
+
+──────────────────────────────────────
+CUSTOMER DATA — OPERATIONAL CLARIFICATION (D2 CONTEXT)
+
+To meaningfully validate the Invoice Workspace and pre‑finalization Preview
+during D2, access to realistic customer identity data (GSTIN, state,
+stateCode, address) is required.
+
+Operational clarification:
+
+• CustomerEntity remains the canonical, CRUD‑managed customer identity model
+  owned by the platform layer.
+• Draft creation and preview correctness depend on customer GST and state
+  context already being present at selection time.
+• In fresh environments, the absence of customer records prevents end‑to‑end
+  validation of Workspace → Preview flows.
+
+To address this without altering scope or introducing new domain concepts,
+a temporary customer seed mechanism is used during alpha execution.
+
+──────────────────────────────────────
+CUSTOMER SEED — EXECUTION STATUS (TEMPORARY, NON‑DOMAIN)
+
+Current execution state:
+
+• A lightweight customer seed format exists solely to populate an empty local
+  database during alpha execution.
+• Seed data is loaded only to enable realistic D2 workspace interaction and
+  preview validation.
+• Seed data is explicitly not part of domain truth, replay, projections, or
+  event flows.
+• Seed data does not introduce new business rules and does not bypass any
+  draft or document invariants.
+
+Clarifications:
+
+• Customer seed data is an execution aid, not a product feature.
+• Seed data will be removed or superseded once customer CRUD workflows are
+  introduced.
+• No customer lifecycle semantics (create/update/deactivate events) are
+  implied by seed usage.
+
+──────────────────────────────────────
+EXECUTION POSITION — WHERE D2 CURRENTLY STANDS
+
+At this checkpoint:
+
+• Draft‑level atoms (Parties, Line Items, Transport, Summary) are implemented
+  and locked.
+• Draft → Document projection is implemented, deterministic, and locked.
+• Preview semantics are locked but have not yet been fully exercised against
+  real customer data.
+• The absence of customer records in a clean install is the only remaining
+  blocker to validating Workspace → Preview behavior end‑to‑end.
+
+No changes have been made to:
+• Draft reducers
+• Financial or tax logic
+• Domain events or replay
+• Preview or finalization semantics
+
+──────────────────────────────────────
+IMMEDIATE NEXT STEP (UNCHANGED IN INTENT)
+
+The next execution step within D2 remains:
+
+• Enabling realistic Workspace → Preview validation by ensuring customer
+  identity data is present in the local database during alpha execution.
+
+This step is strictly preparatory and does not alter D2 scope, laws, or
+deliverables.
 
 This amendment records decisions made during the extended Preview + Finalization
 design session. It is additive and does not modify or invalidate any previously
@@ -946,42 +1024,5 @@ Current Deliverables (as of Foundation completion):
 
 ──────────────────────────────────────
 
-UI Design System — Operational Status (AMENDED)
 
-• Verity Light and Dark color palettes are now concretely implemented and
-  operationally active.
-• Color philosophy is enforced in code:
-  – Cool-neutral, graphite-anchored
-  – Luminance-driven hierarchy
-  – No semantic meaning encoded via color
-• Primary (System Backbone) and Accent (Action Emphasis) roles are preserved
-  exactly as defined in the Core Seed.
-• Accent color remains adjustable, but the structural color contract is locked.
 
-• Exploratory colors are explicitly quarantined as non-system candidates.
-• Candidate colors are not accessible via VerityTheme and must never be used
-  in production UI.
-
-• VerityButton is now a stable, first-class UI primitive:
-  – Two roles only: Primary and Secondary
-  – Primary uses system backbone color
-  – Secondary uses neutral surfaces with border semantics only
-  – Disabled and pressed states are deterministic and theme-driven
-  – No accent misuse or ad-hoc styling permitted
-
-• VerityTextField is now a stable, first-class UI primitive:
-  – Material-aligned (OutlinedTextField based)
-  – Supports SelectionSearch and Basic roles
-  – Autocomplete behavior follows the locked UX laws:
-      * Typing-first
-      * Inline expansion (non-popup)
-      * Keyboard focus is never interrupted
-      * Suggestions are visually continuous with the input field
-  – Filtering and ranking remain upstream responsibilities
-  – UI primitives receive pre-filtered suggestion lists only
-
-• Financial UI components (invoice line items, amounts) are now validated against real draft data and considered production‑directional.
-
-• These primitives are no longer experimental.
-• Future UI work must compose from these primitives, not bypass or replace them.
-• Further changes are limited to visual polish or explicit contract evolution.

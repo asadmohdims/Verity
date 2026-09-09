@@ -1,5 +1,7 @@
 package com.verity.core.document.model
 
+import com.verity.core.serialization.LocalDateIsoSerializer
+import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
 /**
@@ -12,6 +14,9 @@ import java.time.LocalDate
  * - Is independent of draft UI state
  * - Contains no mutability or side effects
  * - Is safe to snapshot, cache, or persist after finalization
+ *
+ * Serializable so a finalized document can be stored as-is (see CLAUDE.md's Data & sync
+ * architecture — a finalized document's persisted payload is this model, unchanged).
  */
 
 /**
@@ -20,10 +25,10 @@ import java.time.LocalDate
  * - Used as input to finalization event emission
  *
  * NOT YET:
- * - No persistence
  * - No numbering authority
  * - No lifecycle semantics
  */
+@Serializable
 data class InvoiceDocumentModel(
     val identity: DocumentIdentity,
     val parties: DocumentParties,
@@ -36,13 +41,16 @@ data class InvoiceDocumentModel(
 
 /* ---------- Identity ---------- */
 
+@Serializable
 data class DocumentIdentity(
     val documentType: DocumentType,
     val documentNumber: String,
+    @Serializable(with = LocalDateIsoSerializer::class)
     val issueDate: LocalDate,
     val seller: SellerDetails
 )
 
+@Serializable
 enum class DocumentType {
     INVOICE,
     CHALLAN
@@ -55,6 +63,7 @@ enum class DocumentType {
  * This is intentionally provisional.
  * Seller/Organization modeling will be finalized separately.
  */
+@Serializable
 data class SellerDetails(
     val name: String,
     val gstin: String?,
@@ -74,6 +83,7 @@ data class SellerDetails(
  * Snapshot of customer information as it appears on the document.
  * This must NOT reference CustomerEntity.
  */
+@Serializable
 data class DocumentParty(
     val name: String,
     val gstin: String,
@@ -82,6 +92,7 @@ data class DocumentParty(
     val stateCode: String
 )
 
+@Serializable
 data class DocumentParties(
     val billedTo: DocumentParty,
     val shippedTo: DocumentParty
@@ -89,6 +100,7 @@ data class DocumentParties(
 
 /* ---------- Line Items ---------- */
 
+@Serializable
 data class DocumentLineItem(
     val description: String,
     val hsnCode: String,
@@ -100,9 +112,11 @@ data class DocumentLineItem(
 
 /* ---------- Logistics ---------- */
 
+@Serializable
 data class DocumentLogistics(
     val transporterName: String?,
     val vehicleNumber: String?,
+    @Serializable(with = LocalDateIsoSerializer::class)
     val supplyDate: LocalDate?,
     val grOrLrNumber: String?,
     val freightPaise: Long?,
@@ -111,6 +125,7 @@ data class DocumentLogistics(
 
 /* ---------- Taxation ---------- */
 
+@Serializable
 data class DocumentTaxation(
     val mode: DocumentTaxMode,
     val cgst: DocumentTaxComponent?,
@@ -118,11 +133,13 @@ data class DocumentTaxation(
     val igst: DocumentTaxComponent?
 )
 
+@Serializable
 enum class DocumentTaxMode {
     INTRA_STATE,
     INTER_STATE
 }
 
+@Serializable
 data class DocumentTaxComponent(
     val ratePercent: Long,
     val amountPaise: Long
@@ -130,6 +147,7 @@ data class DocumentTaxComponent(
 
 /* ---------- Totals ---------- */
 
+@Serializable
 data class DocumentTotals(
     val itemsSubtotalPaise: Long,
     val freightPaise: Long,
@@ -139,6 +157,7 @@ data class DocumentTotals(
 
 /* ---------- Footer ---------- */
 
+@Serializable
 data class DocumentFooter(
     val declarationText: String,
     val notes: String?

@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.invoice.draft.DraftAddress
 import com.verity.invoice.draft.DraftLineItem
 import com.verity.invoice.draft.DraftTransportDetails
@@ -45,9 +46,11 @@ import kotlinx.coroutines.launch
  * - No PDF generation
  * - No navigation
  */
+
 class InvoiceWorkspaceViewModel(
     private val draftStore: InvoiceDraftStore,
-    private val customerAutocompleteDataSource: CustomerAutocompleteDataSource
+    private val customerAutocompleteDataSource: CustomerAutocompleteDataSource,
+    private val invoiceFinalizer: InvoiceFinalizer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
@@ -56,95 +59,43 @@ class InvoiceWorkspaceViewModel(
     private val _hasActiveDraft = MutableStateFlow(false)
     val hasActiveDraft: StateFlow<Boolean> = _hasActiveDraft.asStateFlow()
 
+    private val _isFinalizing = MutableStateFlow(false)
+    val isFinalizing: StateFlow<Boolean> = _isFinalizing.asStateFlow()
+
+    private val _finalizedDocument = MutableStateFlow<InvoiceDocumentModel?>(null)
+    val finalizedDocument: StateFlow<InvoiceDocumentModel?> = _finalizedDocument.asStateFlow()
+
     // ------------------------------------------------------------
     // Preview (D2) — Draft → Document projection
     // ------------------------------------------------------------
-    /**
-     * Preview-safe projection.
-     *
-     * This MUST be tolerant of incomplete drafts.
-     * Preview is a lens on current state, not a validation gate.
-     */
-    private fun buildPreviewDocument(
-        draft: InvoiceDraftUiState
-    ): InvoiceDocumentModel {
-        return try {
-            DraftToInvoiceDocument.project(
-                draft = draft,
-                documentNumber = "PREVIEW",
-                seller = SellerDetails(
-                    name = "Preview Seller",
-                    gstin = null,
-                    addressLine1 = "",
-                    addressLine2 = null,
-                    city = "",
-                    state = "",
-                    stateCode = "",
-                    pincode = ""
-                ),
-                clock = Clock.systemDefaultZone()
-            )
-        } catch (e: IllegalArgumentException) {
-            // Draft is incomplete (e.g. Billed To missing).
-            // Return a minimal, non-authoritative preview document.
-            InvoiceDocumentModel(
-                identity = com.verity.core.document.model.DocumentIdentity(
-                    documentType = com.verity.core.document.model.DocumentType.INVOICE,
-                    documentNumber = "PREVIEW",
-                    issueDate = java.time.LocalDate.now(),
-                    seller = SellerDetails(
-                        name = "Preview Seller",
-                        gstin = null,
-                        addressLine1 = "",
-                        addressLine2 = null,
-                        city = "",
-                        state = "",
-                        stateCode = "",
-                        pincode = ""
-                    )
-                ),
-                parties = com.verity.core.document.model.DocumentParties(
-                    billedTo = com.verity.core.document.model.DocumentParty(
-                        name = "(Not set)",
-                        gstin = "",
-                        addressLines = emptyList(),
-                        state = "",
-                        stateCode = ""
-                    ),
-                    shippedTo = com.verity.core.document.model.DocumentParty(
-                        name = "(Not set)",
-                        gstin = "",
-                        addressLines = emptyList(),
-                        state = "",
-                        stateCode = ""
-                    )
-                ),
-                lineItems = emptyList(),
-                logistics = null,
-                taxation = null,
-                totals = com.verity.core.document.model.DocumentTotals(
-                    itemsSubtotalPaise = 0L,
-                    freightPaise = 0L,
-                    taxTotalPaise = 0L,
-                    grandTotalPaise = 0L
-                ),
-                footer = com.verity.core.document.model.DocumentFooter(
-                    declarationText = "",
-                    notes = null
-                )
-            )
-        }
-    }
 
-    val previewDocument: StateFlow<InvoiceDocumentModel> =
+    val previewDocument: StateFlow<InvoiceDocumentModel?> =
         uiState
             .map { draft ->
-                buildPreviewDocument(draft)
+                if (draft.billedTo == null) {
+                    null
+                } else {
+                    DraftToInvoiceDocument.project(
+                        draft = draft,
+                        documentNumber = "PREVIEW",
+                        seller = SellerDetails(
+                            name = "Preview Seller",
+                            gstin = null,
+                            addressLine1 = "",
+                            addressLine2 = null,
+                            city = "",
+                            state = "",
+                            stateCode = "",
+                            pincode = ""
+                        ),
+                        clock = Clock.systemDefaultZone()
+                    )
+                }
             }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = buildPreviewDocument(draftStore.currentDraft)
+                initialValue = null
             )
 
     /**
@@ -192,6 +143,9 @@ class InvoiceWorkspaceViewModel(
     fun onCreateInvoice() {
         _hasActiveDraft.value = true
         _uiState.value = draftStore.currentDraft
+        // Clear any prior finalize result so the next Preview visit doesn't immediately
+        // navigate to "finalized" for a document that belongs to the previous invoice.
+        _finalizedDocument.value = null
 
         _chromeSpec.value = WorkspaceChromeSpec(
             title = "Invoice",
@@ -216,6 +170,9 @@ class InvoiceWorkspaceViewModel(
     }
 
     fun onDiscardDraft() {
+        // Previously left the old draft's data sitting in the store — the next "Create Invoice"
+        // would resurrect it. reset() actually clears it.
+        draftStore.reset()
         _hasActiveDraft.value = false
         _uiState.value = draftStore.currentDraft
 
@@ -232,6 +189,31 @@ class InvoiceWorkspaceViewModel(
             ),
             chromeMode = VerityChromeMode.Workspace
         )
+    }
+
+    /**
+     * Finalizes the current draft into a permanent, numbered document.
+     *
+     * Guards against double-tap (two rapid taps would otherwise create two real documents with
+     * consecutive numbers — nothing at the DB layer stops that on its own). Requires a billed-to
+     * customer with a resolved customerId (i.e. selected via autocomplete, not hand-typed).
+     */
+    fun onFinalizeInvoice() {
+        if (_isFinalizing.value) return
+
+        val customerId = draftStore.currentDraft.billedTo?.customerId
+        requireNotNull(customerId) { "Cannot finalize without a selected billed-to customer" }
+
+        viewModelScope.launch {
+            _isFinalizing.value = true
+            val document = invoiceFinalizer.finalize(draftStore.currentDraft, customerId)
+            _finalizedDocument.value = document
+
+            draftStore.reset()
+            _uiState.value = draftStore.currentDraft
+            _hasActiveDraft.value = false
+            _isFinalizing.value = false
+        }
     }
 
     // Autocomplete UI state (Atom 1 contract)
@@ -304,11 +286,12 @@ class InvoiceWorkspaceViewModel(
         val address = DraftAddress(
             name = item.customerName,
             gstin = item.gstin,
-            addressLine1 = "",
-            city = item.city ?: "",
-            state = item.state ?: "",
-            stateCode = item.stateCode ?: "",
-            pincode = ""
+            addressLine1 = item.addressLine1,
+            city = item.city,
+            state = item.state,
+            stateCode = item.stateCode,
+            pincode = item.pincode,
+            customerId = item.customerId
         )
 
         onBilledToSelected(address)
@@ -358,11 +341,12 @@ class InvoiceWorkspaceViewModel(
         val address = DraftAddress(
             name = item.customerName,
             gstin = item.gstin,
-            addressLine1 = "",
-            city = item.city ?: "",
-            state = item.state ?: "",
-            stateCode = item.stateCode ?: "",
-            pincode = ""
+            addressLine1 = item.addressLine1,
+            city = item.city,
+            state = item.state,
+            stateCode = item.stateCode,
+            pincode = item.pincode,
+            customerId = item.customerId
         )
 
         onShippedToSelected(address)

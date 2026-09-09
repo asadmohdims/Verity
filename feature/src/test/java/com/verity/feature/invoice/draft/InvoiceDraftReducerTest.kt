@@ -142,6 +142,31 @@ class InvoiceDraftReducerTest {
         assertEquals(0L, result.summary.taxTotalPaise)
     }
 
+    @Test
+    fun `reset returns an empty draft regardless of prior state`() {
+        val draft = InvoiceDraftUiState(
+            documentType = DraftDocumentType.CHALLAN,
+            billedTo = testBilledTo(),
+            lineItems = listOf(
+                DraftLineItem(
+                    description = "Item A",
+                    hsnCode = "1001",
+                    quantity = 10,
+                    unit = "PCS",
+                    ratePaise = 1_000
+                )
+            ),
+            transportDetails = DraftTransportDetails(freightPaise = 5_000)
+        )
+
+        val result = InvoiceDraftReducer.reset()
+
+        assertEquals(InvoiceDraftUiState(), result)
+        assertEquals(0, result.lineItems.size)
+        assertEquals(null, result.billedTo)
+        assertEquals(null, result.transportDetails)
+    }
+
     private fun testBilledTo(): DraftAddress =
         DraftAddress(
             name = "Test Buyer",
@@ -149,6 +174,7 @@ class InvoiceDraftReducerTest {
             city = "Mumbai",
             state = "Maharashtra",
             stateCode = "27",
+            gstin = "27AAACB1234Z1Z",
             pincode = "400001"
         )
 }

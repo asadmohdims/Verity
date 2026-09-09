@@ -15,7 +15,11 @@ import androidx.compose.ui.Modifier
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.formatting.money.Money
 import com.verity.core.ui.molecules.VeritySection
+import com.verity.core.ui.primitives.VerityButton
+import com.verity.core.ui.primitives.VerityButtonRole
+import com.verity.core.ui.primitives.VerityButtonState
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
@@ -28,11 +32,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Divider
 
+/**
+ * Renders an InvoiceDocumentModel for either a draft preview or an already-finalized document —
+ * the content is identical either way (both are just "here's what this document says"). Only
+ * [onFinalize] distinguishes them: pass it (draft-preview context) to show a Finalize CTA, or
+ * leave it null (viewing an already-finalized document) to hide it.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoicePreviewScreen(
     document: InvoiceDocumentModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFinalize: (() -> Unit)? = null,
+    isFinalizing: Boolean = false
 ) {
     Scaffold(
         topBar = {
@@ -144,7 +156,7 @@ fun InvoicePreviewScreen(
                             Spacer(modifier = Modifier.width(8.dp))
 
                             VerityText(
-                                text = "₹${item.amountPaise / 100}",
+                                text = Money.ofPaise(item.amountPaise).format(),
                                 style = VerityTextStyle.Body
                             )
                         }
@@ -167,10 +179,22 @@ fun InvoicePreviewScreen(
                         style = VerityTextStyle.Label
                     )
                     VerityText(
-                        text = "₹${document.totals.grandTotalPaise / 100}",
+                        text = Money.ofPaise(document.totals.grandTotalPaise).format(),
                         style = VerityTextStyle.Title
                     )
                 }
+            }
+
+            if (onFinalize != null) {
+                VeritySpacer(size = VeritySpace.Medium)
+
+                VerityButton(
+                    label = if (isFinalizing) "Finalizing…" else "Finalize Invoice",
+                    onClick = onFinalize,
+                    role = VerityButtonRole.Primary,
+                    state = if (isFinalizing) VerityButtonState.Disabled else VerityButtonState.Enabled,
+                    modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+                )
             }
         }
     }

@@ -95,4 +95,9 @@ class InvoiceDraftStore(
             documentType = documentType
         )
     }
+
+    /** Clears the draft back to empty. See InvoiceDraftReducer.reset(). */
+    fun reset() {
+        _currentDraft = InvoiceDraftReducer.reset()
+    }
 }

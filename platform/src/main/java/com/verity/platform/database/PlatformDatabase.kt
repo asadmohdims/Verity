@@ -2,44 +2,36 @@ package com.verity.platform.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.verity.platform.database.dao.EventDao
 import com.verity.platform.database.dao.CustomerDao
-import com.verity.platform.database.entities.EventEntity
+import com.verity.platform.database.dao.DocumentDao
+import com.verity.platform.database.dao.LedgerEntryDao
 import com.verity.platform.database.entities.CustomerEntity
+import com.verity.platform.database.entities.DocumentEntity
+import com.verity.platform.database.entities.LedgerEntryEntity
 
 /**
  * PlatformDatabase
  *
- * PURPOSE
- * -------
- * Authoritative local database for Verity platform infrastructure.
+ * Authoritative local database for Verity platform infrastructure. Local-first: this is the
+ * source of truth; cloud (once it exists) is a sync target, not the other way around.
  *
- * This database anchors event truth and schema versioning.
- * It is the sole container for Room entities and DAOs.
- *
- * CONSTRAINTS
- * -----------
- * • Platform-owned only (no UI, no feature imports)
- * • Offline-first: local DB is the source of truth
- * • Versioned explicitly; migrations are mandatory on change
- * • No business logic, replay, or projections live here
+ * exportSchema = false: no real installs of this app exist anywhere yet, so there is no
+ * migration history worth protecting. Revisit once there's a live user base.
  */
 @Database(
     entities = [
-        EventEntity::class,
-        CustomerEntity::class
+        CustomerEntity::class,
+        DocumentEntity::class,
+        LedgerEntryEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class PlatformDatabase : RoomDatabase() {
 
-    /**
-     * Provides insert-only access to the domain event store.
-     *
-     * Append-only semantics are enforced at the DAO and schema level.
-     */
-    abstract fun eventDao(): EventDao
-
     abstract fun customerDao(): CustomerDao
+
+    abstract fun documentDao(): DocumentDao
+
+    abstract fun ledgerEntryDao(): LedgerEntryDao
 }
