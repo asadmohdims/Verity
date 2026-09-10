@@ -11,14 +11,31 @@ This file is a **living reference**, not a constitution. Update it in place as d
 
 ## Status (read this before trusting anything else below)
 
-As of 2026-09, Verity has:
+As of 2026-09-10, Verity has (Milestone 1 — local invoice persistence — complete and verified
+end-to-end on-device, not just unit-tested):
 - A working Invoice Workspace UI: draft creation, line items, transport details, GST tax
-  computation, and preview — all in-memory only, nothing persists across restarts.
-- A Room-based persistence layer (event store, customer table, ledger/document-index
-  projections) that is **fully built and unit/instrumentation-tested but not wired into the
-  running app** — zero call sites from `MainActivity`. Treat any class under `platform/` as
-  unverified until you've confirmed something actually calls it at runtime.
+  computation, and preview, wired to a **real local Room database**. Customer autocomplete
+  works against seeded fixture data (25 customers). Finalize assigns a real sequential number
+  (`INV-000001`, `INV-000002`, ...), persists the document (as a JSON snapshot of
+  `InvoiceDocumentModel`) and a matching ledger entry in one transaction, and shows a genuine
+  "Invoice Finalized" screen. Verified by creating and finalizing three invoices in one session
+  and inspecting the on-device sqlite database directly — not just by reading code or running
+  `./gradlew test`. Confirmed idempotent seeding across two full process kills.
+- The old event-sourcing design (`EventEntity`, ledger/document-index replay engines) has been
+  **deleted**, not just deprecated — replaced by the simpler `DocumentEntity`/`LedgerEntryEntity`
+  schema described below.
+- The seller printed on every document is still a **hardcoded placeholder** (`core/.../
+  HardcodedSeller.kt`) — needs real business details before this is used for anything but
+  testing.
 - Zero cloud/network code — no Supabase, no Retrofit/Ktor, no `INTERNET` permission yet.
+- Zero PDF/print/share — explicitly out of scope for Milestone 1; finalize stops at the
+  in-app "Invoice Finalized" screen.
+- Two real bugs were found only by actually running the app (not by tests, which all passed):
+  `previewDocument`'s `StateFlow` never started computing because of a `WhileSubscribed`/
+  `.value`-read ordering deadlock, and `onFinalizeInvoice()` raced its own navigation by
+  resetting the draft store synchronously in the same recomposition pass that was supposed to
+  navigate away first. Both fixed — see git history on this file's directory for the exact
+  sequencing reasoning if a similar pattern reappears.
 
 Nothing is "done" here until it's demonstrably reachable from the running app. A well-documented,
 well-tested class sitting in isolation is not a finished feature — see Principle 2 below. Keep
@@ -114,13 +131,15 @@ coupling.
   add, not because the requirement is confirmed — whether this needs to be more than a plain
   optional field is still open.
 
-## Data & sync architecture (current direction — not yet built; see Status)
+## Data & sync architecture (local half built and verified; cloud half not yet built — see Status)
 
-Replacing the original generic event-sourcing/replay design with something simpler that still
+Replaced the original generic event-sourcing/replay design with something simpler that still
 meets the real requirement (immutable finalized documents, auditable corrections):
 
 - **Room is the local source of truth.** Every write lands in Room first and returns immediately
-  — the UI never waits on network.
+  — the UI never waits on network. **Built and verified**: `DocumentEntity` (one table for
+  Invoice and Challan, JSON payload + indexed columns) and `LedgerEntryEntity` (append-only) are
+  live; the outbox/WorkManager/Supabase points below are still just the plan, not yet built.
 - **A local outbox table**, keyed by a client-generated UUID, holds pending writes. A background
   job (WorkManager: periodic + an expedited one-off enqueued right after every local write) syncs
   the outbox to Supabase via `upsert()` on that same UUID. Retries are naturally safe because
