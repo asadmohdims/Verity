@@ -93,8 +93,13 @@ class InvoiceWorkspaceViewModel(
                 }
             }
             .stateIn(
+                // Eagerly, not WhileSubscribed: the chrome's Preview action checks
+                // `.value` directly (not via collection) to decide whether to navigate, before
+                // the "preview" route (the only place that ever collects this flow) exists to
+                // start it. WhileSubscribed left `.value` stuck at null forever on a fresh
+                // session — nothing had ever subscribed yet, so it never computed.
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
+                started = SharingStarted.Eagerly,
                 initialValue = null
             )
 
@@ -141,11 +146,14 @@ class InvoiceWorkspaceViewModel(
     val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
 
     fun onCreateInvoice() {
+        // Clear whatever the previous invoice left behind: its draft data (deferred here from
+        // finalize, not reset there - see onFinalizeInvoice) and its finalize result, so this
+        // is a genuinely fresh draft and the next Preview visit doesn't navigate straight to
+        // "finalized" for a document that belongs to the previous invoice.
+        draftStore.reset()
+        _finalizedDocument.value = null
         _hasActiveDraft.value = true
         _uiState.value = draftStore.currentDraft
-        // Clear any prior finalize result so the next Preview visit doesn't immediately
-        // navigate to "finalized" for a document that belongs to the previous invoice.
-        _finalizedDocument.value = null
 
         _chromeSpec.value = WorkspaceChromeSpec(
             title = "Invoice",
@@ -175,8 +183,11 @@ class InvoiceWorkspaceViewModel(
         draftStore.reset()
         _hasActiveDraft.value = false
         _uiState.value = draftStore.currentDraft
+        _chromeSpec.value = emptyWorkspaceChromeSpec()
+    }
 
-        _chromeSpec.value = WorkspaceChromeSpec(
+    private fun emptyWorkspaceChromeSpec(): WorkspaceChromeSpec =
+        WorkspaceChromeSpec(
             title = "Verity",
             subtitle = null,
             navigationIcon = VerityNavIcon.None,
@@ -189,7 +200,6 @@ class InvoiceWorkspaceViewModel(
             ),
             chromeMode = VerityChromeMode.Workspace
         )
-    }
 
     /**
      * Finalizes the current draft into a permanent, numbered document.
@@ -209,10 +219,19 @@ class InvoiceWorkspaceViewModel(
             val document = invoiceFinalizer.finalize(draftStore.currentDraft, customerId)
             _finalizedDocument.value = document
 
-            draftStore.reset()
-            _uiState.value = draftStore.currentDraft
+            // Deliberately NOT resetting draftStore/_uiState here: the "preview" route this
+            // finalize was triggered from is still composed (its LaunchedEffect hasn't yet
+            // navigated to "finalized") and requires previewDocument to stay non-null until it
+            // does. Resetting here raced the navigation and crashed with "Preview route entered
+            // without an active draft" - the draft's billedTo went null (via reset) in the same
+            // recomposition pass that was supposed to navigate away first. The draft is instead
+            // cleared in onCreateInvoice(), when the next invoice actually starts.
             _hasActiveDraft.value = false
             _isFinalizing.value = false
+
+            // Safe to touch chrome here (unlike draftStore/_uiState above): it doesn't feed
+            // previewDocument, so it can't race the "preview" -> "finalized" navigation.
+            _chromeSpec.value = emptyWorkspaceChromeSpec()
         }
     }
 
