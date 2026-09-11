@@ -64,7 +64,6 @@ data class VeritySuggestion(
 fun VerityTextField(
     role: VerityTextFieldRole,
     label: String,
-    placeholder: String? = null,
     value: String,
     onValueChange: (String) -> Unit,
     editing: Boolean,
@@ -72,7 +71,8 @@ fun VerityTextField(
     onExitEdit: (() -> Unit)?,
     suggestions: List<VeritySuggestion>,
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholder: String? = null
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(

@@ -753,14 +753,19 @@ private fun InvoiceWorkspacePreviewDark() {
 
 @Composable
 private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
-    return InvoiceWorkspaceViewModel(
-        draftStore = previewDraftStore(),
-        customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
-        invoiceFinalizer = previewInvoiceFinalizer()
-    )
+    // remember, not a bare constructor call: lint (ViewModelConstructorInComposable) flags
+    // constructing a ViewModel directly in a composable body because it would otherwise be
+    // rebuilt on every recomposition. There's no real ViewModelStore in a @Preview to hand this
+    // to instead, so remember is the correct fix here, not a suppression.
+    return remember {
+        InvoiceWorkspaceViewModel(
+            draftStore = previewDraftStore(),
+            customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
+            invoiceFinalizer = previewInvoiceFinalizer()
+        )
+    }
 }
 
-@Composable
 private fun previewInvoiceFinalizer(): InvoiceFinalizer {
     return object : InvoiceFinalizer {
         override suspend fun finalize(
@@ -772,12 +777,10 @@ private fun previewInvoiceFinalizer(): InvoiceFinalizer {
     }
 }
 
-@Composable
 private fun previewDraftStore(): InvoiceDraftStore {
     return InvoiceDraftStore(initialDraft = previewInvoiceDraft())
 }
 
-@Composable
 private fun previewCustomerAutocompleteDataSource(): CustomerAutocompleteDataSource {
     return object : CustomerAutocompleteDataSource {
 
@@ -796,7 +799,6 @@ private fun previewCustomerAutocompleteDataSource(): CustomerAutocompleteDataSou
     }
 }
 
-@Composable
 private fun previewInvoiceDraft(): InvoiceDraftUiState =
     InvoiceDraftUiState(
         customer = DraftCustomer(

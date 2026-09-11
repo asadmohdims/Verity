@@ -35,16 +35,16 @@ import com.verity.core.ui.primitives.dp
  */
 @Composable
 fun VerityEditBlock(
-    title: String? = null,
     mode: VerityEditMode,
     expanded: Boolean,
+    modifier: Modifier = Modifier,
+    title: String? = null,
     collapsedActionLabel: String? = null,
     onCollapsedAction: (() -> Unit)? = null,
     onAdd: (() -> Unit)? = null,
     onSave: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -105,7 +105,7 @@ fun VerityEditBlock(
                 // Action row (if applicable)
                 when (mode) {
                     VerityEditMode.Add -> {
-                        renderActionRow(
+                        RenderActionRow(
                             primaryLabel = "Add",
                             secondaryLabel = "Cancel",
                             onPrimary = onAdd,
@@ -172,7 +172,7 @@ fun VerityEditBlock(
 }
 
 @Composable
-private fun renderActionRow(
+private fun RenderActionRow(
     primaryLabel: String,
     secondaryLabel: String,
     onPrimary: (() -> Unit)?,
