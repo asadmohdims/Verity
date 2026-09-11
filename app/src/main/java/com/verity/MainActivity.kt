@@ -3,40 +3,41 @@ package com.verity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.core.ui.chrome.WorkspaceChromeSpec
+import com.verity.core.ui.molecules.VerityChromeMode
+import com.verity.core.ui.molecules.VerityNavIcon
 import com.verity.core.ui.molecules.VerityTopAppBar
-import com.verity.core.ui.primitives.*
-import androidx.core.view.WindowInsetsControllerCompat
-import com.verity.platform.chrome.WorkspaceChromeViewModel
+import com.verity.core.ui.molecules.VerityTopBarAction
+import com.verity.core.ui.primitives.VeritySurface
+import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.feature.invoice.draft.InvoiceDraftStore
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
-import com.verity.invoice.draft.InvoiceDraftStore
-import com.verity.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
 import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
-
-import com.verity.feature.invoice.preview.InvoicePreviewScreen
-
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.verity.core.ui.molecules.VerityNavIcon
-import com.verity.core.ui.molecules.VerityChromeMode
-import com.verity.core.ui.chrome.WorkspaceChromeSpec
-import androidx.navigation.compose.currentBackStackEntryAsState
 import java.time.Clock
 
 /**
@@ -64,8 +65,8 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            val view = androidx.compose.ui.platform.LocalView.current
-            androidx.compose.runtime.SideEffect {
+            val view = LocalView.current
+            SideEffect {
                 val controller = WindowInsetsControllerCompat(window, view)
                 controller.isAppearanceLightStatusBars = !isDarkTheme
                 controller.isAppearanceLightNavigationBars = !isDarkTheme
@@ -110,7 +111,7 @@ class MainActivity : ComponentActivity() {
                     workspaceChromeSpec.copy(
                         actions = workspaceChromeSpec.actions.map { action ->
                             if (
-                                action is com.verity.core.ui.molecules.VerityTopBarAction.Icon &&
+                                action is VerityTopBarAction.Icon &&
                                 action.contentDescription == "Preview invoice"
                             ) {
                                 action.copy(

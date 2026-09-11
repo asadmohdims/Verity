@@ -4,10 +4,10 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.verity.core.document.model.InvoiceDocumentModel
-import com.verity.invoice.draft.DraftAddress
-import com.verity.invoice.draft.DraftDocumentType
-import com.verity.invoice.draft.DraftLineItem
-import com.verity.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.DraftLineItem
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.database.PlatformDatabase
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString

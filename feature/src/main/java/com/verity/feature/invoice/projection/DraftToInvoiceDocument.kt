@@ -1,11 +1,11 @@
 package com.verity.feature.invoice.projection
 
 import com.verity.core.document.model.*
-import com.verity.invoice.draft.InvoiceDraftUiState
-import com.verity.invoice.draft.DraftAddress
-import com.verity.invoice.draft.DraftLineItem
-import com.verity.invoice.draft.DraftTaxBreakdown
-import com.verity.invoice.draft.DraftTaxMode
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftLineItem
+import com.verity.feature.invoice.draft.DraftTaxBreakdown
+import com.verity.feature.invoice.draft.DraftTaxMode
 import java.time.Clock
 import java.time.LocalDate
 
@@ -108,13 +108,13 @@ private fun DraftTaxBreakdown.toDocumentTaxation(): DocumentTaxation =
         igst = igst?.let { DocumentTaxComponent(it.ratePercent, it.amountPaise) }
     )
 
-private fun com.verity.invoice.draft.DraftDocumentType.toDocumentType(): DocumentType =
+private fun com.verity.feature.invoice.draft.DraftDocumentType.toDocumentType(): DocumentType =
     when (this) {
-        com.verity.invoice.draft.DraftDocumentType.INVOICE -> DocumentType.INVOICE
-        com.verity.invoice.draft.DraftDocumentType.CHALLAN -> DocumentType.CHALLAN
+        com.verity.feature.invoice.draft.DraftDocumentType.INVOICE -> DocumentType.INVOICE
+        com.verity.feature.invoice.draft.DraftDocumentType.CHALLAN -> DocumentType.CHALLAN
     }
 
-private fun com.verity.invoice.draft.DraftTransportDetails.toDocumentLogistics(): DocumentLogistics =
+private fun com.verity.feature.invoice.draft.DraftTransportDetails.toDocumentLogistics(): DocumentLogistics =
     DocumentLogistics(
         transporterName = transporterName,
         vehicleNumber = vehicleNumber,

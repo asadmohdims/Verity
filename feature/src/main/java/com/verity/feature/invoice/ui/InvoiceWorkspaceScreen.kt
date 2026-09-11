@@ -1,66 +1,68 @@
 package com.verity.feature.invoice.ui
 
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import com.verity.core.ui.molecules.VeritySnackbar
-
-import com.verity.core.ui.primitives.VerityTextField
-import com.verity.core.ui.primitives.VerityTextFieldRole
-import com.verity.core.ui.primitives.VeritySuggestion
-import com.verity.core.ui.molecules.VerityEditBlock
-import com.verity.core.ui.molecules.VerityEditMode
-
-import androidx.compose.ui.tooling.preview.Preview
-import com.verity.core.theme.VerityTheme
-import com.verity.core.theme.VerityBaseTypography
-import com.verity.invoice.draft.DraftCustomer
-import com.verity.invoice.draft.DraftLineItem
-import com.verity.invoice.draft.DraftTransportDetails
-import com.verity.invoice.draft.DraftSummary
-
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import com.verity.core.ui.molecules.VerityHeader
-import com.verity.core.ui.molecules.VeritySection
-import com.verity.core.ui.primitives.VeritySpacer
-import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
-import com.verity.core.ui.primitives.VeritySpace
-import com.verity.core.ui.primitives.VerityText
-import com.verity.core.ui.primitives.VerityTextStyle
-import com.verity.core.formatting.money.Money
-import com.verity.invoice.draft.InvoiceDraftUiState
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import com.verity.core.ui.primitives.VeritySurface
-import com.verity.core.ui.primitives.VeritySurfaceType
-import com.verity.core.ui.primitives.dp
-import androidx.compose.ui.unit.dp
-import com.verity.core.ui.molecules.VerityTransportSummaryRow
-import com.verity.core.ui.molecules.VerityInvoiceSummary
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.material3.TextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.clickable
-import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
-
-import com.verity.invoice.draft.InvoiceDraftStore
-import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
-
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.formatting.money.Money
+import com.verity.core.theme.VerityBaseTypography
+import com.verity.core.theme.VerityTheme
+import com.verity.core.ui.molecules.VerityEditBlock
+import com.verity.core.ui.molecules.VerityEditMode
+import com.verity.core.ui.molecules.VerityHeader
+import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
+import com.verity.core.ui.molecules.VerityInvoiceSummary
+import com.verity.core.ui.molecules.VeritySection
+import com.verity.core.ui.molecules.VerityTransportSummaryRow
+import com.verity.core.ui.molecules.VeritySnackbar
+import com.verity.core.ui.primitives.VeritySpace
+import com.verity.core.ui.primitives.VeritySpacer
+import com.verity.core.ui.primitives.VeritySuggestion
+import com.verity.core.ui.primitives.VeritySurface
+import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.core.ui.primitives.VerityText
+import com.verity.core.ui.primitives.VerityTextField
+import com.verity.core.ui.primitives.VerityTextFieldRole
+import com.verity.core.ui.primitives.VerityTextStyle
+import com.verity.core.ui.primitives.dp
+import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
+import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftCustomer
+import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.DraftLineItem
+import com.verity.feature.invoice.draft.DraftSummary
+import com.verity.feature.invoice.draft.DraftTaxBreakdown
+import com.verity.feature.invoice.draft.DraftTaxComponent
+import com.verity.feature.invoice.draft.DraftTaxMode
+import com.verity.feature.invoice.draft.DraftTransportDetails
+import com.verity.feature.invoice.draft.InvoiceDraftStore
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import kotlinx.coroutines.launch
 
 private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
     val secondaryText =
@@ -76,34 +78,12 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
 /**
  * InvoiceWorkspaceScreen
  *
- * PURPOSE
- * -------
- * Primary working surface for invoice / challan creation.
- *
- * This screen represents the user's daily workspace and is the
+ * Primary working surface for invoice / challan creation — the user's daily workspace and the
  * default landing screen of the application.
  *
- * DELIVERY PHASE
- * --------------
- * D1A — UI-only, read-only skeleton.
- *
- * This implementation intentionally:
- * • Renders draft state only
- * • Does NOT allow editing
- * • Does NOT emit commands
- * • Does NOT invoke replay or persistence
- *
- * NON-GOALS (EXPLICIT)
- * -------------------
- * • No validation
- * • No inputs
- * • No buttons with behavior
- * • No preview / finalize flows
- *
- * This screen exists purely to validate:
- * • Structural hierarchy
- * • Visual rhythm
- * • Section composition
+ * Owns the full draft editing flow (Parties, Line Items, Transportation, Summary) via
+ * VerityEditBlock sections, and emits intents to the InvoiceWorkspaceViewModel. Preview and
+ * finalize are driven from the app-level NavHost (see MainActivity), not from this screen.
  */
 @Composable
 fun InvoiceWorkspaceRoute(
@@ -224,7 +204,7 @@ fun InvoiceWorkspaceScreen(
                         text = { VerityText("Invoice", VerityTextStyle.Body) },
                         onClick = {
                             viewModel.onDocumentTypeChanged(
-                                com.verity.invoice.draft.DraftDocumentType.INVOICE
+                                DraftDocumentType.INVOICE
                             )
                             isDocTypeMenuOpen = false
                         }
@@ -233,7 +213,7 @@ fun InvoiceWorkspaceScreen(
                         text = { VerityText("Challan", VerityTextStyle.Body) },
                         onClick = {
                             viewModel.onDocumentTypeChanged(
-                                com.verity.invoice.draft.DraftDocumentType.CHALLAN
+                                DraftDocumentType.CHALLAN
                             )
                             isDocTypeMenuOpen = false
                         }
@@ -252,8 +232,8 @@ fun InvoiceWorkspaceScreen(
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
             VeritySection(title = "Parties") {
-                androidx.compose.foundation.layout.Row {
-                    androidx.compose.foundation.layout.Column(
+                Row {
+                    Column(
                         modifier = Modifier.weight(1f)
                     ) {
                         VerityTextField(
@@ -281,7 +261,7 @@ fun InvoiceWorkspaceScreen(
                         )
                     }
                     VeritySpacer(size = VeritySpace.Large, horizontal = true)
-                    androidx.compose.foundation.layout.Column(
+                    Column(
                         modifier = Modifier.weight(1f)
                     ) {
                         VerityTextField(
@@ -360,8 +340,6 @@ fun InvoiceWorkspaceScreen(
                         VeritySpacer(size = VeritySpace.Small)
                     }
                 }
-
-         //       VeritySpacer(size = VeritySpace.Small)
 
                 VerityEditBlock(
                     title = null,
@@ -785,12 +763,12 @@ private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
 }
 
 @Composable
-private fun previewInvoiceFinalizer(): com.verity.feature.invoice.finalize.InvoiceFinalizer {
-    return object : com.verity.feature.invoice.finalize.InvoiceFinalizer {
+private fun previewInvoiceFinalizer(): InvoiceFinalizer {
+    return object : InvoiceFinalizer {
         override suspend fun finalize(
-            draft: com.verity.invoice.draft.InvoiceDraftUiState,
+            draft: InvoiceDraftUiState,
             customerId: String
-        ): com.verity.core.document.model.InvoiceDocumentModel {
+        ): InvoiceDocumentModel {
             error("Finalize is not available in @Preview")
         }
     }
@@ -827,7 +805,7 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
             displayName = "Bhargava Industries",
             gstin = "27AAACB1234Z1Z"
         ),
-        billedTo = com.verity.invoice.draft.DraftAddress(
+        billedTo = DraftAddress(
             name = "Bhargava Industries",
             addressLine1 = "Industrial Area",
             city = "Mumbai",
@@ -857,13 +835,13 @@ private fun previewInvoiceDraft(): InvoiceDraftUiState =
         ),
         summary = DraftSummary(
             subtotalPaise = 595000,
-            tax = com.verity.invoice.draft.DraftTaxBreakdown(
-                mode = com.verity.invoice.draft.DraftTaxMode.INTRA_STATE,
-                cgst = com.verity.invoice.draft.DraftTaxComponent(
+            tax = DraftTaxBreakdown(
+                mode = DraftTaxMode.INTRA_STATE,
+                cgst = DraftTaxComponent(
                     ratePercent = 9,
                     amountPaise = 53550
                 ),
-                sgst = com.verity.invoice.draft.DraftTaxComponent(
+                sgst = DraftTaxComponent(
                     ratePercent = 9,
                     amountPaise = 53550
                 )
