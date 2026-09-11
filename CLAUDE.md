@@ -41,6 +41,10 @@ Nothing is "done" here until it's demonstrably reachable from the running app. A
 well-tested class sitting in isolation is not a finished feature — see Principle 2 below. Keep
 this section honest and current; that's the entire reason it exists.
 
+A navigation/IA redesign (Home dashboard landing screen, bottom nav, Documents/Customers/Settings)
+was proposed and **approved by the user on 2026-09-11** — see "UX Direction" below. None of it is
+built yet; today's app is still the single Workspace screen described above.
+
 ## Who this is for
 
 - Primary user: the app owner's own business, invoicing customers under Indian GST rules.
@@ -198,6 +202,57 @@ meets the real requirement (immutable finalized documents, auditable corrections
   one token.
 - Autocomplete/search suggestions expand inline below the input field — never a popup/dropdown
   menu.
+
+## UX direction (approved 2026-09-11, not yet built)
+
+Full rationale, WCAG contrast audit, and screen-by-screen mockups (light + dark, built from
+Verity's real tokens) live in the "Verity Design Blueprint" artifact — a living document, kept
+up to date in place, so re-read it rather than trusting a stale summary:
+`https://claude.ai/code/artifact/f97670a4-8698-4cc2-9f8e-96015239b995`. What follows here is the
+condensed, durable version of the same decisions, for when the artifact isn't at hand.
+
+**The problem it solves**: today's app is one screen wearing three names — launch drops straight
+into the Workspace, and there is no way back to a document once you leave it, no customer list
+(customers exist only via `CustomerSeedLoader`'s fixture), no settings. Right scope for Milestone
+1; wrong scope once this needs to be a tool trusted with real customers.
+
+- **Landing screen**: replace "launch straight into Workspace" with a **Home dashboard** — a
+  "This Month" card (invoiced total + document count) and a Recent Documents list, both honest
+  with today's data (`DocumentDao.getAll()`, no new persistence). Deliberately *not* an
+  "Outstanding/Overdue" hero metric yet: no `Payment` entity exists, so that number would be
+  dishonest until payment recording ships (Phase 4 below) — same slot, promoted later.
+- **Navigation**: bottom navigation, four destinations — **Home, Documents, Customers,
+  Settings** — via `NavigationSuiteScaffold`, plus a FAB for Create reachable from any tab. No
+  drawer, no multi-org switcher, no reports tab — four is the number of things this app actually
+  does today. Maps onto the Chrome modes above without adding a fifth: the four nav-root screens
+  are Brand-mode (no back arrow, switched by the bottom nav, never pushed); anything drilled into
+  from them (Document Detail, Customer Detail, Add/Edit Customer, Business Profile) is
+  Support-mode, pushed, with a back arrow.
+- **New screens required** (none exist today): Documents List; Document Detail — note this needs
+  a genuinely new `document/{id}` route, since `InvoicePreviewScreen` today only ever renders the
+  *live* `InvoiceWorkspaceViewModel`'s in-memory document, never a persisted one loaded by id,
+  even though `DocumentDao.getById` already supports it; Customers List; Customer Detail; Add/Edit
+  Customer (`CustomerDao.insert` with `OnConflictStrategy.REPLACE` already covers create *and*
+  edit-by-id; still needs a real single-row `deactivate(customerId)` for the "soft-deactivated,
+  not deleted" rule `CustomerDao`'s own doc comment already states but never implements); Business
+  Profile (retires `HardcodedSeller.kt`); and a theme picker in Settings — `MainActivity`
+  currently hardcodes `val isDarkTheme = false`, so `VerityDarkColors` (a complete, WCAG-checked
+  palette) has never been reachable by a user.
+- **Build order** — four phases, each gated by the one before it, not by a calendar:
+  1. **Foundation** (start here, zero dependencies): the nav shell + Home, plus the three
+     Critical fixes from the Blueprint's audit (line-item validation, Undo on delete, the two
+     light-mode WCAG contrast failures on `text.muted`/`borders.subtle`).
+  2. **Complete the record**: Documents List/Detail, Customer CRUD, remaining High-severity audit
+     fixes (the `accent` color decision, light-mode's `borders.strong == borders.subtle` bug, real
+     screen transitions, auto-focus/IME chaining, Document Type control affordance).
+  3. **Make it yours**: Business Profile, theme wiring, remaining Medium fixes.
+  4. **Close the loop**: Share/PDF export, payment recording — the feature that finally makes
+     Home's hero metric a real Outstanding/Overdue card.
+
+This is a proposal the user reviewed and approved, not a spec to implement unmodified — confirm
+before building if anything here seems to have drifted from the live artifact, and it's fine to
+push back on a specific screen or flow choice during implementation rather than building it as
+drawn.
 
 ## Tech stack
 
