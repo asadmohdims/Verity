@@ -1,7 +1,7 @@
 package com.verity.feature.invoice.finalize
 
 import com.verity.core.document.model.InvoiceDocumentModel
-import com.verity.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
 
 /**
  * InvoiceFinalizer

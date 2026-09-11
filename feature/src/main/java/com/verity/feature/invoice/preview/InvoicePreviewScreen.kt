@@ -30,7 +30,6 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Divider
 
 /**
  * Renders an InvoiceDocumentModel for either a draft preview or an already-finalized document —

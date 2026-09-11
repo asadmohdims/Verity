@@ -1,5 +1,7 @@
 package com.verity.platform.database.seed
 
+import kotlinx.serialization.Serializable
+
 /**
  * CustomerSeedDto
  *
@@ -14,6 +16,7 @@ package com.verity.platform.database.seed
  * - This is NOT a domain model
  * - This exists only at import time
  */
+@Serializable
 data class CustomerSeedDto(
     val customerName: String,
     val gstin: String,
@@ -21,5 +24,5 @@ data class CustomerSeedDto(
     val city: String,
     val state: String,
     val stateCode: String,
-    val pincode: String?
+    val pincode: String? = null
 )

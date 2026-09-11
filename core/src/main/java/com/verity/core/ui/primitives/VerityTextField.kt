@@ -21,7 +21,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Divider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +64,6 @@ data class VeritySuggestion(
 fun VerityTextField(
     role: VerityTextFieldRole,
     label: String,
-    placeholder: String? = null,
     value: String,
     onValueChange: (String) -> Unit,
     editing: Boolean,
@@ -73,7 +71,8 @@ fun VerityTextField(
     onExitEdit: (() -> Unit)?,
     suggestions: List<VeritySuggestion>,
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholder: String? = null
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(

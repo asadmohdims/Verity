@@ -36,9 +36,9 @@ enum class VerityButtonState {
 fun VerityButton(
     label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     role: VerityButtonRole = VerityButtonRole.Primary,
-    state: VerityButtonState = VerityButtonState.Enabled,
-    modifier: Modifier = Modifier
+    state: VerityButtonState = VerityButtonState.Enabled
 ) {
     val enabled = state == VerityButtonState.Enabled
 

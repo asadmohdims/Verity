@@ -1,4 +1,4 @@
-package com.verity.invoice.draft
+package com.verity.feature.invoice.draft
 
 import java.time.LocalDate
 

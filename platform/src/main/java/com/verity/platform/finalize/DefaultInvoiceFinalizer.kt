@@ -5,8 +5,8 @@ import com.verity.core.document.model.HARDCODED_SELLER
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.projection.DraftToInvoiceDocument
-import com.verity.invoice.draft.DraftDocumentType
-import com.verity.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.database.PlatformDatabase
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity

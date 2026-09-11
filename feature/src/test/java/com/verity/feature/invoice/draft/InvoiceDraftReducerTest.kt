@@ -2,13 +2,13 @@ package com.verity.feature.invoice.draft
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import com.verity.invoice.draft.InvoiceDraftReducer
-import com.verity.invoice.draft.InvoiceDraftUiState
-import com.verity.invoice.draft.DraftLineItem
-import com.verity.invoice.draft.DraftTransportDetails
-import com.verity.invoice.draft.DraftAddress
-import com.verity.invoice.draft.DraftDocumentType
-import com.verity.invoice.draft.DraftTaxMode
+import com.verity.feature.invoice.draft.InvoiceDraftReducer
+import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.draft.DraftLineItem
+import com.verity.feature.invoice.draft.DraftTransportDetails
+import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.DraftTaxMode
 
 class InvoiceDraftReducerTest {
 
