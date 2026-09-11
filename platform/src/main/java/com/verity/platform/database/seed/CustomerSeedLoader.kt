@@ -1,9 +1,7 @@
 package com.verity.platform.database.seed
 
 import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.io.InputStreamReader
+import kotlinx.serialization.json.Json
 
 /**
  * CustomerSeedLoader
@@ -21,14 +19,10 @@ import java.io.InputStreamReader
  */
 object CustomerSeedLoader {
 
-    fun load(context: Context): List<CustomerSeedDto> {
-        val assetManager = context.assets
+    private val json = Json { ignoreUnknownKeys = true }
 
-        assetManager.open("customers.json").use { inputStream ->
-            InputStreamReader(inputStream).use { reader ->
-                val listType = object : TypeToken<List<CustomerSeedDto>>() {}.type
-                return Gson().fromJson(reader, listType)
-            }
-        }
+    fun load(context: Context): List<CustomerSeedDto> {
+        val text = context.assets.open("customers.json").bufferedReader().use { it.readText() }
+        return json.decodeFromString<List<CustomerSeedDto>>(text)
     }
 }

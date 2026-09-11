@@ -28,6 +28,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.money.Money
+import com.verity.core.formatting.money.formatPaiseAsRupeesInput
+import com.verity.core.formatting.money.parseRupeesInputToPaise
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.molecules.VerityEditBlock
@@ -324,7 +326,7 @@ fun InvoiceWorkspaceScreen(
                                     itemQuantity = item.quantity.toString()
                                     itemUnit = item.unit
                                     // Set itemRate as rupees string from paise
-                                    itemRate = (item.ratePaise / 100.0).toString()
+                                    itemRate = formatPaiseAsRupeesInput(item.ratePaise)
                                 }
                         ) {
                             val amountPaise = (item.quantity * item.ratePaise).toLong()
@@ -356,8 +358,7 @@ fun InvoiceWorkspaceScreen(
                     },
                     onAdd = {
                         val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
-                        val parsedRateRupees = itemRate.toDoubleOrNull() ?: 0.0
-                        val ratePaise = (parsedRateRupees * 100).toLong()
+                        val ratePaise = parseRupeesInputToPaise(itemRate)
                         viewModel.onAddLineItem(
                             DraftLineItem(
                                 description = itemDescription,
@@ -378,8 +379,7 @@ fun InvoiceWorkspaceScreen(
                     },
                     onSave = {
                         val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
-                        val parsedRateRupees = itemRate.toDoubleOrNull() ?: 0.0
-                        val ratePaise = (parsedRateRupees * 100).toLong()
+                        val ratePaise = parseRupeesInputToPaise(itemRate)
                         viewModel.onUpdateLineItem(
                             index = editingLineItemIndex!!,
                             item = DraftLineItem(
@@ -539,7 +539,7 @@ fun InvoiceWorkspaceScreen(
                                 vehicleNumber = draft.transportDetails.vehicleNumber ?: ""
                                 grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
                                 freightPaise =
-                                    draft.transportDetails.freightPaise?.let { (it / 100.0).toString() } ?: ""
+                                    draft.transportDetails.freightPaise?.let { formatPaiseAsRupeesInput(it) } ?: ""
                             }
                     )
 
@@ -563,8 +563,7 @@ fun InvoiceWorkspaceScreen(
                         isEditingTransport = true
                     },
                     onAdd = {
-                        val parsedFreightRupees = freightPaise.toDoubleOrNull() ?: 0.0
-                        val freightPaiseLong = (parsedFreightRupees * 100).toLong()
+                        val freightPaiseLong = parseRupeesInputToPaise(freightPaise)
                         viewModel.onTransportDetailsChanged(
                             DraftTransportDetails(
                                 transporterName = transporterName,
@@ -581,8 +580,7 @@ fun InvoiceWorkspaceScreen(
                         freightPaise = ""
                     },
                     onSave = {
-                        val parsedFreightRupees = freightPaise.toDoubleOrNull() ?: 0.0
-                        val freightPaiseLong = (parsedFreightRupees * 100).toLong()
+                        val freightPaiseLong = parseRupeesInputToPaise(freightPaise)
                         viewModel.onTransportDetailsChanged(
                             DraftTransportDetails(
                                 transporterName = transporterName,
