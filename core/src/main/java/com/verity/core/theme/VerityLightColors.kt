@@ -55,8 +55,10 @@ val VerityLightColors = VerityColors(
 
     borders = VerityColors.Borders(
         // Default outlines for inputs, cards, secondary buttons
-        // Must be visible but never dominant
-        subtle = Color(0xFF9AA1AA),
+        // Must be visible but never dominant.
+        // 0xFF7C838D clears WCAG 1.4.11 non-text contrast (3:1) against surface.base;
+        // the prior 0xFF9AA1AA measured 2.61:1 (Design Blueprint audit, R-03).
+        subtle = Color(0xFF7C838D),
 
         // Stronger emphasis border (pressed / focused / selected)
         // Used sparingly to reinforce interaction
@@ -71,8 +73,9 @@ val VerityLightColors = VerityColors(
         primary = Color(0xFF2F7D6D),
         primaryDisabled = Color(0xFF2F7D6D).copy(alpha = 0.38f),
 
-        // Secondary CTA (outlined)
-        secondaryBorder = Color(0xFF9AA1AA),
+        // Secondary CTA (outlined) — same contrast fix as borders.subtle (R-03); this was a
+        // separate literal that happened to share the old, failing value.
+        secondaryBorder = Color(0xFF7C838D),
         secondaryText = Color(0xFF111418),
         secondaryTextDisabled = Color(0xFF9AA1AA),
 
@@ -88,8 +91,10 @@ val VerityLightColors = VerityColors(
         // Secondary information
         secondary = Color(0xFF3A3F45),
 
-        // Metadata, hints, low-priority labels
-        muted = Color(0xFF6B7280),
+        // Metadata, hints, low-priority labels.
+        // 0xFF4B5563 clears WCAG AA (4.5:1) for small text against surface.raised; the prior
+        // 0xFF6B7280 measured 4.33:1 there (Design Blueprint audit, R-03).
+        muted = Color(0xFF4B5563),
 
         // Text on inverse surfaces
         inverse = Color(0xFFF4F6F8),
