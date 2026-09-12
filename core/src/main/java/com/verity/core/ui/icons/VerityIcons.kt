@@ -5,9 +5,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 
 sealed interface VerityIcon {
 
@@ -63,4 +71,44 @@ object VerityIcons {
 
     val Edit: VerityIcon =
         VerityIcon.Material(Icons.Filled.Edit)
+
+    /**
+     * Bottom navigation destinations (R-13).
+     */
+    val Home: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Home)
+
+    val Documents: VerityIcon =
+        VerityIcon.Material(Icons.Filled.List)
+
+    val Customers: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Person)
+
+    val Settings: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Settings)
+}
+
+/**
+ * Renders a VerityIcon regardless of its underlying source (Material vector vs. drawable
+ * resource) — the one place that when(icon) branch should be written, so call sites never have
+ * to re-derive it.
+ */
+@Composable
+fun VerityIconGlyph(
+    icon: VerityIcon,
+    contentDescription: String?,
+    modifier: Modifier = Modifier
+) {
+    when (icon) {
+        is VerityIcon.Material -> Icon(
+            imageVector = icon.imageVector,
+            contentDescription = contentDescription,
+            modifier = modifier
+        )
+        is VerityIcon.VectorRes -> Icon(
+            painter = painterResource(icon.resId),
+            contentDescription = contentDescription,
+            modifier = modifier
+        )
+    }
 }
