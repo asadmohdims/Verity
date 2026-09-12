@@ -64,7 +64,10 @@ class AppNavShellTest {
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = NoopInvoiceFinalizer()
         )
-        workspaceViewModel.onCreateInvoice()
+        // Deliberately NOT calling onCreateInvoice() here — AppNavShell's FAB/Create actions are
+        // responsible for that (see the FAB test below). Pre-creating a draft in test setup would
+        // hide a real regression: InvoiceWorkspaceRoute's own empty-state prompt showing up
+        // *again* after the user already tapped "Create".
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
@@ -107,12 +110,13 @@ class AppNavShellTest {
     }
 
     @Test
-    fun `tapping the FAB opens the Invoice Workspace and hides the bottom nav`() {
+    fun `tapping the FAB opens an editable draft directly, hides the bottom nav, and skips the redundant Create Invoice prompt`() {
         setContentWithShell()
 
         composeTestRule.onNodeWithContentDescription("Create").performClick()
 
         composeTestRule.onNodeWithText("+ Add line item").assertIsDisplayed()
         composeTestRule.onNodeWithText("Documents").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Create Invoice").assertDoesNotExist()
     }
 }

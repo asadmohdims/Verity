@@ -1,7 +1,9 @@
 package com.verity.feature.home
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.verity.core.document.model.DocumentType
@@ -97,6 +99,27 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("₹14,042").assertIsDisplayed()
         composeTestRule.onNodeWithText("2 documents invoiced").assertIsDisplayed()
         composeTestRule.onNodeWithText("INV-000001 · Bhargava Industries").assertIsDisplayed()
+        // Both fixture documents share "Bhargava Industries", so both rows get a "BI" avatar.
+        composeTestRule.onAllNodesWithText("BI").assertCountEquals(2)
+    }
+
+    @Test
+    fun `avatar initials use the first two words of a multi-word customer name`() {
+        val longNameDocument = documentSummary("1").copy(
+            customerName = "Aristocraft Papers Private Limited"
+        )
+        val viewModel = HomeViewModel(
+            homeDataSource = FakeHomeDataSource(listOf(longNameDocument)),
+            clock = fixedClock
+        )
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                HomeRoute(viewModel = viewModel, onCreateNew = {}, onSeeAllDocuments = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("AP").assertIsDisplayed()
     }
 
     @Test

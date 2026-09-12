@@ -82,6 +82,14 @@ fun AppNavShell(
     }
 
     fun goToWorkspace() {
+        // The FAB/"Create" actions already ARE the user's "start a new invoice" intent — landing
+        // on InvoiceWorkspaceRoute's own empty-state prompt ("Create Invoice — Start a new
+        // invoice from scratch") after that would just be a redundant second tap. Only start a
+        // fresh draft when none is active yet, so resuming an in-progress draft (e.g. the user
+        // backed out mid-edit and tapped the FAB again) is left untouched.
+        if (!invoiceWorkspaceViewModel.hasActiveDraft.value) {
+            invoiceWorkspaceViewModel.onCreateInvoice()
+        }
         navController.navigate(AppRoutes.WORKSPACE)
     }
 

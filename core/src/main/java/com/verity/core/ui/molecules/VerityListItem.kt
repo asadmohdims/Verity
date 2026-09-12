@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VerityText
@@ -26,6 +27,8 @@ import com.verity.core.ui.primitives.VerityTextStyle
 fun VerityListItem(
     leading: (@Composable () -> Unit)? = null,
     title: String,
+    titleMaxLines: Int = Int.MAX_VALUE,
+    titleOverflow: TextOverflow = TextOverflow.Clip,
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
@@ -44,7 +47,9 @@ fun VerityListItem(
         ) {
             VerityText(
                 text = title,
-                style = VerityTextStyle.Body
+                style = VerityTextStyle.Body,
+                maxLines = titleMaxLines,
+                overflow = titleOverflow
             )
 
             if (subtitle != null) {
