@@ -280,6 +280,48 @@ Material 2.
 - A test name is a claim about what it verifies. If the test body exercises a different code path
   than the name describes, fix the test, not just the assertion.
 
+### Compose UI interaction tests (Robolectric)
+
+Added 2026-09-13 after a real bug (Undo on line-item delete silently did nothing, on-device and
+manually) took ~20 minutes of emulator/adb/screenshot round-trips to diagnose, when the actual
+fix took one Robolectric test run to find. Root cause was `InvoiceWorkspaceScreen`'s root `Box`
+declaring `SnackbarHost` *before* its scrollable `Column` — the Column, drawn on top, silently
+intercepted every tap in that screen region including the snackbar's own action button, even
+though nothing was visibly there. No crash, no visual symptom — this class of bug reproduces
+identically for a careful human tap, an adb tap, and a Compose test `performClick()`, but is
+invisible to reading the code casually since it's purely about declaration order.
+
+- **For any "tap/click does nothing, no crash" report, write a Robolectric Compose test
+  reproducing the exact steps *first* — before touching an emulator.** `feature/build.gradle.kts`
+  already has the dependencies (`robolectric`, `ui-test-junit4`, `ui-test-manifest` on
+  `testImplementation`) and `InvoiceWorkspaceScreenUndoTest.kt` is the template to copy: build the
+  ViewModel from plain constructor args (fakes for any `feature`-defined interface it depends on —
+  no Room/platform needed), wrap `setContent` in `VerityTheme`, and drive it with
+  `composeTestRule.onNodeWithText(...).performClick()`. Runs in seconds on the JVM; no emulator
+  boot, no coordinate guessing.
+  - Use `@Config(sdk = [34], qualifiers = "w360dp-h800dp")` — Robolectric's unconfigured default
+    window is a legacy ~320x470dp screen that pushes real content below the fold, and
+    `performScrollTo()` before `performClick()` on anything that might be off-screen regardless.
+  - Use `println(...)` for tracing and `composeTestRule.onAllNodes(isRoot())[0].printToString()`
+    to dump the semantics tree — both land in the test's captured stdout. `android.util.Log` does
+    not reliably show up under Robolectric; don't reach for it here.
+- **When a click "succeeds" (node found, no exception) but nothing happens, bisect the dispatch
+  path in the same test**: swap `performClick()` for
+  `performSemanticsAction(SemanticsActions.OnClick)` (invokes the click handler directly, no real
+  touch/hit-testing). If that makes it pass, the bug is touch *delivery* — go look at `Box`
+  declaration order for an overlapping sibling drawn on top. If it still fails, it's a real logic
+  bug in the handler or state. This turns "which of several theories is it" into one deterministic
+  check instead of repeated manual reproduction.
+- **Any `Box` with multiple full-size/overlapping children must declare overlay content
+  (snackbars, FABs, dialogs, tooltips) last**, matching `Scaffold`'s own convention of keeping
+  the snackbar host as the topmost layer. Worth a deliberate check whenever a new screen adds an
+  overlay — the Documents/Customers/Settings screens in the UX roadmap will each need one.
+- Screenshots are for genuinely visual questions ("does this look right"); for behavioral
+  questions ("did the click fire"), a Robolectric test with `println`/`printToString()` tracing
+  is faster, cheaper, and more conclusive. Reserve the emulator for a final human eyeball pass —
+  and prefer letting the user do that pass themselves when it's cheap for them, rather than
+  driving it manually via adb.
+
 ## Working with this repo (for any AI assistant, including future sessions)
 
 - Ask before making a significant architecture or framework decision — don't resolve an open
