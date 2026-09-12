@@ -398,6 +398,11 @@ class InvoiceWorkspaceViewModel(
         _uiState.value = draftStore.currentDraft
     }
 
+    fun onInsertLineItemAt(index: Int, item: DraftLineItem) {
+        draftStore.insertLineItemAt(index, item)
+        _uiState.value = draftStore.currentDraft
+    }
+
     // ------------------------------------------------------------
     // Atom 4 — Line Items (Update)
     // ------------------------------------------------------------

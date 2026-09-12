@@ -15,6 +15,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -157,15 +158,6 @@ fun InvoiceWorkspaceScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 8.dp)
-        ) { data ->
-            VeritySnackbar(snackbarData = data)
-        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -415,13 +407,18 @@ fun InvoiceWorkspaceScreen(
                     onDelete = {
                         val index = editingLineItemIndex
                         if (index != null) {
+                            val removedItem = draft.lineItems[index]
                             viewModel.onRemoveLineItem(index)
 
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
+                                val result = snackbarHostState.showSnackbar(
                                     message = "Line item deleted",
+                                    actionLabel = "Undo",
                                     duration = SnackbarDuration.Short
                                 )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.onInsertLineItemAt(index, removedItem)
+                                }
                             }
                         }
 
@@ -703,6 +700,21 @@ fun InvoiceWorkspaceScreen(
             )
         }
         } // closes Column
+
+        // Declared after (on top of) the scrollable Column, matching Scaffold's own convention
+        // of keeping the snackbar as the topmost layer: as a sibling declared BEFORE the Column,
+        // the Column's fillMaxSize() + verticalScroll() intercepted every tap in that screen
+        // region — including on the snackbar's own action button — before it could reach the
+        // SnackbarHost underneath, even in the empty space where nothing was visibly drawn.
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp)
+        ) { data ->
+            VeritySnackbar(snackbarData = data)
+        }
     } // closes Box
 } // closes InvoiceWorkspaceScreen
 

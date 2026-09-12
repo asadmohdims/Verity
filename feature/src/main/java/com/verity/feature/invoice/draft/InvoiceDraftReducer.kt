@@ -146,6 +146,24 @@ object InvoiceDraftReducer {
         return recalculate(draft.copy(lineItems = updatedItems))
     }
 
+    /**
+     * Re-inserts a line item at a specific index — used to restore an item removed by
+     * [removeLineItem] when the user taps Undo on the deletion snackbar. [index] is clamped to
+     * the current list's bounds so an out-of-range index (e.g. the list shrank in the meantime)
+     * degrades to an append rather than throwing.
+     */
+    fun insertLineItemAt(
+        draft: InvoiceDraftUiState,
+        index: Int,
+        item: DraftLineItem
+    ): InvoiceDraftUiState {
+        val safeIndex = index.coerceIn(0, draft.lineItems.size)
+        val updatedItems = draft.lineItems.toMutableList().apply {
+            add(safeIndex, item)
+        }
+        return recalculate(draft.copy(lineItems = updatedItems))
+    }
+
     fun setTransportDetails(
         draft: InvoiceDraftUiState,
         details: DraftTransportDetails?

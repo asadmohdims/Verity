@@ -143,6 +143,36 @@ class InvoiceDraftReducerTest {
     }
 
     @Test
+    fun `insertLineItemAt restores a removed item at its original index`() {
+        val itemA = DraftLineItem(description = "Item A", hsnCode = "1001", quantity = 10, unit = "PCS", ratePaise = 1_000)
+        val itemB = DraftLineItem(description = "Item B", hsnCode = "1002", quantity = 5, unit = "PCS", ratePaise = 2_000)
+        val itemC = DraftLineItem(description = "Item C", hsnCode = "1003", quantity = 1, unit = "PCS", ratePaise = 3_000)
+
+        val draft = InvoiceDraftUiState(
+            billedTo = testBilledTo(),
+            lineItems = listOf(itemA, itemB, itemC)
+        )
+
+        val afterRemoval = InvoiceDraftReducer.removeLineItem(draft, index = 1)
+        assertEquals(listOf(itemA, itemC), afterRemoval.lineItems)
+
+        val afterUndo = InvoiceDraftReducer.insertLineItemAt(afterRemoval, index = 1, item = itemB)
+        assertEquals(listOf(itemA, itemB, itemC), afterUndo.lineItems)
+    }
+
+    @Test
+    fun `insertLineItemAt clamps an out-of-range index to the end of the list`() {
+        val itemA = DraftLineItem(description = "Item A", hsnCode = "1001", quantity = 10, unit = "PCS", ratePaise = 1_000)
+        val itemB = DraftLineItem(description = "Item B", hsnCode = "1002", quantity = 5, unit = "PCS", ratePaise = 2_000)
+
+        val draft = InvoiceDraftUiState(billedTo = testBilledTo(), lineItems = listOf(itemA))
+
+        val result = InvoiceDraftReducer.insertLineItemAt(draft, index = 99, item = itemB)
+
+        assertEquals(listOf(itemA, itemB), result.lineItems)
+    }
+
+    @Test
     fun `reset returns an empty draft regardless of prior state`() {
         val draft = InvoiceDraftUiState(
             documentType = DraftDocumentType.CHALLAN,

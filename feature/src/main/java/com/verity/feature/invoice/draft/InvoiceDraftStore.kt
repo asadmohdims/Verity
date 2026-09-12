@@ -63,6 +63,14 @@ class InvoiceDraftStore(
         )
     }
 
+    fun insertLineItemAt(index: Int, item: DraftLineItem) {
+        _currentDraft = InvoiceDraftReducer.insertLineItemAt(
+            draft = _currentDraft,
+            index = index,
+            item = item
+        )
+    }
+
     fun updateLineItem(
         index: Int,
         item: DraftLineItem
