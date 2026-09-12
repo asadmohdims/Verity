@@ -312,6 +312,12 @@ fun InvoiceWorkspaceScreen(
                 var itemUnit by remember { mutableStateOf("") }
                 var itemRate by remember { mutableStateOf("") }
 
+                val lineItemValidation = validateLineItemInput(
+                    description = itemDescription,
+                    quantityInput = itemQuantity,
+                    rateInput = itemRate
+                )
+
                 if (!draft.lineItems.isEmpty()) {
                     draft.lineItems.forEachIndexed { index, item ->
                         Column(
@@ -435,7 +441,8 @@ fun InvoiceWorkspaceScreen(
                         itemQuantity = ""
                         itemUnit = ""
                         itemRate = ""
-                    }
+                    },
+                    submitEnabled = lineItemValidation.canSubmit
                 ) {
                     VerityTextField(
                         role = VerityTextFieldRole.Basic,
@@ -474,7 +481,8 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        errorText = if (lineItemValidation.showQuantityError) "Enter a quantity greater than 0" else null
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -502,7 +510,8 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        errorText = if (lineItemValidation.showRateError) "Enter a rate greater than 0" else null
                     )
                 }
             }

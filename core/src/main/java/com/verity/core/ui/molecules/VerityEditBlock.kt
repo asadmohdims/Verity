@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.verity.core.ui.primitives.VerityButton
 import com.verity.core.ui.primitives.VerityButtonRole
+import com.verity.core.ui.primitives.VerityButtonState
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
@@ -30,7 +31,8 @@ import com.verity.core.ui.primitives.dp
  *
  * This molecule:
  * - Owns layout only
- * - Does NOT own field state, validation, or domain logic
+ * - Does NOT own field state, validation, or domain logic — [submitEnabled] is a caller-computed
+ *   flag this block only renders, never derives
  * - Must be used for all multi-field edit blocks in Invoice Workspace
  */
 @Composable
@@ -45,6 +47,7 @@ fun VerityEditBlock(
     onSave: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
+    submitEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -109,7 +112,8 @@ fun VerityEditBlock(
                             primaryLabel = "Add",
                             secondaryLabel = "Cancel",
                             onPrimary = onAdd,
-                            onSecondary = onCancel
+                            onSecondary = onCancel,
+                            primaryEnabled = submitEnabled
                         )
                     }
 
@@ -156,7 +160,8 @@ fun VerityEditBlock(
                                 VerityButton(
                                     label = "Save",
                                     role = VerityButtonRole.Primary,
-                                    onClick = onSave
+                                    onClick = onSave,
+                                    state = if (submitEnabled) VerityButtonState.Enabled else VerityButtonState.Disabled
                                 )
                             }
                         }
@@ -176,7 +181,8 @@ private fun RenderActionRow(
     primaryLabel: String,
     secondaryLabel: String,
     onPrimary: (() -> Unit)?,
-    onSecondary: (() -> Unit)?
+    onSecondary: (() -> Unit)?,
+    primaryEnabled: Boolean = true
 ) {
     if (onPrimary == null && onSecondary == null) return
 
@@ -210,7 +216,8 @@ private fun RenderActionRow(
             VerityButton(
                 label = primaryLabel,
                 role = VerityButtonRole.Primary,
-                onClick = onPrimary
+                onClick = onPrimary,
+                state = if (primaryEnabled) VerityButtonState.Enabled else VerityButtonState.Disabled
             )
         }
     }

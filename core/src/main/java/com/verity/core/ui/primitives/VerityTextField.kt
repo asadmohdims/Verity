@@ -72,7 +72,8 @@ fun VerityTextField(
     suggestions: List<VeritySuggestion>,
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
     modifier: Modifier = Modifier,
-    placeholder: String? = null
+    placeholder: String? = null,
+    errorText: String? = null
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(
@@ -80,6 +81,7 @@ fun VerityTextField(
             placeholder = placeholder,
             value = value,
             onValueChange = onValueChange,
+            errorText = errorText,
             modifier = modifier
         )
 
@@ -255,37 +257,54 @@ private fun BasicTextField(
     placeholder: String?,
     value: String,
     onValueChange: (String) -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
+    errorText: String? = null
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = {
-            if (placeholder != null) {
-                Text(placeholder)
-            }
-        },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true,
-        textStyle = VerityTheme.typography.body.copy(
-            color = VerityTheme.colors.text.primary
-        ),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = VerityTheme.colors.text.primary,
-            unfocusedTextColor = VerityTheme.colors.text.primary,
-            disabledTextColor = VerityTheme.colors.text.disabled,
+    Column(modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            placeholder = {
+                if (placeholder != null) {
+                    Text(placeholder)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            isError = errorText != null,
+            textStyle = VerityTheme.typography.body.copy(
+                color = VerityTheme.colors.text.primary
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = VerityTheme.colors.text.primary,
+                unfocusedTextColor = VerityTheme.colors.text.primary,
+                disabledTextColor = VerityTheme.colors.text.disabled,
 
-            focusedBorderColor = VerityTheme.colors.primary,
-            unfocusedBorderColor = VerityTheme.colors.borders.subtle,
+                focusedBorderColor = VerityTheme.colors.primary,
+                unfocusedBorderColor = VerityTheme.colors.borders.subtle,
 
-            focusedLabelColor = VerityTheme.colors.primary,
-            unfocusedLabelColor = VerityTheme.colors.text.muted,
+                errorBorderColor = VerityTheme.colors.state.error,
+                errorLabelColor = VerityTheme.colors.state.error,
+                errorCursorColor = VerityTheme.colors.state.error,
 
-            focusedPlaceholderColor = VerityTheme.colors.text.muted,
-            unfocusedPlaceholderColor = VerityTheme.colors.text.muted,
+                focusedLabelColor = VerityTheme.colors.primary,
+                unfocusedLabelColor = VerityTheme.colors.text.muted,
 
-            cursorColor = VerityTheme.colors.primary
+                focusedPlaceholderColor = VerityTheme.colors.text.muted,
+                unfocusedPlaceholderColor = VerityTheme.colors.text.muted,
+
+                cursorColor = VerityTheme.colors.primary
+            )
         )
-    )
+
+        if (errorText != null) {
+            Text(
+                text = errorText,
+                color = VerityTheme.colors.state.error,
+                style = VerityTheme.typography.caption,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
+    }
 }
