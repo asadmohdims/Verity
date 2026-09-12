@@ -42,8 +42,11 @@ well-tested class sitting in isolation is not a finished feature — see Princip
 this section honest and current; that's the entire reason it exists.
 
 A navigation/IA redesign (Home dashboard landing screen, bottom nav, Documents/Customers/Settings)
-was proposed and **approved by the user on 2026-09-11** — see "UX Direction" below. None of it is
-built yet; today's app is still the single Workspace screen described above.
+was proposed and **approved by the user on 2026-09-11** — see "UX Direction" below. Phase 1
+(R-13: the nav shell + Home dashboard) is **built, on `feature/r13-nav-and-home`, pushed but not
+yet merged to `main`** — see "Build Roadmap" in the UX Direction section for what that covers and
+what's still Phase 2/3. `main` itself is stale (predates Milestone 1 entirely); the intent is for
+this branch's line of work to eventually become the new `main`, not the other way around.
 
 ## Who this is for
 
@@ -321,6 +324,18 @@ invisible to reading the code casually since it's purely about declaration order
   is faster, cheaper, and more conclusive. Reserve the emulator for a final human eyeball pass —
   and prefer letting the user do that pass themselves when it's cheap for them, rather than
   driving it manually via adb.
+- **A green Robolectric suite is not proof a screen matches its approved mockup.** R-13's first
+  pass (2026-09-13) had every test passing while the real render was visibly wrong against the
+  Design Blueprint: a hero card silently rendering at wrap-content width instead of full width
+  (`VeritySurface` doesn't stretch on its own — `VerityListItem`'s Recent Documents card only
+  looked right by accident, because its inner `Row` happens to declare `fillMaxWidth()`), and a
+  missing leading avatar that no `onNodeWithText` assertion would ever catch, because the text
+  that *was* there was correct. `onNodeWithText`/`assertIsDisplayed` verify that specific text
+  exists and some node bears it — they say nothing about size, position, or "is this element even
+  present at all" for content with no distinguishing text. For any screen built against an
+  approved mockup, install the actual APK and look at (or screenshot) the real render at least
+  once before calling it done, even with a fully green suite — this is a different failure mode
+  than the "tap does nothing" class above, and needs a different check.
 
 ## Working with this repo (for any AI assistant, including future sessions)
 
