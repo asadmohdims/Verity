@@ -160,17 +160,26 @@ fun VerityTopAppBar(
                     actions.forEach { action ->
                         when (action) {
                             is VerityTopBarAction.Icon -> {
-                                IconButton(onClick = action.onClick) {
+                                val tint = if (action.enabled) {
+                                    VerityTheme.colors.primary
+                                } else {
+                                    VerityTheme.colors.text.disabled
+                                }
+
+                                IconButton(
+                                    onClick = action.onClick,
+                                    enabled = action.enabled
+                                ) {
                                     when (val icon = action.icon) {
                                         is VerityIcon.Material -> Icon(
                                             imageVector = icon.imageVector,
                                             contentDescription = action.contentDescription,
-                                            tint = VerityTheme.colors.primary
+                                            tint = tint
                                         )
                                         is VerityIcon.VectorRes -> Icon(
                                             painter = painterResource(icon.resId),
                                             contentDescription = action.contentDescription,
-                                            tint = VerityTheme.colors.primary
+                                            tint = tint
                                         )
                                     }
                                 }
@@ -211,7 +220,8 @@ sealed interface VerityTopBarAction {
     data class Icon(
         val icon: VerityIcon,
         val contentDescription: String?,
-        val onClick: () -> Unit
+        val onClick: () -> Unit,
+        val enabled: Boolean = true
     ) : VerityTopBarAction
 
     data class Overflow(

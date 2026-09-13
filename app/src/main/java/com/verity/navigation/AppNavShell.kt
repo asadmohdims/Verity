@@ -94,17 +94,25 @@ fun AppNavShell(
     }
 
     val workspaceChromeSpec by invoiceWorkspaceViewModel.chromeSpec.collectAsState()
+    val previewDocument by invoiceWorkspaceViewModel.previewDocument.collectAsState()
 
-    val chromeSpecWithNavigation = remember(workspaceChromeSpec) {
+    val chromeSpecWithNavigation = remember(workspaceChromeSpec, previewDocument) {
+        val canPreview = previewDocument != null
+
         workspaceChromeSpec.copy(
             actions = workspaceChromeSpec.actions.map { action ->
                 if (
                     action is VerityTopBarAction.Icon &&
                     action.contentDescription == "Preview invoice"
                 ) {
+                    // Disabled (not just a silent no-op) until Billed To is set — that's what
+                    // previewDocument being null actually means (see DraftToInvoiceDocument,
+                    // which needs the buyer's state to determine GST mode). Found by the user
+                    // tapping Preview on a blank draft and seeing nothing happen at all.
                     action.copy(
+                        enabled = canPreview,
                         onClick = {
-                            if (invoiceWorkspaceViewModel.previewDocument.value != null) {
+                            if (canPreview) {
                                 navController.navigate(AppRoutes.PREVIEW)
                             }
                         }

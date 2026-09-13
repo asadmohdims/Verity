@@ -1,6 +1,8 @@
 package com.verity.navigation
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -54,7 +56,7 @@ class AppNavShellTest {
         }
     }
 
-    private fun setContentWithShell() {
+    private fun setContentWithShell(): InvoiceWorkspaceViewModel {
         val homeViewModel = HomeViewModel(
             homeDataSource = NoopHomeDataSource(),
             clock = Clock.systemUTC()
@@ -79,6 +81,8 @@ class AppNavShellTest {
                 )
             }
         }
+
+        return workspaceViewModel
     }
 
     @Test
@@ -118,5 +122,32 @@ class AppNavShellTest {
         composeTestRule.onNodeWithText("+ Add line item").assertIsDisplayed()
         composeTestRule.onNodeWithText("Documents").assertDoesNotExist()
         composeTestRule.onNodeWithText("Create Invoice").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Preview invoice is disabled until Billed To is set, then enables and navigates`() {
+        val workspaceViewModel = setContentWithShell()
+        composeTestRule.onNodeWithContentDescription("Create").performClick()
+
+        composeTestRule.onNodeWithContentDescription("Preview invoice").assertIsNotEnabled()
+        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Finalize Invoice").assertDoesNotExist()
+
+        workspaceViewModel.onBilledToSelected(
+            CustomerAutocompleteItem(
+                customerId = "cust-1",
+                customerName = "Genus Paper & Boards Ltd.",
+                gstin = "27AAAAA0000A1Z5",
+                addressLine1 = "Unit-2, 8th Km Stone",
+                city = "Muzaffarnagar",
+                state = "Uttar Pradesh",
+                stateCode = "09",
+                pincode = null
+            )
+        )
+
+        composeTestRule.onNodeWithContentDescription("Preview invoice").assertIsEnabled()
+        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Finalize Invoice").assertIsDisplayed()
     }
 }
