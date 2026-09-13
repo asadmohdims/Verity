@@ -1,13 +1,17 @@
 package com.verity.core.ui.molecules
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.icons.VerityIcon
 import com.verity.core.ui.icons.VerityIconGlyph
+import com.verity.core.ui.primitives.VerityDivider
+import com.verity.core.ui.primitives.VerityDividerStrength
 
 /**
  * One bottom-navigation destination.
@@ -36,28 +40,37 @@ fun VerityBottomNav(
     selectedRoute: String?,
     onSelect: (String) -> Unit
 ) {
-    NavigationBar(
-        containerColor = VerityTheme.colors.surface.base,
-        contentColor = VerityTheme.colors.text.muted
-    ) {
-        items.forEach { item ->
-            NavigationBarItem(
-                selected = item.route == selectedRoute,
-                onClick = { onSelect(item.route) },
-                icon = {
-                    VerityIconGlyph(icon = item.icon, contentDescription = item.label)
-                },
-                label = {
-                    Text(text = item.label, style = VerityTheme.typography.caption)
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = VerityTheme.colors.primary,
-                    selectedTextColor = VerityTheme.colors.primary,
-                    indicatorColor = VerityTheme.colors.surface.assistInteractive,
-                    unselectedIconColor = VerityTheme.colors.text.muted,
-                    unselectedTextColor = VerityTheme.colors.text.muted
+    Column {
+        // Matches the mockup's `.bottomnav{border-top:1px solid var(--border-divider)}` — plain
+        // M3 NavigationBar draws no top border of its own.
+        VerityDivider(strength = VerityDividerStrength.Divider)
+
+        NavigationBar(
+            containerColor = VerityTheme.colors.surface.base,
+            contentColor = VerityTheme.colors.text.muted
+        ) {
+            items.forEach { item ->
+                NavigationBarItem(
+                    selected = item.route == selectedRoute,
+                    onClick = { onSelect(item.route) },
+                    icon = {
+                        VerityIconGlyph(icon = item.icon, contentDescription = item.label)
+                    },
+                    label = {
+                        Text(text = item.label, style = VerityTheme.typography.caption)
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = VerityTheme.colors.primary,
+                        selectedTextColor = VerityTheme.colors.primary,
+                        // Transparent, not a tinted pill: the mockup's `.navitem.active` only
+                        // recolors the icon/label (see Main.dc.html) — there's no background
+                        // behind it.
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = VerityTheme.colors.text.muted,
+                        unselectedTextColor = VerityTheme.colors.text.muted
+                    )
                 )
-            )
+            }
         }
     }
 }

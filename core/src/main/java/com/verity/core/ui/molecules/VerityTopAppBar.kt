@@ -193,8 +193,10 @@ fun VerityTopAppBar(
                 }
             }
 
+            // Solid borders.divider, matching the mockup's `.topbar-brand{border-bottom:1px solid
+            // var(--border-divider)}` — the alpha-derived Subtle divider renders visibly fainter.
             VerityDivider(
-                strength = VerityDividerStrength.Subtle
+                strength = VerityDividerStrength.Divider
             )
         }
     }

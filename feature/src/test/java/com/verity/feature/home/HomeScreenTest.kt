@@ -97,7 +97,7 @@ class HomeScreenTest {
         }
 
         composeTestRule.onNodeWithText("₹14,042").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2 documents invoiced").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 documents invoiced · September 2026").assertIsDisplayed()
         composeTestRule.onNodeWithText("INV-000001 · Bhargava Industries").assertIsDisplayed()
         // Both fixture documents share "Bhargava Industries", so both rows get a "BI" avatar.
         composeTestRule.onAllNodesWithText("BI").assertCountEquals(2)

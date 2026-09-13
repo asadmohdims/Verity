@@ -16,6 +16,14 @@ import androidx.compose.ui.unit.dp
  */
 enum class VeritySurfaceType {
     Base,
+
+    /**
+     * White (`surface.base`) with an 8dp rounded corner and no elevation — a flat content card on
+     * a tinted page background, distinct from `Base`'s edge-to-edge rectangle. Matches the mockup's
+     * `.listcard{background:var(--surface-base);border-radius:8px}`.
+     */
+    Card,
+
     Raised,
     Assist,
     AssistInteractive,
@@ -45,6 +53,7 @@ fun VeritySurface(
 
     val backgroundColor = when (type) {
         VeritySurfaceType.Base -> colors.surface.base
+        VeritySurfaceType.Card -> colors.surface.base
         VeritySurfaceType.Raised -> colors.surface.raised
         VeritySurfaceType.Assist -> colors.surface.assist
         VeritySurfaceType.AssistInteractive -> colors.surface.assistInteractive
@@ -59,6 +68,7 @@ fun VeritySurface(
 
     val tonalElevation = when (type) {
         VeritySurfaceType.Base -> 0.dp
+        VeritySurfaceType.Card -> 0.dp
         VeritySurfaceType.Raised -> 1.dp
         VeritySurfaceType.Assist -> 0.dp
         VeritySurfaceType.AssistInteractive -> 0.dp

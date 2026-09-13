@@ -14,6 +14,7 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val thisMonthTotal: Money = Money.ofPaise(0),
     val thisMonthDocumentCount: Int = 0,
+    val thisMonthLabel: String = "",
     val recentDocuments: List<DocumentSummary> = emptyList()
 )
 
@@ -59,6 +60,7 @@ class HomeViewModel(
                 isLoading = false,
                 thisMonthTotal = dashboard.thisMonthTotal,
                 thisMonthDocumentCount = dashboard.thisMonthDocumentCount,
+                thisMonthLabel = dashboard.thisMonthLabel,
                 recentDocuments = dashboard.recentDocuments
             )
         }

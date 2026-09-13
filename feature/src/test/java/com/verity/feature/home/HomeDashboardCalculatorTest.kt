@@ -37,7 +37,18 @@ class HomeDashboardCalculatorTest {
 
         assertEquals(Money.ofPaise(0), dashboard.thisMonthTotal)
         assertEquals(0, dashboard.thisMonthDocumentCount)
+        assertEquals("September 2026", dashboard.thisMonthLabel)
         assertEquals(emptyList<DocumentSummary>(), dashboard.recentDocuments)
+    }
+
+    @Test
+    fun `this month label is the full month name and year of the reference date`() {
+        val dashboard = HomeDashboardCalculator.buildDashboard(
+            documents = emptyList(),
+            referenceDate = LocalDate.of(2027, 1, 3)
+        )
+
+        assertEquals("January 2027", dashboard.thisMonthLabel)
     }
 
     @Test

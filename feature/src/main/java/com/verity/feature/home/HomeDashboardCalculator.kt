@@ -3,6 +3,8 @@ package com.verity.feature.home
 import com.verity.core.formatting.money.Money
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Aggregated, display-ready shape of the Home dashboard.
@@ -10,8 +12,12 @@ import java.time.YearMonth
 data class HomeDashboardData(
     val thisMonthTotal: Money,
     val thisMonthDocumentCount: Int,
+    val thisMonthLabel: String,
     val recentDocuments: List<DocumentSummary>
 )
+
+private val monthLabelFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
 
 /**
  * HomeDashboardCalculator
@@ -45,6 +51,7 @@ object HomeDashboardCalculator {
         return HomeDashboardData(
             thisMonthTotal = Money.ofPaise(thisMonthTotalPaise),
             thisMonthDocumentCount = thisMonthDocuments.size,
+            thisMonthLabel = monthLabelFormatter.format(referenceMonth),
             recentDocuments = recentDocuments
         )
     }

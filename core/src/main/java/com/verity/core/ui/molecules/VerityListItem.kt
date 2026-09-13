@@ -30,10 +30,11 @@ fun VerityListItem(
     titleMaxLines: Int = Int.MAX_VALUE,
     titleOverflow: TextOverflow = TextOverflow.Clip,
     subtitle: String? = null,
-    trailing: (@Composable () -> Unit)? = null
+    trailing: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
 

@@ -15,7 +15,14 @@ import com.verity.core.theme.VerityTheme
  */
 enum class VerityDividerStrength {
     Subtle,
-    Strong
+    Strong,
+
+    /**
+     * Solid `colors.borders.divider` token, full opacity — for structural row separators (e.g.
+     * between list rows in a card) where a translucent muted-alpha line reads too faint against
+     * the approved mockup.
+     */
+    Divider
 }
 
 /**
@@ -41,11 +48,13 @@ fun VerityDivider(
     val dividerColor = when (strength) {
         VerityDividerStrength.Subtle -> colors.text.muted.copy(alpha = 0.25f)
         VerityDividerStrength.Strong -> colors.text.muted.copy(alpha = 0.45f)
+        VerityDividerStrength.Divider -> colors.borders.divider
     }
 
     val thickness = when (strength) {
         VerityDividerStrength.Subtle -> 1.dp
         VerityDividerStrength.Strong -> 1.5.dp
+        VerityDividerStrength.Divider -> 1.dp
     }
 
     Divider(

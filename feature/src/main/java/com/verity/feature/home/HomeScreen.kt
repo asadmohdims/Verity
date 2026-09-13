@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -22,8 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.verity.core.document.model.DocumentType
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.molecules.VerityListItem
@@ -92,7 +96,8 @@ fun HomeScreen(
         ) {
             ThisMonthCard(
                 total = state.thisMonthTotal.format(),
-                documentCount = state.thisMonthDocumentCount
+                documentCount = state.thisMonthDocumentCount,
+                monthLabel = state.thisMonthLabel
             )
 
             VeritySpacer(size = VeritySpace.Large)
@@ -102,12 +107,11 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                VerityText(text = "Recent Documents", style = VerityTextStyle.Title)
+                SectionTitle(text = "Recent Documents")
 
                 if (state.recentDocuments.isNotEmpty()) {
-                    VerityText(
+                    SectionLink(
                         text = "See all",
-                        style = VerityTextStyle.Label,
                         modifier = Modifier.clickable(onClick = onSeeAllDocuments)
                     )
                 }
@@ -121,15 +125,15 @@ fun HomeScreen(
                 }
 
                 state.recentDocuments.isNotEmpty() -> {
-                    VeritySurface(type = VeritySurfaceType.Raised) {
-                        Column(modifier = Modifier.padding(VeritySpace.Medium.dp)) {
+                    // White card, matching the mockup's
+                    // `.listcard{background:var(--surface-base)}` — Raised's mint tint doesn't match.
+                    VeritySurface(type = VeritySurfaceType.Card) {
+                        Column {
                             state.recentDocuments.forEachIndexed { index, document ->
                                 RecentDocumentRow(document)
 
                                 if (index != state.recentDocuments.lastIndex) {
-                                    VeritySpacer(size = VeritySpace.Small)
-                                    VerityDivider(strength = VerityDividerStrength.Subtle)
-                                    VeritySpacer(size = VeritySpace.Small)
+                                    VerityDivider(strength = VerityDividerStrength.Divider)
                                 }
                             }
                         }
@@ -141,26 +145,72 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ThisMonthCard(total: String, documentCount: Int) {
+private fun ThisMonthCard(total: String, documentCount: Int, monthLabel: String) {
     VeritySurface(
         type = VeritySurfaceType.AssistInteractive,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(VeritySpace.Medium.dp)) {
-            VerityText(text = "This Month", style = VerityTextStyle.Label)
-            VeritySpacer(size = VeritySpace.ExtraSmall)
+            OverlineLabel(text = "This Month")
+            Spacer(modifier = Modifier.height(6.dp))
             VerityText(text = total, style = VerityTextStyle.Display)
-            VeritySpacer(size = VeritySpace.ExtraSmall)
+            Spacer(modifier = Modifier.height(6.dp))
             VerityText(
-                text = if (documentCount == 1) {
-                    "1 document invoiced"
-                } else {
-                    "$documentCount documents invoiced"
+                text = buildString {
+                    append(if (documentCount == 1) "1 document invoiced" else "$documentCount documents invoiced")
+                    if (monthLabel.isNotEmpty()) {
+                        append(" · ")
+                        append(monthLabel)
+                    }
                 },
                 style = VerityTextStyle.Caption
             )
         }
     }
+}
+
+/**
+ * Small-caps overline label ("THIS MONTH") matching the approved mockup's `.hero__label`. Reuses
+ * Caption's size/weight/letter-spacing (already an exact match), but Caption always renders in
+ * `text.muted` via VerityText — this label needs `text.secondary` plus an uppercase transform, so
+ * it goes through raw Material3 Text instead, same rationale as CustomerAvatar below.
+ */
+@Composable
+private fun OverlineLabel(text: String) {
+    Text(
+        text = text.uppercase(Locale.ENGLISH),
+        style = VerityTheme.typography.caption,
+        color = VerityTheme.colors.text.secondary
+    )
+}
+
+/**
+ * "Recent Documents" section heading — 14sp SemiBold in `text.primary`, matching the mockup's
+ * `.sectiontitle`. Smaller than the shared `Title` token (18sp), which is used more broadly across
+ * the app; kept local to Home rather than resizing that token app-wide.
+ */
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = VerityTheme.typography.label,
+        color = VerityTheme.colors.text.primary
+    )
+}
+
+/**
+ * "See all" section-header link — 12sp SemiBold in `colors.primary`, matching the mockup's
+ * `.sectiontitle .link`. Neither Label (14sp/secondary) nor Caption (12sp/muted) matches this
+ * combination.
+ */
+@Composable
+private fun SectionLink(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = VerityTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),
+        color = VerityTheme.colors.primary
+    )
 }
 
 private val recentDateFormatter: DateTimeFormatter =
@@ -181,7 +231,8 @@ private fun RecentDocumentRow(document: DocumentSummary) {
         subtitle = "${document.issueDate.format(recentDateFormatter)} · $typeLabel",
         trailing = {
             VerityText(text = document.grandTotal.format(), style = VerityTextStyle.Body)
-        }
+        },
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)
     )
 }
 
@@ -189,8 +240,8 @@ private fun RecentDocumentRow(document: DocumentSummary) {
  * Small circular initials avatar, matching the approved Design Blueprint's Home mockup.
  *
  * Uses raw Material3 Text rather than VerityText: this is the one place a two-letter initial
- * needs to sit on a brand-tinted circle in VerityTheme.colors.primary specifically, which none of
- * VerityTextStyle's fixed style→color mappings produce.
+ * needs to sit on a brand-tinted circle in VerityTheme.colors.primary specifically, at the
+ * mockup's 13sp/Bold weight, which none of VerityTextStyle's fixed style→color mappings produce.
  */
 @Composable
 private fun CustomerAvatar(customerName: String) {
@@ -205,7 +256,7 @@ private fun CustomerAvatar(customerName: String) {
     ) {
         Text(
             text = initials,
-            style = VerityTheme.typography.label,
+            style = VerityTheme.typography.label.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
             color = VerityTheme.colors.primary
         )
     }
@@ -222,7 +273,9 @@ private fun initialsFor(customerName: String): String {
 
 @Composable
 private fun EmptyRecentDocuments(onCreateNew: () -> Unit) {
-    VeritySurface(type = VeritySurfaceType.Raised) {
+    // Same white Card treatment as the populated list below it — no design reference shows this
+    // state, but the empty/populated card should look like the same card either way.
+    VeritySurface(type = VeritySurfaceType.Card) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
