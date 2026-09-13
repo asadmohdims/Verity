@@ -43,10 +43,10 @@ this section honest and current; that's the entire reason it exists.
 
 A navigation/IA redesign (Home dashboard landing screen, bottom nav, Documents/Customers/Settings)
 was proposed and **approved by the user on 2026-09-11** — see "UX Direction" below. Phase 1
-(R-13: the nav shell + Home dashboard) is **built, on `feature/r13-nav-and-home`, pushed but not
-yet merged to `main`** — see "Build Roadmap" in the UX Direction section for what that covers and
-what's still Phase 2/3. `main` itself is stale (predates Milestone 1 entirely); the intent is for
-this branch's line of work to eventually become the new `main`, not the other way around.
+(R-13: the nav shell + Home dashboard) is **built and merged to `main`** (2026-09-13, fast-forward
+from `feature/r13-nav-and-home`, no merge commit) — see "Build Roadmap" in the UX Direction section
+for what that covers and what's still Phase 2/3. `main` had been stale since before Milestone 1;
+this merge is what brought it current.
 
 ## Who this is for
 
