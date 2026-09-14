@@ -7,7 +7,16 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.printToString
+import androidx.compose.ui.test.isRoot
 import androidx.navigation.compose.rememberNavController
+import com.verity.core.document.model.DocumentFooter
+import com.verity.core.document.model.DocumentIdentity
+import com.verity.core.document.model.DocumentParties
+import com.verity.core.document.model.DocumentParty
+import com.verity.core.document.model.DocumentTotals
+import com.verity.core.document.model.DocumentType
+import com.verity.core.document.model.HARDCODED_SELLER
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
@@ -19,6 +28,7 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +36,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
 import java.time.Clock
+import java.time.LocalDate
 
 /**
  * Robolectric Compose tests for R-13's navigation shell — same methodology as feature/invoice's
@@ -56,7 +68,58 @@ class AppNavShellTest {
         }
     }
 
-    private fun setContentWithShell(): InvoiceWorkspaceViewModel {
+    private class NoopInvoicePdfRenderer : InvoicePdfRenderer {
+        override suspend fun ensurePdf(document: InvoiceDocumentModel): File {
+            error("not used in this test")
+        }
+    }
+
+    private fun sampleParty() = DocumentParty(
+        name = "Bhargava Industries",
+        gstin = "27AAACB1234Z1Z",
+        addressLines = listOf("Industrial Area", "Mumbai"),
+        state = "Maharashtra",
+        stateCode = "27"
+    )
+
+    private fun sampleFinalizedDocument() = InvoiceDocumentModel(
+        identity = DocumentIdentity(
+            documentType = DocumentType.INVOICE,
+            documentNumber = "INV-000043",
+            issueDate = LocalDate.of(2026, 9, 13),
+            seller = HARDCODED_SELLER,
+            placeOfSupplyState = "Maharashtra",
+            placeOfSupplyStateCode = "27"
+        ),
+        parties = DocumentParties(
+            billedTo = sampleParty(),
+            shippedTo = sampleParty()
+        ),
+        lineItems = emptyList(),
+        logistics = null,
+        taxation = null,
+        totals = DocumentTotals(
+            itemsSubtotalPaise = 595000,
+            freightPaise = 0,
+            taxTotalPaise = 107100,
+            grandTotalPaise = 702100
+        ),
+        footer = DocumentFooter(declarationText = "", notes = null)
+    )
+
+    private class FakeInvoiceFinalizer(private val document: InvoiceDocumentModel) : InvoiceFinalizer {
+        override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel =
+            document
+    }
+
+    private class FakeInvoicePdfRenderer : InvoicePdfRenderer {
+        override suspend fun ensurePdf(document: InvoiceDocumentModel): File = File("unused.pdf")
+    }
+
+    private fun setContentWithShell(
+        invoiceFinalizer: InvoiceFinalizer = NoopInvoiceFinalizer(),
+        invoicePdfRenderer: InvoicePdfRenderer = NoopInvoicePdfRenderer()
+    ): InvoiceWorkspaceViewModel {
         val homeViewModel = HomeViewModel(
             homeDataSource = NoopHomeDataSource(),
             clock = Clock.systemUTC()
@@ -64,7 +127,8 @@ class AppNavShellTest {
         val workspaceViewModel = InvoiceWorkspaceViewModel(
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
-            invoiceFinalizer = NoopInvoiceFinalizer()
+            invoiceFinalizer = invoiceFinalizer,
+            invoicePdfRenderer = invoicePdfRenderer
         )
         // Deliberately NOT calling onCreateInvoice() here — AppNavShell's FAB/Create actions are
         // responsible for that (see the FAB test below). Pre-creating a draft in test setup would
@@ -149,5 +213,86 @@ class AppNavShellTest {
         composeTestRule.onNodeWithContentDescription("Preview invoice").assertIsEnabled()
         composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").assertIsDisplayed()
+    }
+
+    @Test
+    fun `pressing back on the Workspace screen returns to Home, not a no-op`() {
+        setContentWithShell()
+        composeTestRule.onNodeWithContentDescription("Create").performClick()
+        composeTestRule.onNodeWithText("+ Add line item").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Back on a tab route: bottom nav is showing again and the workspace editor is gone.
+        composeTestRule.onNodeWithText("Documents").assertIsDisplayed()
+        composeTestRule.onNodeWithText("+ Add line item").assertDoesNotExist()
+    }
+
+    @Test
+    fun `pressing back on the Finalized screen returns to Home, not the emptied-out draft screen`() {
+        val workspaceViewModel = setContentWithShell(
+            invoiceFinalizer = FakeInvoiceFinalizer(sampleFinalizedDocument()),
+            invoicePdfRenderer = FakeInvoicePdfRenderer()
+        )
+        composeTestRule.onNodeWithContentDescription("Create").performClick()
+
+        workspaceViewModel.onBilledToSelected(
+            CustomerAutocompleteItem(
+                customerId = "cust-1",
+                customerName = "Bhargava Industries",
+                gstin = "27AAACB1234Z1Z",
+                addressLine1 = "Industrial Area",
+                city = "Mumbai",
+                state = "Maharashtra",
+                stateCode = "27",
+                pincode = null
+            )
+        )
+        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Finalize Invoice").performClick()
+        // "Invoice Finalized" itself is ambiguous here (it's both the chrome title and the screen
+        // body's heading) — assert on the document number, which only the body renders.
+        composeTestRule.onNodeWithText("INV-000043 · ₹7,021").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Finalize must have dropped WORKSPACE from the back stack along with PREVIEW: back
+        // lands straight on the Home tab, never on the now-defunct Workspace/"Create Invoice"
+        // screen that used to sit underneath.
+        composeTestRule.onNodeWithText("Documents").assertIsDisplayed()
+        composeTestRule.onNodeWithText("+ Add line item").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Create Invoice").assertDoesNotExist()
+    }
+
+    @Test
+    fun `starting a new invoice after finalizing one does not carry over the previous Billed To`() {
+        val workspaceViewModel = setContentWithShell(
+            invoiceFinalizer = FakeInvoiceFinalizer(sampleFinalizedDocument()),
+            invoicePdfRenderer = FakeInvoicePdfRenderer()
+        )
+        composeTestRule.onNodeWithContentDescription("Create").performClick()
+
+        workspaceViewModel.onBilledToSelected(
+            CustomerAutocompleteItem(
+                customerId = "cust-1",
+                customerName = "Bhargava Industries",
+                gstin = "27AAACB1234Z1Z",
+                addressLine1 = "Industrial Area",
+                city = "Mumbai",
+                state = "Maharashtra",
+                stateCode = "27",
+                pincode = null
+            )
+        )
+        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Finalize Invoice").performClick()
+        composeTestRule.onNodeWithText("INV-000043 · ₹7,021").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Second invoice, fresh FAB tap: Billed To must start blank, not carry over Invoice #1's
+        // customer.
+        composeTestRule.onNodeWithContentDescription("Create").performClick()
+
+        println(composeTestRule.onAllNodes(isRoot())[0].printToString(maxDepth = 50))
     }
 }

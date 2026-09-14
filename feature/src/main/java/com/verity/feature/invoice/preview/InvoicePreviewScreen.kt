@@ -159,6 +159,15 @@ fun InvoicePreviewScreen(
                     value = Money.ofPaise(document.totals.itemsSubtotalPaise).format()
                 )
 
+                if (document.totals.freightPaise > 0) {
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    SummaryRow(
+                        label = "Add Freight",
+                        value = Money.ofPaise(document.totals.freightPaise).format()
+                    )
+                }
+
                 VeritySpacer(size = VeritySpace.Small)
 
                 SummaryRow(

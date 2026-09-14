@@ -66,6 +66,48 @@ class DraftToInvoiceDocumentTest {
     }
 
     @Test
+    fun `supply date maps through from transport details when present`() {
+        val draft = baseDraft().copy(
+            transportDetails = DraftTransportDetails(supplyDate = java.time.LocalDate.of(2026, 9, 20))
+        )
+
+        val document = DraftToInvoiceDocument.project(
+            draft = draft,
+            documentNumber = "INV-000006",
+            seller = testSeller(),
+            clock = fixedClock()
+        )
+
+        assertEquals(java.time.LocalDate.of(2026, 9, 20), document.logistics?.supplyDate)
+    }
+
+    @Test
+    fun `a line item with no quantity has a null quantity and an amount equal to its rate`() {
+        val draft = baseDraft().copy(
+            lineItems = listOf(
+                DraftLineItem(
+                    description = "Fabrication job work",
+                    hsnCode = "9988",
+                    quantity = null,
+                    unit = "",
+                    ratePaise = 7_500
+                )
+            )
+        )
+
+        val document = DraftToInvoiceDocument.project(
+            draft = draft,
+            documentNumber = "INV-000007",
+            seller = testSeller(),
+            clock = fixedClock()
+        )
+
+        val item = document.lineItems.single()
+        assertNull(item.quantity)
+        assertEquals(7_500L, item.amountPaise)
+    }
+
+    @Test
     fun `logistics is null when no transport details were entered`() {
         val document = DraftToInvoiceDocument.project(
             draft = baseDraft(),

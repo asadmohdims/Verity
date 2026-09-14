@@ -47,7 +47,7 @@ import com.verity.core.formatting.money.Money
 @Composable
 fun VerityInvoiceLineItemRow(
     description: String,
-    quantity: Long,
+    quantity: Long?,
     rate: Money,
     amount: Money,
     hsnCode: String?,
@@ -122,7 +122,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toString(),
+                                text = quantity?.toString() ?: "—",
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -151,7 +151,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity.toString(),
+                                text = quantity?.toString() ?: "—",
                                 style = VerityTextStyle.Label
                             )
                         }

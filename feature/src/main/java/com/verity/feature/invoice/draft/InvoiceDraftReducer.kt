@@ -86,7 +86,7 @@ object InvoiceDraftReducer {
     fun updateLineItemQuantity(
         draft: InvoiceDraftUiState,
         index: Int,
-        quantity: Long
+        quantity: Long?
     ): InvoiceDraftUiState {
         val updatedItems = draft.lineItems.mapIndexed { i, item ->
             if (i == index) {
@@ -199,7 +199,7 @@ object InvoiceDraftReducer {
     ): InvoiceDraftUiState {
 
         val itemsSubtotalPaise: Long =
-            draft.lineItems.sumOf { it.quantity * it.ratePaise }
+            draft.lineItems.sumOf { (it.quantity ?: 1L) * it.ratePaise }
         val freightPaise: Long =
             draft.transportDetails?.freightPaise ?: 0L
         val taxableSubtotalPaise: Long =

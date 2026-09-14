@@ -52,6 +52,37 @@ class InvoiceDraftReducerTest {
     }
 
     @Test
+    fun `a line item with no quantity contributes its rate once to the subtotal`() {
+        val draft = InvoiceDraftUiState(
+            billedTo = testBilledTo(),
+            lineItems = listOf(
+                DraftLineItem(
+                    description = "Fabrication job work",
+                    hsnCode = "9988",
+                    quantity = null,
+                    unit = "",
+                    ratePaise = 7_500
+                ),
+                DraftLineItem(
+                    description = "Item A",
+                    hsnCode = "1001",
+                    quantity = 10,
+                    unit = "PCS",
+                    ratePaise = 1_000
+                )
+            )
+        )
+
+        val result = InvoiceDraftReducer.updateLineItem(
+            draft,
+            index = 0,
+            item = draft.lineItems.first()
+        )
+
+        assertEquals(7_500 + 10 * 1_000, result.summary.subtotalPaise)
+    }
+
+    @Test
     fun `freight is added exactly once and not included in items subtotal`() {
         val draft = InvoiceDraftUiState(
             billedTo = testBilledTo(),

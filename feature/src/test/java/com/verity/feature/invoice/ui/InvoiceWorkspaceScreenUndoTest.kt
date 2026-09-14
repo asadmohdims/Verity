@@ -80,7 +80,7 @@ class InvoiceWorkspaceScreenUndoTest {
 
         composeTestRule.onNodeWithText("+ Add line item").performClick()
         composeTestRule.onNodeWithText("Description").performTextInput("Test Item")
-        composeTestRule.onNodeWithText("Quantity").performTextInput("10")
+        composeTestRule.onNodeWithText("Quantity (optional)").performTextInput("10")
         composeTestRule.onNodeWithText("Rate").performTextInput("100")
         composeTestRule.onNodeWithText("Add").performScrollTo().performClick()
 

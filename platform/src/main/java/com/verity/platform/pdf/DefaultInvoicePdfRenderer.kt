@@ -368,7 +368,7 @@ private class InvoicePdfPageDrawer(private val document: InvoiceDocumentModel) {
             canvas.drawText(ellipsized.toString(), cellX(1), baseline, descPaint)
 
             canvas.drawText(item.hsnCode, cellX(2), baseline, paint(InvoicePalette.muted, 8f, mono = true))
-            canvas.drawText(item.quantity.toString(), cellRight(3) - 4f, baseline, paint(InvoicePalette.ink, 8.5f, mono = true, align = Paint.Align.RIGHT))
+            canvas.drawText(item.quantity?.toString() ?: "—", cellRight(3) - 4f, baseline, paint(InvoicePalette.ink, 8.5f, mono = true, align = Paint.Align.RIGHT))
             canvas.drawText(item.unit, cellX(4), baseline, paint(InvoicePalette.muted, 8.5f))
             canvas.drawText(
                 Money.ofPaise(item.ratePaise).formatPlain(alwaysTwoDecimals = true),

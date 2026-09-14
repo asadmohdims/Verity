@@ -25,7 +25,6 @@ data class InvoiceDraftUiState(
     val customer: DraftCustomer? = null,
     val billedTo: DraftAddress? = null,
     val shippedTo: DraftAddress? = null,
-    val supplyDate: LocalDate? = null,
     val reverseCharge: Boolean = false,
     val lineItems: List<DraftLineItem> = emptyList(),
     val transportDetails: DraftTransportDetails? = null,
@@ -116,7 +115,8 @@ data class DraftAddress(
 data class DraftLineItem(
     val description: String,
     val hsnCode: String,
-    val quantity: Long,
+    /** Null when not applicable (e.g. a job-work line with nothing to count) — see DocumentLineItem. */
+    val quantity: Long?,
     val unit: String,
     val ratePaise: Long
 )

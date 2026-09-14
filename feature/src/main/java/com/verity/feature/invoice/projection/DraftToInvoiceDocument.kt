@@ -101,7 +101,7 @@ private fun DraftLineItem.toDocumentLineItem(): DocumentLineItem =
         quantity = quantity,
         unit = unit,
         ratePaise = ratePaise,
-        amountPaise = quantity * ratePaise
+        amountPaise = (quantity ?: 1L) * ratePaise
     )
 
 private fun DraftTaxBreakdown.toDocumentTaxation(): DocumentTaxation =

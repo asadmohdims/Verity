@@ -95,11 +95,10 @@ fun AppNavShell(
     }
 
     fun goToWorkspace() {
-        // The FAB/"Create" actions already ARE the user's "start a new invoice" intent — landing
-        // on InvoiceWorkspaceRoute's own empty-state prompt ("Create Invoice — Start a new
-        // invoice from scratch") after that would just be a redundant second tap. Only start a
-        // fresh draft when none is active yet, so resuming an in-progress draft (e.g. the user
-        // backed out mid-edit and tapped the FAB again) is left untouched.
+        // Only start a fresh draft when none is active yet, so resuming an in-progress draft
+        // (e.g. the user backed out mid-edit and tapped the FAB again) is left untouched. This
+        // also guarantees WORKSPACE is never composed without an active draft — see
+        // InvoiceWorkspaceRoute.
         if (!invoiceWorkspaceViewModel.hasActiveDraft.value) {
             invoiceWorkspaceViewModel.onCreateInvoice()
         }
@@ -114,6 +113,14 @@ fun AppNavShell(
         val canPreview = previewDocument != null
 
         workspaceChromeSpec.copy(
+            navigationIcon = when (val icon = workspaceChromeSpec.navigationIcon) {
+                // The ViewModel builds this with a placeholder onClick ("handled at root") since
+                // it doesn't own navigation — root must actually wire it, same as the Preview
+                // action below. Previously left unwired, so the Workspace screen's back arrow was
+                // a silent no-op and never returned to Home.
+                is VerityNavIcon.Back -> icon.copy(onClick = { navController.popBackStack() })
+                VerityNavIcon.None -> icon
+            },
             actions = workspaceChromeSpec.actions.map { action ->
                 if (
                     action is VerityTopBarAction.Icon &&
@@ -247,13 +254,14 @@ fun AppNavShell(
                         .collectAsState()
 
                     // Finalize completes asynchronously in the ViewModel; once it publishes a
-                    // result, move forward to the finalized screen and drop "preview" from the
-                    // back stack (the draft it showed no longer exists — back must not be able
-                    // to return to it).
+                    // result, move forward to the finalized screen and drop both "preview" AND
+                    // "workspace" from the back stack — the draft they showed no longer exists
+                    // (onFinalizeInvoice() clears hasActiveDraft), so back from "finalized" must
+                    // land on the tab underneath, not on a stale workspace entry.
                     LaunchedEffect(finalizedDocument) {
                         if (finalizedDocument != null) {
                             navController.navigate(AppRoutes.FINALIZED) {
-                                popUpTo(AppRoutes.PREVIEW) { inclusive = true }
+                                popUpTo(AppRoutes.WORKSPACE) { inclusive = true }
                             }
                         }
                     }

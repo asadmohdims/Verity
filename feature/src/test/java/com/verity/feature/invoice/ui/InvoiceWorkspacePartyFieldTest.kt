@@ -1,7 +1,9 @@
 package com.verity.feature.invoice.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -96,8 +98,10 @@ class InvoiceWorkspacePartyFieldTest {
         composeTestRule.onNodeWithText("Bhargava Industries").performClick()
 
         // Selecting the suggestion is the commit — no separate Save tap — and the field collapses
-        // back to a read-only label+value row.
-        composeTestRule.onNodeWithText("Bhargava Industries").assertIsDisplayed()
+        // back to a read-only label+value row. Shipped To has no override yet, so it now defaults
+        // to Billed To's value too (see InvoiceDraftUiState.effectiveShippedTo) — a second, equally
+        // real "Bhargava Industries" row, not a duplicate to dedupe away.
+        composeTestRule.onAllNodesWithText("Bhargava Industries").assertCountEquals(2)
         composeTestRule.onNodeWithText("+ Add billed-to party").assertDoesNotExist()
     }
 
@@ -115,9 +119,45 @@ class InvoiceWorkspacePartyFieldTest {
         composeTestRule.onNodeWithText("Billed To").performTextInput("Bhargava")
         composeTestRule.onNodeWithText("Bhargava Industries").performClick()
 
-        // Tap the now-collapsed read-only row to reopen the search field.
-        composeTestRule.onNodeWithText("Bhargava Industries").performClick()
+        // Tap the now-collapsed read-only row to reopen the search field. Billed To and Shipped
+        // To both show "Bhargava Industries" now (Shipped To defaults to Billed To until
+        // explicitly overridden) — index 0 is Billed To's row, declared first in the layout.
+        composeTestRule.onAllNodesWithText("Bhargava Industries")[0].performClick()
 
         composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
+    }
+
+    @Test
+    fun `starting a new invoice does not carry the previous Billed To into the search field`() {
+        val viewModel = buildViewModel()
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                InvoiceWorkspaceRoute(viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithText("+ Add billed-to party").performClick()
+        composeTestRule.onNodeWithText("Billed To").performTextInput("Bhargava")
+        composeTestRule.onNodeWithText("Bhargava Industries").performClick()
+
+        // Simulates the FAB starting a fresh invoice after finalize (see AppNavShell.goToWorkspace
+        // / InvoiceWorkspaceViewModel.onFinalizeInvoice, which clears hasActiveDraft so the next
+        // FAB tap calls this).
+        viewModel.onCreateInvoice()
+
+        // Billed To reads as unset again...
+        composeTestRule.onNodeWithText("+ Add billed-to party").assertIsDisplayed()
+
+        // ...and, critically, reopening it shows a genuinely blank search field rather than the
+        // previous invoice's customer already typed in. The bug: onSelectSuggestion() used to call
+        // onBilledToQueryChanged(name) right after onBilledToSelected() had already cleared that
+        // same query back to "" — re-populating it (and, via that query, the suggestions list)
+        // with the just-selected customer for no UI reason (the field was about to collapse to
+        // the read-only row anyway, which doesn't read billedToQuery at all). onCreateInvoice()
+        // never reset that separate autocomplete-UI state, so it silently carried into the next
+        // invoice's fresh Billed To field, looking auto-populated the moment it was opened.
+        composeTestRule.onNodeWithText("+ Add billed-to party").performClick()
+        composeTestRule.onNodeWithText("Bhargava Industries").assertDoesNotExist()
     }
 }

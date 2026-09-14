@@ -91,6 +91,47 @@ against `Main.dc.html`. Also still open: Challan PDF generation (this pass was I
 Share/Print/Export and the `FileProvider` it needs (Phase 4 of the UX roadmap), and a real Business
 Profile screen to replace `HardcodedSeller.kt` (Phase 3).
 
+**Four on-device bugs found testing the PDF pass above were fixed same day (2026-09-14)**: (1)
+freight was silently folded into the Grand Total but never itemized on the in-app Preview screen
+(it was already correct in the PDF) — `InvoicePreviewScreen` now shows a conditional "Add Freight"
+row, matching the PDF renderer's own condition. (2) Supply Date had a model field and a PDF row but
+no UI ever asked for it — added `VerityDateField` (`core/.../ui/molecules/`), Verity's first date
+picker, wrapping Material3's `DatePicker`/`DatePickerDialog` behind a contained
+`@OptIn(ExperimentalMaterial3Api::class)`, wired into the Transportation Mode edit block. A dead,
+unrelated second `supplyDate` field that lived directly on `InvoiceDraftUiState` (never read or
+written) was removed in the same pass. (3) Quantity is now genuinely optional on line items —
+`DraftLineItem.quantity`/`DocumentLineItem.quantity` are `Long?`, not defaulted to a fabricated `1`
+— a job-work line has nothing physical to count or check against delivery, so it stays absent
+end-to-end (Qty column and PDF print "—"); money math still treats an absent quantity as an
+effective multiplier of 1 (`amountPaise = ratePaise`). (4) Shipped To already defaulted to Billed
+To at the data layer (`InvoiceDraftUiState.effectiveShippedTo`, already used by
+`DraftToInvoiceDocument` for the real document) — the bug was that the read-only Workspace display
+showed the raw, un-overridden `null` instead, making it look unset; it now reads
+`effectiveShippedTo` like the document projection always did.
+
+**Three more on-device bugs, found and fixed 2026-09-14–15**: (1) Pressing back from the
+Finalized screen landed on a stale `WORKSPACE` back-stack entry — finalize only popped `PREVIEW`
+off the stack (`popUpTo(PREVIEW)`), not `WORKSPACE`, and since finalize also clears
+`hasActiveDraft`, that stale entry rendered `InvoiceWorkspaceRoute`'s empty-state "Create Invoice"
+prompt instead of anything related to the invoice just finished. Fixed by popping through
+`WORKSPACE` instead (`AppNavShell`'s finalize navigation), which also made that empty-state prompt
+permanently unreachable through normal use, so it — and the `hasActiveDraft` gate in
+`InvoiceWorkspaceRoute` — was deleted outright rather than left as dead code. (2) Separately, the
+Workspace screen's own top-bar back arrow was a literal no-op: `InvoiceWorkspaceViewModel` builds
+it with a placeholder `onClick` ("handled at root"), and `AppNavShell` only ever rewired the
+Preview action icon at the root, never the nav icon. Fixed by wiring it to
+`navController.popBackStack()` alongside the Preview action. (3) Billed To (and Shipped To) would
+silently carry the previous invoice's customer into a freshly-started one: `onSelectSuggestion`'s
+handler called `onBilledToSelected()` (which correctly clears `billedToQuery` back to `""`)
+immediately followed by `onBilledToQueryChanged(name)` — pointlessly re-setting that same query
+right back to the selected name, since the field collapses to a read-only row on the very next
+line regardless (which renders `draft.billedTo`, not `billedToQuery`). `onCreateInvoice()` never
+resets that separate autocomplete-UI state, so the leftover name silently reappeared the moment
+the next invoice's Billed To field was reopened. Fixed by dropping the redundant call in both
+handlers. All three reproduced and verified via Robolectric (`AppNavShellTest`,
+`InvoiceWorkspacePartyFieldTest`), not device screenshots — confirmed against the pre-fix code
+before fixing, per this file's own testing standards.
+
 ## Who this is for
 
 - Primary user: the app owner's own business, invoicing customers under Indian GST rules.

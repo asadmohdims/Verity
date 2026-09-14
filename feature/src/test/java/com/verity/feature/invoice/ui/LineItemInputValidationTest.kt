@@ -103,4 +103,17 @@ class LineItemInputValidationTest {
         assertFalse(result.canSubmit)
         assertTrue(result.showQuantityError)
     }
+
+    @Test
+    fun `blank quantity is valid and can submit — job-work lines have nothing to count`() {
+        val result = validateLineItemInput(
+            description = "Fabrication job work",
+            quantityInput = "",
+            rateInput = "500"
+        )
+
+        assertTrue(result.isQuantityValid)
+        assertTrue(result.canSubmit)
+        assertFalse(result.showQuantityError)
+    }
 }

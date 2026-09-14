@@ -128,7 +128,12 @@ data class DocumentParties(
 data class DocumentLineItem(
     val description: String,
     val hsnCode: String,
-    val quantity: Long,
+    /**
+     * Null for line items with nothing to count or check against delivery (e.g. a job-work
+     * service) — genuinely absent, not defaulted to 1. [amountPaise] is unaffected: it's always
+     * `ratePaise` in that case, since there's only one unit of the work being billed.
+     */
+    val quantity: Long?,
     val unit: String,
     val ratePaise: Long,
     val amountPaise: Long

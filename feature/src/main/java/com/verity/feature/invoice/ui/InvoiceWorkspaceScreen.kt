@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.formatting.date.DocumentDate
 import com.verity.core.formatting.money.Money
 import com.verity.core.formatting.money.formatPaiseAsRupeesInput
 import com.verity.core.formatting.money.parseRupeesInputToPaise
@@ -41,6 +42,7 @@ import com.verity.core.ui.icons.VerityIconGlyph
 import com.verity.core.ui.icons.VerityIcons
 import com.verity.core.ui.molecules.VerityEditBlock
 import com.verity.core.ui.molecules.VerityEditMode
+import com.verity.core.ui.molecules.VerityDateField
 import com.verity.core.ui.molecules.VerityHeader
 import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
 import com.verity.core.ui.molecules.VerityInvoiceSummary
@@ -74,6 +76,7 @@ import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
@@ -101,53 +104,17 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
 fun InvoiceWorkspaceRoute(
     viewModel: InvoiceWorkspaceViewModel
 ) {
+    // The route is only ever entered via AppNavShell.goToWorkspace(), which guarantees a draft
+    // exists (onCreateInvoice() runs first if none is active) before navigating here, and the
+    // route is fully removed from the back stack at finalize — so there is no longer a state
+    // where WORKSPACE is composed without an active draft. The old empty-state "Create Invoice"
+    // prompt this used to fall back to was redundant with the FAB and is removed.
     val draft by viewModel.uiState.collectAsState()
-    val hasActiveDraft by viewModel.hasActiveDraft.collectAsState()
 
-    if (hasActiveDraft) {
-        InvoiceWorkspaceScreen(
-            draft = draft,
-            viewModel = viewModel
-        )
-    } else {
-        WorkspaceEmptyScreen(
-            onCreateInvoice = { viewModel.onCreateInvoice() }
-        )
-    }
-}
-
-@Composable
-private fun WorkspaceEmptyScreen(
-    onCreateInvoice: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        VeritySurface(
-            type = VeritySurfaceType.Raised,
-            modifier = Modifier
-                .padding(VeritySpace.Medium.dp)
-                .clickable { onCreateInvoice() }
-        ) {
-            Column(
-                modifier = Modifier.padding(VeritySpace.Large.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                VerityText(
-                    text = "Create Invoice",
-                    style = VerityTextStyle.Title
-                )
-
-                VeritySpacer(size = VeritySpace.Small)
-
-                VerityText(
-                    text = "Start a new invoice from scratch",
-                    style = VerityTextStyle.Body
-                )
-            }
-        }
-    }
+    InvoiceWorkspaceScreen(
+        draft = draft,
+        viewModel = viewModel
+    )
 }
 
 @Composable
@@ -278,8 +245,14 @@ fun InvoiceWorkspaceScreen(
                                 onSelectSuggestion = { suggestion ->
                                     val original =
                                         billedToSuggestions.first { it.customerId == suggestion.id }
+                                    // onBilledToSelected() already clears billedToQuery back to "".
+                                    // Re-setting it to the selected name here was pointless (the
+                                    // block collapses to the read-only view on the next line, which
+                                    // renders draft.billedTo, not billedToQuery) and left that name
+                                    // stuck in billedToQuery — which onCreateInvoice() never resets
+                                    // — so the *next* invoice's Billed To search box opened
+                                    // pre-filled with the previous invoice's customer.
                                     viewModel.onBilledToSelected(original)
-                                    viewModel.onBilledToQueryChanged(original.customerName)
                                     isEditingBilledTo = false
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -291,7 +264,7 @@ fun InvoiceWorkspaceScreen(
                         PartyField(
                             label = "Shipped To",
                             addLabel = "Add shipped-to party",
-                            value = draft.shippedTo?.name,
+                            value = draft.effectiveShippedTo?.name,
                             isEditing = isEditingShippedTo,
                             onStartEditing = { isEditingShippedTo = true },
                             onCancelEditing = { isEditingShippedTo = false }
@@ -314,8 +287,9 @@ fun InvoiceWorkspaceScreen(
                                 onSelectSuggestion = { suggestion ->
                                     val original =
                                         shippedToSuggestions.first { it.customerId == suggestion.id }
+                                    // See the matching comment in the Billed To handler above —
+                                    // same stale-leftover-query bug, same fix.
                                     viewModel.onShippedToSelected(original)
-                                    viewModel.onShippedToQueryChanged(original.customerName)
                                     isEditingShippedTo = false
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -365,13 +339,13 @@ fun InvoiceWorkspaceScreen(
 
                                     itemDescription = item.description
                                     itemHsn = item.hsnCode
-                                    itemQuantity = item.quantity.toString()
+                                    itemQuantity = item.quantity?.toString() ?: ""
                                     itemUnit = item.unit
                                     // Set itemRate as rupees string from paise
                                     itemRate = formatPaiseAsRupeesInput(item.ratePaise)
                                 }
                         ) {
-                            val amountPaise = (item.quantity * item.ratePaise).toLong()
+                            val amountPaise = (item.quantity ?: 1L) * item.ratePaise
                             VerityInvoiceLineItemRow(
                                 description = item.description,
                                 quantity = item.quantity,
@@ -399,7 +373,7 @@ fun InvoiceWorkspaceScreen(
                         isAddingLineItem = true
                     },
                     onAdd = {
-                        val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
+                        val parsedQuantity = itemQuantity.toLongOrNull()
                         val ratePaise = parseRupeesInputToPaise(itemRate)
                         viewModel.onAddLineItem(
                             DraftLineItem(
@@ -420,7 +394,7 @@ fun InvoiceWorkspaceScreen(
                         itemRate = ""
                     },
                     onSave = {
-                        val parsedQuantity = itemQuantity.toLongOrNull() ?: 0L
+                        val parsedQuantity = itemQuantity.toLongOrNull()
                         val ratePaise = parseRupeesInputToPaise(itemRate)
                         viewModel.onUpdateLineItem(
                             index = editingLineItemIndex!!,
@@ -515,7 +489,7 @@ fun InvoiceWorkspaceScreen(
 
                     VerityTextField(
                         role = VerityTextFieldRole.Basic,
-                        label = "Quantity",
+                        label = "Quantity (optional)",
                         value = itemQuantity,
                         onValueChange = { itemQuantity = it },
                         editing = true,
@@ -576,6 +550,7 @@ fun InvoiceWorkspaceScreen(
                 var transporterName by remember { mutableStateOf("") }
                 var vehicleNumber by remember { mutableStateOf("") }
                 var grOrLrNumber by remember { mutableStateOf("") }
+                var supplyDate by remember { mutableStateOf<LocalDate?>(null) }
                 var freightPaise by remember { mutableStateOf("") }
                 var ewayBillNumber by remember { mutableStateOf("") }
 
@@ -592,6 +567,7 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = draft.transportDetails.transporterName ?: ""
                                 vehicleNumber = draft.transportDetails.vehicleNumber ?: ""
                                 grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
+                                supplyDate = draft.transportDetails.supplyDate
                                 freightPaise =
                                     draft.transportDetails.freightPaise?.let { formatPaiseAsRupeesInput(it) } ?: ""
                                 ewayBillNumber = draft.transportDetails.ewayBillNumber ?: ""
@@ -624,6 +600,7 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
+                                supplyDate = supplyDate,
                                 freightPaise = freightPaiseLong,
                                 ewayBillNumber = ewayBillNumber.ifBlank { null }
                             )
@@ -633,6 +610,7 @@ fun InvoiceWorkspaceScreen(
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
+                        supplyDate = null
                         freightPaise = ""
                         ewayBillNumber = ""
                     },
@@ -643,6 +621,7 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
+                                supplyDate = supplyDate,
                                 freightPaise = freightPaiseLong,
                                 ewayBillNumber = ewayBillNumber.ifBlank { null }
                             )
@@ -652,6 +631,7 @@ fun InvoiceWorkspaceScreen(
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
+                        supplyDate = null
                         freightPaise = ""
                         ewayBillNumber = ""
                     },
@@ -660,6 +640,7 @@ fun InvoiceWorkspaceScreen(
                         transporterName = ""
                         vehicleNumber = ""
                         grOrLrNumber = ""
+                        supplyDate = null
                         freightPaise = ""
                         ewayBillNumber = ""
                     }
@@ -702,6 +683,15 @@ fun InvoiceWorkspaceScreen(
                         onExitEdit = null,
                         suggestions = emptyList(),
                         onSelectSuggestion = null
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityDateField(
+                        label = "Supply Date",
+                        value = supplyDate,
+                        onValueChange = { supplyDate = it },
+                        formatter = { DocumentDate.format(it) }
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
