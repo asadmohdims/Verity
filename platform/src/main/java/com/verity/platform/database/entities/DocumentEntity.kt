@@ -45,5 +45,15 @@ data class DocumentEntity(
     /** Full serialized InvoiceDocumentModel. */
     val payloadJson: String,
 
-    val finalizedAt: Long
+    val finalizedAt: Long,
+
+    /**
+     * Flattened, lowercase, space-joined text of every field worth matching a document search
+     * against (see core's buildSearchIndexText) — customer/party name+GSTIN, line item
+     * description+HSN, vehicle/GR-LR/e-way bill/transporter, grand total. Computed once at
+     * finalize time, same as every other column here; added in schema v2 (see
+     * platform/database/migrations/Migration1To2.kt) alongside a one-time backfill for rows
+     * finalized before this column existed.
+     */
+    val searchIndexText: String
 )

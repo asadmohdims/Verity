@@ -15,8 +15,11 @@ import com.verity.platform.database.entities.LedgerEntryEntity
  * Authoritative local database for Verity platform infrastructure. Local-first: this is the
  * source of truth; cloud (once it exists) is a sync target, not the other way around.
  *
- * exportSchema = false: no real installs of this app exist anywhere yet, so there is no
- * migration history worth protecting. Revisit once there's a live user base.
+ * exportSchema = true (changed from false 2026-09-14, alongside the searchIndexText column):
+ * real invoices already exist in this app's on-device database, so from here on every schema
+ * change needs a real Migration, not fallbackToDestructiveMigration — schema JSON per version is
+ * exported to schemas/ (see platform/build.gradle.kts's ksp block) for MigrationTestHelper to
+ * build real pre-migration databases against in tests.
  */
 @Database(
     entities = [
@@ -24,8 +27,8 @@ import com.verity.platform.database.entities.LedgerEntryEntity
         DocumentEntity::class,
         LedgerEntryEntity::class
     ],
-    version = 1,
-    exportSchema = false
+    version = 2,
+    exportSchema = true
 )
 abstract class PlatformDatabase : RoomDatabase() {
 

@@ -36,10 +36,15 @@ import com.verity.core.ui.molecules.VerityTopAppBar
 import com.verity.core.ui.molecules.VerityTopBarAction
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.feature.customer.rollup.CustomerRollupDataSource
+import com.verity.feature.customer.rollup.CustomerRollupRoute
+import com.verity.feature.customer.rollup.CustomerRollupViewModel
 import com.verity.feature.document.DocumentDetailDataSource
 import com.verity.feature.document.DocumentDetailViewModel
 import com.verity.feature.document.DocumentsListRoute
 import com.verity.feature.document.DocumentsListViewModel
+import com.verity.feature.document.search.DocumentSearchRoute
+import com.verity.feature.document.search.DocumentSearchViewModel
 import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
@@ -74,9 +79,12 @@ internal object AppRoutes {
     const val PDF_VIEWER = "pdf_viewer"
     const val DOCUMENT_DETAIL = "document/{documentId}"
     const val DOCUMENT_PDF = "document/{documentId}/pdf"
+    const val DOCUMENT_SEARCH = "documents/search"
+    const val CUSTOMER_ROLLUP = "customer/{customerId}"
 
     fun documentDetail(documentId: String) = "document/$documentId"
     fun documentPdf(documentId: String) = "document/$documentId/pdf"
+    fun customerRollup(customerId: String) = "customer/$customerId"
 }
 
 private val bottomNavItems = listOf(
@@ -102,6 +110,8 @@ fun AppNavShell(
     invoiceWorkspaceViewModel: InvoiceWorkspaceViewModel,
     documentsListViewModel: DocumentsListViewModel,
     documentDetailDataSource: DocumentDetailDataSource,
+    documentSearchViewModel: DocumentSearchViewModel,
+    customerRollupDataSource: CustomerRollupDataSource,
     invoicePdfRenderer: InvoicePdfRenderer
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -168,7 +178,16 @@ fun AppNavShell(
 
     val effectiveChromeSpec = when (currentRoute) {
         AppRoutes.HOME -> brandChrome(title = "Verity")
-        AppRoutes.DOCUMENTS -> brandChrome(title = "Documents")
+        AppRoutes.DOCUMENTS -> brandChrome(
+            title = "Documents",
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Search,
+                    contentDescription = "Search documents",
+                    onClick = { navController.navigate(AppRoutes.DOCUMENT_SEARCH) }
+                )
+            )
+        )
         AppRoutes.CUSTOMERS -> brandChrome(title = "Customers")
         AppRoutes.SETTINGS -> brandChrome(title = "Settings")
         AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
@@ -183,6 +202,10 @@ fun AppNavShell(
             ) { navController.popBackStack() }
         AppRoutes.DOCUMENT_DETAIL, AppRoutes.DOCUMENT_PDF ->
             supportChrome(title = "Document") { navController.popBackStack() }
+        AppRoutes.DOCUMENT_SEARCH ->
+            supportChrome(title = "Search") { navController.popBackStack() }
+        AppRoutes.CUSTOMER_ROLLUP ->
+            supportChrome(title = "Customer") { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -244,6 +267,43 @@ fun AppNavShell(
                 composable(AppRoutes.DOCUMENTS) {
                     DocumentsListRoute(
                         viewModel = documentsListViewModel,
+                        onDocumentClick = { documentId ->
+                            navController.navigate(AppRoutes.documentDetail(documentId))
+                        }
+                    )
+                }
+
+                composable(AppRoutes.DOCUMENT_SEARCH) {
+                    DocumentSearchRoute(
+                        viewModel = documentSearchViewModel,
+                        onDocumentClick = { documentId ->
+                            navController.navigate(AppRoutes.documentDetail(documentId))
+                        },
+                        onCustomerClick = { customerId ->
+                            navController.navigate(AppRoutes.customerRollup(customerId))
+                        }
+                    )
+                }
+
+                composable(
+                    route = AppRoutes.CUSTOMER_ROLLUP,
+                    arguments = listOf(navArgument("customerId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val customerId = requireNotNull(backStackEntry.arguments?.getString("customerId"))
+
+                    val customerRollupViewModel: CustomerRollupViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                CustomerRollupViewModel(
+                                    customerId = customerId,
+                                    dataSource = customerRollupDataSource
+                                )
+                            }
+                        }
+                    )
+
+                    CustomerRollupRoute(
+                        viewModel = customerRollupViewModel,
                         onDocumentClick = { documentId ->
                             navController.navigate(AppRoutes.documentDetail(documentId))
                         }
@@ -426,10 +486,13 @@ private fun DocumentLoadingIndicator() {
     }
 }
 
-private fun brandChrome(title: String): WorkspaceChromeSpec = WorkspaceChromeSpec(
+private fun brandChrome(
+    title: String,
+    actions: List<VerityTopBarAction> = emptyList()
+): WorkspaceChromeSpec = WorkspaceChromeSpec(
     title = title,
     navigationIcon = VerityNavIcon.None,
-    actions = emptyList(),
+    actions = actions,
     chromeMode = VerityChromeMode.Brand
 )
 

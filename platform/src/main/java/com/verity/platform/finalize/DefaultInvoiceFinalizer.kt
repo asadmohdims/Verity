@@ -3,6 +3,7 @@ package com.verity.platform.finalize
 import androidx.room.withTransaction
 import com.verity.core.document.model.HARDCODED_SELLER
 import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.document.search.buildSearchIndexText
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.projection.DraftToInvoiceDocument
 import com.verity.feature.invoice.draft.DraftDocumentType
@@ -69,7 +70,8 @@ class DefaultInvoiceFinalizer(
                     grandTotalPaise = document.totals.grandTotalPaise,
                     linkedDocumentId = null,
                     payloadJson = json.encodeToString(document),
-                    finalizedAt = now
+                    finalizedAt = now,
+                    searchIndexText = buildSearchIndexText(document)
                 )
             )
 

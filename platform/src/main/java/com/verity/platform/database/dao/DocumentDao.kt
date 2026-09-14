@@ -37,4 +37,24 @@ interface DocumentDao {
 
     @Query("SELECT * FROM documents")
     suspend fun getAll(): List<DocumentEntity>
+
+    /**
+     * Documents whose flattened searchIndexText contains [normalizedQuery] (already
+     * lowercased/trimmed by the caller). A full-table LIKE scan, not an indexed lookup — earns
+     * its keep because it narrows candidates in SQLite *before* any JSON is decoded, not because
+     * it needs to scale past this app's realistic document volume. See
+     * DefaultDocumentSearchDataSource for the ranking/snippet pass that runs on this result.
+     */
+    @Query(
+        """
+        SELECT * FROM documents
+        WHERE searchIndexText LIKE '%' || :normalizedQuery || '%'
+        ORDER BY finalizedAt DESC
+        """
+    )
+    suspend fun search(normalizedQuery: String): List<DocumentEntity>
+
+    /** Every document for one customer, newest first — backs the customer document rollup. */
+    @Query("SELECT * FROM documents WHERE customerId = :customerId ORDER BY finalizedAt DESC")
+    suspend fun getByCustomerId(customerId: String): List<DocumentEntity>
 }

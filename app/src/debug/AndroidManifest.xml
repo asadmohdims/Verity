@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Debug-only receiver (this manifest is only merged into debug builds) letting sample
+        documents be seeded into the real, already-installed app via
+        `adb shell am broadcast` — see SeedSampleDataReceiver's doc comment for why this exists
+        instead of an androidTest-based seeder.
+    -->
+    <application>
+        <receiver
+            android:name="com.verity.debug.SeedSampleDataReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.verity.debug.SEED_SAMPLE_DOCUMENTS" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

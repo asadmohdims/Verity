@@ -15,7 +15,10 @@ android {
             assets.srcDirs("src/main/assets")
         }
         getByName("androidTest") {
-            assets.srcDirs("src/androidTest/assets")
+            // "schemas" holds Room's exported per-version schema JSON (see the ksp block below) —
+            // MigrationTestHelper reads a prior version's schema from here to build a real
+            // pre-migration database in DocumentEntityMigrationTest.
+            assets.srcDirs("src/androidTest/assets", "schemas")
         }
     }
     defaultConfig {
@@ -48,10 +51,18 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.room.testing)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.serialization.json)
     implementation(project(":core"))
     implementation(project(":feature"))
+}
+
+ksp {
+    // Exports each @Database version's schema as JSON under schemas/, so
+    // MigrationTestHelper (in androidTest) can build a real pre-migration database instead of
+    // hand-writing CREATE TABLE statements per version.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

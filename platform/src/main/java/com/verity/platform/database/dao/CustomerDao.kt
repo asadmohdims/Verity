@@ -66,6 +66,13 @@ interface CustomerDao {
     suspend fun getActiveCustomers(): List<CustomerEntity>
 
     /**
+     * Single customer lookup by id, active or not — backs the customer document rollup, which
+     * must still show a real name even for a since-deactivated customer.
+     */
+    @Query("SELECT * FROM customers WHERE customerId = :customerId")
+    suspend fun getById(customerId: String): CustomerEntity?
+
+    /**
      * Deletes all customer rows.
      *
      * Used only during administrative or bootstrap scenarios such as Excel re-import.

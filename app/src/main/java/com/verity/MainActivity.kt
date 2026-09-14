@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.feature.document.DocumentsListViewModel
+import com.verity.feature.document.search.DocumentSearchViewModel
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
@@ -20,9 +21,11 @@ import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
 import com.verity.navigation.AppNavShell
 import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
+import com.verity.platform.customer.DefaultCustomerRollupDataSource
 import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
 import com.verity.platform.document.DefaultDocumentDetailDataSource
+import com.verity.platform.document.DefaultDocumentSearchDataSource
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
@@ -98,6 +101,17 @@ class MainActivity : ComponentActivity() {
                 DefaultDocumentDetailDataSource(database = database)
             }
 
+            val documentSearchViewModel = remember {
+                DocumentSearchViewModel(
+                    homeDataSource = homeDataSource,
+                    searchDataSource = DefaultDocumentSearchDataSource(database = database)
+                )
+            }
+
+            val customerRollupDataSource = remember {
+                DefaultCustomerRollupDataSource(database = database)
+            }
+
             VerityTheme(
                 darkTheme = isDarkTheme,
                 typography = VerityBaseTypography
@@ -108,6 +122,8 @@ class MainActivity : ComponentActivity() {
                     invoiceWorkspaceViewModel = invoiceWorkspaceViewModel,
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = documentDetailDataSource,
+                    documentSearchViewModel = documentSearchViewModel,
+                    customerRollupDataSource = customerRollupDataSource,
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }

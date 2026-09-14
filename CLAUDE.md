@@ -132,6 +132,58 @@ handlers. All three reproduced and verified via Robolectric (`AppNavShellTest`,
 `InvoiceWorkspacePartyFieldTest`), not device screenshots — confirmed against the pre-fix code
 before fixing, per this file's own testing standards.
 
+**Documents search (2026-09-14)**: the Documents tab previously had no search at all
+(`DocumentsListScreen`'s own doc comment said so explicitly). Built end-to-end, reached via a new
+search icon on the Documents tab's chrome (`documents/search` route): a single broad search box
+(no query-syntax operators, no filter chips — chosen deliberately after reviewing QuickBooks/
+Zoho/Gmail/Notion search patterns) matches customer name/GSTIN, line item description/HSN,
+transport fields (vehicle/GR-LR/e-way bill/transporter), and amount, ranked with document-number
+matches first, then customer, then line item, then transport, with a highlighted snippet shown
+inline for body matches — same "show the matched text" pattern Gmail/Notion use, via
+`buildAnnotatedString`. A "Customers" group surfaces above document results when the query matches
+a customer; tapping one opens a new **minimal, read-only customer document rollup**
+(`customer/{customerId}` route — name, document count, running total, document list) rather than
+the full Customer Detail/CRUD screen, which stays unbuilt (`Customers` tab is still a
+`PlaceholderScreen`, Phase 2) — building that now would have been scope creep beyond search.
+
+Architecturally: a new denormalized `DocumentEntity.searchIndexText` column (flattened, lowercase
+text of every searchable field, computed once at finalize time since documents are insert-only)
+backs a plain SQL `LIKE` query — chosen explicitly over Room FTS4 after discussing the trade-off:
+the real latency risk for "lightning speed" search is decoding every document's JSON payload per
+keystroke (what pure in-memory filtering, today's customer-autocomplete pattern, does), not SQL
+scan cost at this app's realistic document volume; `LIKE` on a plain column gets the same
+"don't decode JSON up front" win as FTS without FTS's real new Room machinery (tokenizers,
+external-content sync, virtual-table joins) this codebase has never used. Ranking/snippet
+extraction (`DocumentSearchRanking`, `feature`) is kept as pure, JVM-testable Kotlin — only the SQL
+narrowing and JSON decode live in `platform` (`DefaultDocumentSearchDataSource`).
+
+This is also **the database's first real schema migration**: `PlatformDatabase` went from
+`exportSchema = false` (version 1) to `exportSchema = true` (version 2), since real finalized
+invoices already exist in this app's on-device database and a bare version bump with no
+migration would have hard-crashed the app rather than silently losing data — Room requires an
+explicit `Migration` once a version changes and none is registered. `Migration1To2` adds the
+column and backfills `searchIndexText` for every pre-existing row by decoding its `payloadJson`,
+verified by `Migration1To2Test` (`MigrationTestHelper`, building a real pre-v2 database from the
+now-exported `schemas/1.json` rather than hand-written SQL). Note: `PlatformDatabase`'s prior doc
+comment claimed "no real installs exist anywhere yet" as the reason `exportSchema` was `false` —
+left uninvestigated whether that's still literally true, since building a real migration is safe
+either way and costs little extra; worth revisiting if it turns out no on-device data actually
+needed protecting.
+
+Test coverage: `DocumentSearchIndexTextTest`/`DocumentSearchRankingTest` (pure JVM),
+`DocumentSearchViewModelTest` (JVM, verifies the 300ms debounce actually suppresses per-keystroke
+searches and that `collectLatest` only lets the last of several rapid queries reach the data
+source), `DocumentSearchScreenTest`/`CustomerRollupScreenTest` (Robolectric), and three
+`platform` androidTest suites (`DefaultDocumentSearchDataSourceTest`, `Migration1To2Test`, plus
+the customer-rollup path exercised through existing DAO tests) — the androidTest suites need a
+connected device/emulator to actually run (`connectedDebugAndroidTest`), same as every other
+Room-backed test in this project; not yet run on-device as of this write-up. Also not done: an
+on-device visual pass against a real design mockup (no design canvas was made for this feature —
+it was scoped and built directly against the research/discussion in this session, not a separate
+design pass), and auto-focusing the search field on screen entry (skipped — `VerityTextField` has
+no existing focus-requester plumbing to hook into, and building that felt like scope creep on a
+shared design-system primitive for a nice-to-have).
+
 ## Who this is for
 
 - Primary user: the app owner's own business, invoicing customers under Indian GST rules.

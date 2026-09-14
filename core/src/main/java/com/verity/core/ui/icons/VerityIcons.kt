@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -62,6 +63,9 @@ object VerityIcons {
 
     val Overflow: VerityIcon =
         VerityIcon.Material(Icons.Filled.MoreVert)
+
+    val Search: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Search)
 
     /**
      * Explicit draft actions

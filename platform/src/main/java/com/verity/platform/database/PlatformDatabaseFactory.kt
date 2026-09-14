@@ -2,6 +2,7 @@ package com.verity.platform.database
 
 import android.content.Context
 import androidx.room.Room
+import com.verity.platform.database.migrations.Migration1To2
 
 /**
  * PlatformDatabaseFactory
@@ -26,6 +27,8 @@ object PlatformDatabaseFactory {
             context.applicationContext,
             PlatformDatabase::class.java,
             DATABASE_NAME
-        ).build()
+        )
+            .addMigrations(Migration1To2)
+            .build()
     }
 }
