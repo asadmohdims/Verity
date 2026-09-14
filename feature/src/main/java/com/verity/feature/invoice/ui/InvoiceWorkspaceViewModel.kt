@@ -19,6 +19,7 @@ import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.DraftTransportDetails
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * InvoiceWorkspaceViewModel
@@ -43,14 +45,16 @@ import kotlinx.coroutines.launch
  * Non-responsibilities:
  * - No UI logic
  * - No persistence
- * - No PDF generation
+ * - No PDF drawing logic (delegates to InvoicePdfRenderer; this class only decides *when* to
+ *   call it - right after finalize succeeds - not how a PDF is drawn)
  * - No navigation
  */
 
 class InvoiceWorkspaceViewModel(
     private val draftStore: InvoiceDraftStore,
     private val customerAutocompleteDataSource: CustomerAutocompleteDataSource,
-    private val invoiceFinalizer: InvoiceFinalizer
+    private val invoiceFinalizer: InvoiceFinalizer,
+    private val invoicePdfRenderer: InvoicePdfRenderer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
@@ -192,6 +196,18 @@ class InvoiceWorkspaceViewModel(
      * consecutive numbers — nothing at the DB layer stops that on its own). Requires a billed-to
      * customer with a resolved customerId (i.e. selected via autocomplete, not hand-typed).
      */
+    /**
+     * Returns the local PDF file for the currently finalized document, generating it first if
+     * the eager attempt in onFinalizeInvoice() didn't leave one behind (e.g. it failed). Safe to
+     * call every time the PDF viewer opens - ensurePdf() is idempotent.
+     */
+    suspend fun ensureFinalizedPdf(): File {
+        val document = requireNotNull(finalizedDocument.value) {
+            "No finalized document to render a PDF for"
+        }
+        return invoicePdfRenderer.ensurePdf(document)
+    }
+
     fun onFinalizeInvoice() {
         if (_isFinalizing.value) return
 
@@ -201,6 +217,14 @@ class InvoiceWorkspaceViewModel(
         viewModelScope.launch {
             _isFinalizing.value = true
             val document = invoiceFinalizer.finalize(draftStore.currentDraft, customerId)
+
+            // Best-effort: the document number is already committed at this point, which is the
+            // truly irreversible part of finalize. If PDF generation fails here (e.g. disk full),
+            // finalize still succeeds and navigation still proceeds - ensurePdf() is idempotent
+            // and gets called again defensively when the user opens the PDF viewer, so a failed
+            // attempt here self-heals on next view without any dedicated retry UI.
+            runCatching { invoicePdfRenderer.ensurePdf(document) }
+
             _finalizedDocument.value = document
 
             // Deliberately NOT resetting draftStore/_uiState here: the "preview" route this

@@ -48,6 +48,49 @@ from `feature/r13-nav-and-home`, no merge commit) — see "Build Roadmap" in the
 for what that covers and what's still Phase 2/3. `main` had been stale since before Milestone 1;
 this merge is what brought it current.
 
+A GST tax invoice **PDF design** — the artifact that makes an in-app "finalize" a physically real
+document, per "PDF generation is the finish line" under Data & Sync below — was finalized on
+2026-09-14: "Familiar Grid, Modernized", a bordered-grid skeleton (the layout Indian GST software/
+auditors expect, for fast field lookup) restyled with real typographic hierarchy and a navy +
+brass accent system. Full mockups, a stress test (Ship-To genuinely differing from Bill-To, 10
+line items), and the rejected "Whitespace Document" alternative live at
+`https://claude.ai/code/artifact/7c9bd3c7-f1f9-4104-89de-645acf683abc`.
+
+**PDF generation is now implemented** (2026-09-14, same day): `DefaultInvoicePdfRenderer`
+(`platform/.../pdf/`) draws `InvoiceDocumentModel` to a real PDF with `android.graphics.pdf.
+PdfDocument`/`Canvas` — no new dependency, fully on-device/offline (no network, no downloadable
+fonts). Stored deterministically at `getExternalFilesDir("documents")/{documentNumber}.pdf` — no
+DB schema change, since `DocumentEntity` is insert-only and the path is always derivable from the
+already-unique `documentNumber`. `onFinalizeInvoice()` generates it eagerly right after finalize;
+the same `ensurePdf()` call also runs defensively whenever the PDF viewer opens, so a failed eager
+attempt self-heals without dedicated retry UI. Viewing is a hand-rolled Compose screen
+(`PdfViewerScreen`, `feature/.../pdf/`) on the stable `android.graphics.pdf.PdfRenderer` API — not
+the newer `androidx.pdf` Compose library, which is still pre-1.0 alpha. The Finalized screen has a
+new "View PDF" action alongside the existing "View Document" (the unrelated in-app Compose
+preview). The line-item table paginates across pages rather than assuming everything fits on one
+(silently truncating a financial document's line items would be a real bug, not a cosmetic one).
+
+Two model gaps the design needed were closed: **Place of Supply** (`DocumentIdentity.
+placeOfSupplyState`/`placeOfSupplyStateCode`, auto-computed from Shipped To, falling back to
+Billed To) and **E-Way Bill Number** (`DocumentLogistics.ewayBillNumber`, now a real field in the
+Transportation edit block). Two more surfaced while implementing the actual design spec, not
+originally scoped: a **Reverse Charge** flag (`DocumentIdentity.reverseChargeApplicable`, wired
+from `InvoiceDraftUiState.reverseCharge` — a field that already existed but was never connected to
+anything) and an **Amount in Words** line (`core/.../formatting/money/AmountInWords.kt`, Indian
+lakh/crore grouping, unit-tested directly against the design artifact's own worked examples).
+`SellerDetails` gained the bank/MSME/contact/terms fields the design assumes — most are now filled
+with Unitech Machineries' real details sourced from the manual invoice reviewed during the design
+pass, **not fabricated placeholders**, except `pincode` (that source never stated it) which is
+still `PLACEHOLDER_PINCODE` and needs a real value.
+
+Full build (`./gradlew assembleDebug`) and all unit tests (`core`/`feature`/`platform`) pass as of
+this write-up. **Not yet done**: an on-device visual pass against the design artifact — per this
+file's own Compose-testing standards, green tests are not proof a rendered page matches its
+mockup, and that's doubly true for a from-scratch Canvas-drawn PDF that was never pixel-diffed
+against `Main.dc.html`. Also still open: Challan PDF generation (this pass was Invoice-only),
+Share/Print/Export and the `FileProvider` it needs (Phase 4 of the UX roadmap), and a real Business
+Profile screen to replace `HardcodedSeller.kt` (Phase 3).
+
 ## Who this is for
 
 - Primary user: the app owner's own business, invoicing customers under Indian GST rules.

@@ -13,6 +13,7 @@ import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.DocumentTaxMode
 import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.formatting.date.DocumentDate
 import com.verity.core.formatting.money.Money
 import com.verity.core.ui.molecules.VeritySection
 import com.verity.core.ui.primitives.VerityButton
@@ -26,7 +27,6 @@ import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
 import com.verity.core.ui.primitives.VeritySpace
-import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -72,7 +72,7 @@ fun InvoicePreviewScreen(
                 VeritySpacer(size = VeritySpace.ExtraSmall)
 
                 VerityText(
-                    text = "Issue date · ${formatDate(document.identity.issueDate)}",
+                    text = "Issue date · ${DocumentDate.format(document.identity.issueDate)}",
                     style = VerityTextStyle.Caption
                 )
 
@@ -212,9 +212,4 @@ private fun SummaryRow(label: String, value: String) {
         VerityText(text = label, style = VerityTextStyle.Body, modifier = Modifier.weight(1f))
         VerityText(text = value, style = VerityTextStyle.Body)
     }
-}
-
-private fun formatDate(date: java.time.LocalDate): String {
-    val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
-    return date.format(formatter)
 }

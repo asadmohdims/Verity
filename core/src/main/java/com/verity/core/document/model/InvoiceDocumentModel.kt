@@ -47,7 +47,22 @@ data class DocumentIdentity(
     val documentNumber: String,
     @Serializable(with = LocalDateIsoSerializer::class)
     val issueDate: LocalDate,
-    val seller: SellerDetails
+    val seller: SellerDetails,
+    /**
+     * GST Rule 46(f) mandatory field: the state (and code) the supply is legally considered to
+     * occur in. For goods, this is the delivery state — i.e. Shipped To, falling back to
+     * Billed To when they're the same (the common case). Computed at document-build time, never
+     * user-entered.
+     */
+    val placeOfSupplyState: String,
+    val placeOfSupplyStateCode: String,
+    /**
+     * GST Rule 46 also requires stating whether tax is payable on reverse charge. Mapped from the
+     * pre-existing (previously unwired) InvoiceDraftUiState.reverseCharge - see
+     * DraftToInvoiceDocument. Defaults false; there's still no workspace UI control to set it
+     * true, so it's only reachable today by constructing a draft directly (e.g. in a test).
+     */
+    val reverseChargeApplicable: Boolean = false
 )
 
 @Serializable
@@ -72,7 +87,16 @@ data class SellerDetails(
     val city: String,
     val state: String,
     val stateCode: String,
-    val pincode: String
+    val pincode: String,
+    val tagline: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val bankName: String? = null,
+    val bankAccountNumber: String? = null,
+    val bankIfsc: String? = null,
+    val msmeOrUamNumber: String? = null,
+    /** Static per-business boilerplate (jurisdiction, returns policy, etc.), not per-document. */
+    val termsAndConditions: List<String>? = null
 )
 
 /* ---------- Parties ---------- */
@@ -120,7 +144,9 @@ data class DocumentLogistics(
     val supplyDate: LocalDate?,
     val grOrLrNumber: String?,
     val freightPaise: Long?,
-    val notes: String?
+    val notes: String?,
+    /** Reference only — no validation, generation, or e-way-bill-portal integration. */
+    val ewayBillNumber: String? = null
 )
 
 /* ---------- Taxation ---------- */

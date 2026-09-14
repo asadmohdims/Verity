@@ -40,7 +40,12 @@ object DraftToInvoiceDocument {
                 documentType = draft.documentType.toDocumentType(),
                 documentNumber = documentNumber,
                 issueDate = LocalDate.now(clock),
-                seller = seller
+                seller = seller,
+                // Place of Supply for goods is the delivery state - i.e. Shipped To, which
+                // already falls back to Billed To above when shipping wasn't specified separately.
+                placeOfSupplyState = shippedTo.state,
+                placeOfSupplyStateCode = shippedTo.stateCode,
+                reverseChargeApplicable = draft.reverseCharge
             ),
             parties = DocumentParties(
                 billedTo = billedTo.toDocumentParty(),
@@ -56,7 +61,9 @@ object DraftToInvoiceDocument {
                 grandTotalPaise = draft.summary.grandTotalPaise
             ),
             footer = DocumentFooter(
-                declarationText = "We declare that this invoice shows the actual price of the goods/services described.",
+                // Matches the approved PDF design's exact wording (Main.dc.html) - printed next
+                // to the signature block.
+                declarationText = "Certified that the particulars given above are true and correct.",
                 notes = draft.transportDetails?.notes
             )
         )
@@ -121,5 +128,6 @@ private fun com.verity.feature.invoice.draft.DraftTransportDetails.toDocumentLog
         supplyDate = supplyDate,
         grOrLrNumber = grOrLrNumber,
         freightPaise = freightPaise,
-        notes = notes
+        notes = notes,
+        ewayBillNumber = ewayBillNumber
     )

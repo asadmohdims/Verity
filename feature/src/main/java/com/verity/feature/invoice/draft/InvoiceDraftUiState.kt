@@ -136,7 +136,8 @@ data class DraftTransportDetails(
     val supplyDate: LocalDate? = null,
     val grOrLrNumber: String? = null,
     val freightPaise: Long? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    val ewayBillNumber: String? = null
 )
 
 /**

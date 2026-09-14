@@ -30,6 +30,9 @@ import com.verity.core.ui.primitives.dp
 /**
  * Confirmation screen shown right after a document is finalized — matches Finalized.dc.html: a
  * checkmark, "Invoice Finalized", the document number and grand total, and a "View Document" CTA.
+ * "View PDF" is an addition beyond the mockup: it opens the actual generated PDF file (via
+ * InvoicePdfRenderer/PdfViewerScreen), distinct from "View Document"'s in-app Compose preview of
+ * the same document.
  *
  * Deliberately has no sync/background-sync status indicator: the mockup shows one, but this app
  * has no real background sync (no WorkManager/Supabase outbox) built yet — adding it here would be
@@ -39,7 +42,8 @@ import com.verity.core.ui.primitives.dp
 @Composable
 fun InvoiceFinalizedScreen(
     document: InvoiceDocumentModel,
-    onViewDocument: () -> Unit
+    onViewDocument: () -> Unit,
+    onViewPdf: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -81,6 +85,14 @@ fun InvoiceFinalizedScreen(
                 label = "View Document",
                 onClick = onViewDocument,
                 role = VerityButtonRole.Primary
+            )
+
+            VeritySpacer(size = VeritySpace.Small)
+
+            VerityButton(
+                label = "View PDF",
+                onClick = onViewPdf,
+                role = VerityButtonRole.Secondary
             )
         }
     }

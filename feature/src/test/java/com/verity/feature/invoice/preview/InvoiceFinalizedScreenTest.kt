@@ -44,7 +44,9 @@ class InvoiceFinalizedScreenTest {
             documentType = DocumentType.INVOICE,
             documentNumber = "INV-000043",
             issueDate = LocalDate.of(2026, 9, 13),
-            seller = HARDCODED_SELLER
+            seller = HARDCODED_SELLER,
+            placeOfSupplyState = "Maharashtra",
+            placeOfSupplyStateCode = "27"
         ),
         parties = DocumentParties(
             billedTo = sampleParty(),
@@ -66,7 +68,7 @@ class InvoiceFinalizedScreenTest {
     fun `shows the title and document number with grand total`() {
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = {})
+                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = {}, onViewPdf = {})
             }
         }
 
@@ -80,7 +82,7 @@ class InvoiceFinalizedScreenTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = { tapped = true })
+                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = { tapped = true }, onViewPdf = {})
             }
         }
 

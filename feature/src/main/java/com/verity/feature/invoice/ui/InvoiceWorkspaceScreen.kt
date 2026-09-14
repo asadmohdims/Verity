@@ -73,6 +73,7 @@ import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import kotlinx.coroutines.launch
 
 private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
@@ -576,6 +577,7 @@ fun InvoiceWorkspaceScreen(
                 var vehicleNumber by remember { mutableStateOf("") }
                 var grOrLrNumber by remember { mutableStateOf("") }
                 var freightPaise by remember { mutableStateOf("") }
+                var ewayBillNumber by remember { mutableStateOf("") }
 
                 if (draft.transportDetails != null) {
                     VerityTransportSummaryRow(
@@ -592,6 +594,7 @@ fun InvoiceWorkspaceScreen(
                                 grOrLrNumber = draft.transportDetails.grOrLrNumber ?: ""
                                 freightPaise =
                                     draft.transportDetails.freightPaise?.let { formatPaiseAsRupeesInput(it) } ?: ""
+                                ewayBillNumber = draft.transportDetails.ewayBillNumber ?: ""
                             }
                     )
 
@@ -621,7 +624,8 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
-                                freightPaise = freightPaiseLong
+                                freightPaise = freightPaiseLong,
+                                ewayBillNumber = ewayBillNumber.ifBlank { null }
                             )
                         )
 
@@ -630,6 +634,7 @@ fun InvoiceWorkspaceScreen(
                         vehicleNumber = ""
                         grOrLrNumber = ""
                         freightPaise = ""
+                        ewayBillNumber = ""
                     },
                     onSave = {
                         val freightPaiseLong = parseRupeesInputToPaise(freightPaise)
@@ -638,7 +643,8 @@ fun InvoiceWorkspaceScreen(
                                 transporterName = transporterName,
                                 vehicleNumber = vehicleNumber,
                                 grOrLrNumber = grOrLrNumber,
-                                freightPaise = freightPaiseLong
+                                freightPaise = freightPaiseLong,
+                                ewayBillNumber = ewayBillNumber.ifBlank { null }
                             )
                         )
 
@@ -647,6 +653,7 @@ fun InvoiceWorkspaceScreen(
                         vehicleNumber = ""
                         grOrLrNumber = ""
                         freightPaise = ""
+                        ewayBillNumber = ""
                     },
                     onCancel = {
                         isEditingTransport = false
@@ -654,6 +661,7 @@ fun InvoiceWorkspaceScreen(
                         vehicleNumber = ""
                         grOrLrNumber = ""
                         freightPaise = ""
+                        ewayBillNumber = ""
                     }
                 ) {
                     VerityTextField(
@@ -703,6 +711,20 @@ fun InvoiceWorkspaceScreen(
                         label = "Freight Amount",
                         value = freightPaise,
                         onValueChange = { freightPaise = it },
+                        editing = true,
+                        onEnterEdit = null,
+                        onExitEdit = null,
+                        suggestions = emptyList(),
+                        onSelectSuggestion = null
+                    )
+
+                    VeritySpacer(size = VeritySpace.Small)
+
+                    VerityTextField(
+                        role = VerityTextFieldRole.Basic,
+                        label = "E-Way Bill Number",
+                        value = ewayBillNumber,
+                        onValueChange = { ewayBillNumber = it },
                         editing = true,
                         onEnterEdit = null,
                         onExitEdit = null,
@@ -869,7 +891,8 @@ private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
         InvoiceWorkspaceViewModel(
             draftStore = previewDraftStore(),
             customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
-            invoiceFinalizer = previewInvoiceFinalizer()
+            invoiceFinalizer = previewInvoiceFinalizer(),
+            invoicePdfRenderer = previewInvoicePdfRenderer()
         )
     }
 }
@@ -881,6 +904,14 @@ private fun previewInvoiceFinalizer(): InvoiceFinalizer {
             customerId: String
         ): InvoiceDocumentModel {
             error("Finalize is not available in @Preview")
+        }
+    }
+}
+
+private fun previewInvoicePdfRenderer(): InvoicePdfRenderer {
+    return object : InvoicePdfRenderer {
+        override suspend fun ensurePdf(document: InvoiceDocumentModel): java.io.File {
+            error("PDF generation is not available in @Preview")
         }
     }
 }

@@ -14,6 +14,7 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,11 +51,18 @@ class InvoiceWorkspaceScreenUndoTest {
         }
     }
 
+    private class NoopInvoicePdfRenderer : InvoicePdfRenderer {
+        override suspend fun ensurePdf(document: InvoiceDocumentModel): java.io.File {
+            error("not used in this test")
+        }
+    }
+
     private fun buildViewModel(): InvoiceWorkspaceViewModel {
         val viewModel = InvoiceWorkspaceViewModel(
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
-            invoiceFinalizer = NoopInvoiceFinalizer()
+            invoiceFinalizer = NoopInvoiceFinalizer(),
+            invoicePdfRenderer = NoopInvoicePdfRenderer()
         )
         viewModel.onCreateInvoice()
         return viewModel

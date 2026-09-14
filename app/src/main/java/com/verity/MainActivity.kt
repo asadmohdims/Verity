@@ -23,6 +23,7 @@ import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
+import com.verity.platform.pdf.DefaultInvoicePdfRenderer
 import java.time.Clock
 
 /**
@@ -69,7 +70,8 @@ class MainActivity : ComponentActivity() {
                     invoiceFinalizer = DefaultInvoiceFinalizer(
                         database = database,
                         clock = Clock.systemDefaultZone()
-                    )
+                    ),
+                    invoicePdfRenderer = DefaultInvoicePdfRenderer(context = context)
                 )
             }
 

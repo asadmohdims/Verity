@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -29,10 +30,12 @@ import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
+import com.verity.feature.invoice.pdf.PdfViewerScreen
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
+import java.io.File
 
 /**
  * Route constants for the whole app's single NavHost. The four tab roots (Home/Documents/
@@ -42,7 +45,9 @@ import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
  *
  * FINALIZED is the confirmation screen (checkmark + "Invoice Finalized"); its "View Document"
  * button pushes FINALIZED_DOCUMENT, which reuses InvoicePreviewScreen as a read-only viewer — this
- * app has no separate Document Detail screen yet (Phase 2 per the UX roadmap).
+ * app has no separate Document Detail screen yet (Phase 2 per the UX roadmap). Its "View PDF"
+ * button pushes PDF_VIEWER, which renders the actual generated PDF file via PdfViewerScreen —
+ * distinct from FINALIZED_DOCUMENT's in-app Compose preview of the same document.
  */
 internal object AppRoutes {
     const val HOME = "home"
@@ -53,6 +58,7 @@ internal object AppRoutes {
     const val PREVIEW = "preview"
     const val FINALIZED = "finalized"
     const val FINALIZED_DOCUMENT = "finalized_document"
+    const val PDF_VIEWER = "pdf_viewer"
 }
 
 private val bottomNavItems = listOf(
@@ -140,6 +146,10 @@ fun AppNavShell(
         AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
         AppRoutes.FINALIZED -> supportChrome(title = "Invoice Finalized") { navController.popBackStack() }
         AppRoutes.FINALIZED_DOCUMENT ->
+            supportChrome(
+                title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
+            ) { navController.popBackStack() }
+        AppRoutes.PDF_VIEWER ->
             supportChrome(
                 title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
             ) { navController.popBackStack() }
@@ -271,7 +281,8 @@ fun AppNavShell(
 
                     InvoiceFinalizedScreen(
                         document = finalizedDocument!!,
-                        onViewDocument = { navController.navigate(AppRoutes.FINALIZED_DOCUMENT) }
+                        onViewDocument = { navController.navigate(AppRoutes.FINALIZED_DOCUMENT) },
+                        onViewPdf = { navController.navigate(AppRoutes.PDF_VIEWER) }
                     )
                 }
 
@@ -288,6 +299,24 @@ fun AppNavShell(
                         document = finalizedDocument!!,
                         onBack = { navController.popBackStack() }
                     )
+                }
+
+                composable(AppRoutes.PDF_VIEWER) {
+                    val finalizedDocument by invoiceWorkspaceViewModel
+                        .finalizedDocument
+                        .collectAsState()
+
+                    requireNotNull(finalizedDocument) {
+                        "PDF viewer route entered without a finalized document"
+                    }
+
+                    // ensureFinalizedPdf() is idempotent - safe to call every time this route is
+                    // entered, whether or not the eager attempt in onFinalizeInvoice() succeeded.
+                    val pdfFile by produceState<File?>(initialValue = null, finalizedDocument) {
+                        value = invoiceWorkspaceViewModel.ensureFinalizedPdf()
+                    }
+
+                    PdfViewerScreen(file = pdfFile)
                 }
             }
         }

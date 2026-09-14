@@ -54,9 +54,12 @@ value class Money private constructor(
      * Examples:
      * - 1452
      * - 3200
+     *
+     * @param alwaysTwoDecimals GST/printed-document convention always states two decimal places
+     *   (e.g. "25,200.00"), unlike the default UI convention of omitting ".00" when exact.
      */
-    fun formatPlain(): String =
-        formatPaise(raw)
+    fun formatPlain(alwaysTwoDecimals: Boolean = false): String =
+        formatPaise(raw, alwaysTwoDecimals)
 
     override fun toString(): String =
         format()
@@ -88,13 +91,13 @@ value class Money private constructor(
             return "$groupedRemaining,$lastThree"
         }
 
-        private fun formatPaise(paise: Long): String {
+        private fun formatPaise(paise: Long, alwaysTwoDecimals: Boolean = false): String {
             val rupees = paise / 100
             val remainder = paise % 100
 
             val groupedRupees = formatRupeesWithGrouping(rupees)
 
-            return if (remainder == 0L) {
+            return if (remainder == 0L && !alwaysTwoDecimals) {
                 groupedRupees
             } else {
                 "$groupedRupees.${remainder.toString().padStart(2, '0')}"
