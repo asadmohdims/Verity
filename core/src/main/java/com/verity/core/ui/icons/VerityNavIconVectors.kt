@@ -256,3 +256,116 @@ val VerityAddOutlineIcon: ImageVector by lazy {
         }
     }.build()
 }
+
+/**
+ * Back arrow — matches the two-segment stroke arrow used identically across
+ * InvoiceWorkspace.dc.html / Preview.dc.html / Finalized.dc.html's top bars (Material's
+ * `Icons.AutoMirrored.Filled.ArrowBack` is a solid filled arrowhead, a different silhouette).
+ */
+val VerityBackOutlineIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "NavBack",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(19f, 12f)
+            lineTo(5f, 12f)
+        }
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(12f, 19f)
+            lineTo(5f, 12f)
+            lineTo(12f, 5f)
+        }
+    }.build()
+}
+
+/**
+ * "Preview" eye glyph — matches InvoiceWorkspace.dc.html/Preview.dc.html's top-bar eye icon
+ * exactly (transcribed from its SVG path, an "s"-command lens outline plus a pupil circle).
+ * `Icons.Outlined.Visibility` would be the obvious Material substitute, but it lives in
+ * `material-icons-extended`, a dependency this project doesn't otherwise need — not worth adding
+ * for one glyph when hand-authoring it is a few lines using the same technique as the icons above.
+ */
+val VerityEyeOutlineIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "PreviewEye",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(1f, 12f)
+            curveTo(1f, 12f, 5f, 5f, 12f, 5f)
+            curveTo(19f, 5f, 23f, 12f, 23f, 12f)
+            curveTo(23f, 12f, 19f, 19f, 12f, 19f)
+            curveTo(5f, 19f, 1f, 12f, 1f, 12f)
+            close()
+        }
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f
+        ) {
+            moveTo(15f, 12f)
+            curveTo(15f, 13.6569f, 13.6569f, 15f, 12f, 15f)
+            curveTo(10.3431f, 15f, 9f, 13.6569f, 9f, 12f)
+            curveTo(9f, 10.3431f, 10.3431f, 9f, 12f, 9f)
+            curveTo(13.6569f, 9f, 15f, 10.3431f, 15f, 12f)
+            close()
+        }
+    }.build()
+}
+
+/**
+ * Success checkmark — circle, center (12,12) r=9 (4-cubic Bezier approximation, kappa =
+ * 0.5522847498), plus the checkmark polyline — matches Finalized.dc.html's `.checkwrap` icon.
+ */
+val VerityCheckOutlineIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "FinalizedCheck",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f
+        ) {
+            moveTo(21f, 12f)
+            curveTo(21f, 16.9706f, 16.9706f, 21f, 12f, 21f)
+            curveTo(7.0294f, 21f, 3f, 16.9706f, 3f, 12f)
+            curveTo(3f, 7.0294f, 7.0294f, 3f, 12f, 3f)
+            curveTo(16.9706f, 3f, 21f, 7.0294f, 21f, 12f)
+            close()
+        }
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(8f, 12.5f)
+            lineTo(11f, 15.5f)
+            lineTo(16f, 9f)
+        }
+    }.build()
+}

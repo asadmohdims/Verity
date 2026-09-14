@@ -29,6 +29,7 @@ import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
 import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
+import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
@@ -38,6 +39,10 @@ import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
  * Customers/Settings) are Brand-mode, switched by the bottom nav, never pushed; Workspace/
  * Preview/Finalized are the existing invoice-creation flow, unchanged from before R-13, reached
  * by pushing on top of whichever tab was current when the FAB was tapped.
+ *
+ * FINALIZED is the confirmation screen (checkmark + "Invoice Finalized"); its "View Document"
+ * button pushes FINALIZED_DOCUMENT, which reuses InvoicePreviewScreen as a read-only viewer — this
+ * app has no separate Document Detail screen yet (Phase 2 per the UX roadmap).
  */
 internal object AppRoutes {
     const val HOME = "home"
@@ -47,6 +52,7 @@ internal object AppRoutes {
     const val WORKSPACE = "workspace"
     const val PREVIEW = "preview"
     const val FINALIZED = "finalized"
+    const val FINALIZED_DOCUMENT = "finalized_document"
 }
 
 private val bottomNavItems = listOf(
@@ -96,6 +102,7 @@ fun AppNavShell(
 
     val workspaceChromeSpec by invoiceWorkspaceViewModel.chromeSpec.collectAsState()
     val previewDocument by invoiceWorkspaceViewModel.previewDocument.collectAsState()
+    val finalizedDocument by invoiceWorkspaceViewModel.finalizedDocument.collectAsState()
 
     val chromeSpecWithNavigation = remember(workspaceChromeSpec, previewDocument) {
         val canPreview = previewDocument != null
@@ -132,6 +139,10 @@ fun AppNavShell(
         AppRoutes.SETTINGS -> brandChrome(title = "Settings")
         AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
         AppRoutes.FINALIZED -> supportChrome(title = "Invoice Finalized") { navController.popBackStack() }
+        AppRoutes.FINALIZED_DOCUMENT ->
+            supportChrome(
+                title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
+            ) { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -256,6 +267,21 @@ fun AppNavShell(
 
                     requireNotNull(finalizedDocument) {
                         "Finalized route entered without a finalized document"
+                    }
+
+                    InvoiceFinalizedScreen(
+                        document = finalizedDocument!!,
+                        onViewDocument = { navController.navigate(AppRoutes.FINALIZED_DOCUMENT) }
+                    )
+                }
+
+                composable(AppRoutes.FINALIZED_DOCUMENT) {
+                    val finalizedDocument by invoiceWorkspaceViewModel
+                        .finalizedDocument
+                        .collectAsState()
+
+                    requireNotNull(finalizedDocument) {
+                        "Finalized document route entered without a finalized document"
                     }
 
                     InvoicePreviewScreen(

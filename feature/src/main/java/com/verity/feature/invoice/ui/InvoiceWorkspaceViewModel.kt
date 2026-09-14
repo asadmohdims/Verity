@@ -132,11 +132,6 @@ class InvoiceWorkspaceViewModel(
                     icon = VerityIcons.Preview,
                     contentDescription = "Preview invoice",
                     onClick = { /* handled at root */ }
-                ),
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Search,
-                    contentDescription = "Search",
-                    onClick = { /* handled at root */ }
                 )
             ),
             chromeMode = VerityChromeMode.Workspace
@@ -167,11 +162,6 @@ class InvoiceWorkspaceViewModel(
                     icon = VerityIcons.Preview,
                     contentDescription = "Preview invoice",
                     onClick = { /* handled at root */ }
-                ),
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Search,
-                    contentDescription = "Search",
-                    onClick = { /* handled at root */ }
                 )
             )
         )
@@ -191,13 +181,7 @@ class InvoiceWorkspaceViewModel(
             title = "Verity",
             subtitle = null,
             navigationIcon = VerityNavIcon.None,
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Search,
-                    contentDescription = "Search",
-                    onClick = { /* handled at root */ }
-                )
-            ),
+            actions = emptyList(),
             chromeMode = VerityChromeMode.Workspace
         )
 

@@ -129,11 +129,21 @@ fun VerityTopAppBar(
                         .padding(end = 110.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Brand mode ("Verity", "Documents", ...) uses the large chromeTitle style;
+                    // Workspace/Support ("Invoice", "Invoice Preview", ...) use the smaller Title
+                    // style — matches InvoiceWorkspace.dc.html/Preview.dc.html's 18px/600
+                    // `.topbar-ws__title`/`.topbar-sp__title`, distinct from Main.dc.html's 24px/800
+                    // `.topbar-brand__title`.
+                    val titleStyle = when (chromeMode) {
+                        VerityChromeMode.Brand -> VerityTheme.typography.chromeTitle
+                        VerityChromeMode.Workspace, VerityChromeMode.Support -> VerityTheme.typography.title
+                    }
+
                     Text(
                         text = title,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = VerityTheme.typography.chromeTitle,
+                        style = titleStyle,
                         color = VerityTheme.colors.primary
                     )
 

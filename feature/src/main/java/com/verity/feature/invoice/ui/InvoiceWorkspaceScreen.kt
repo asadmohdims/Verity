@@ -1,14 +1,18 @@
 package com.verity.feature.invoice.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -33,6 +37,8 @@ import com.verity.core.formatting.money.formatPaiseAsRupeesInput
 import com.verity.core.formatting.money.parseRupeesInputToPaise
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.core.ui.icons.VerityIconGlyph
+import com.verity.core.ui.icons.VerityIcons
 import com.verity.core.ui.molecules.VerityEditBlock
 import com.verity.core.ui.molecules.VerityEditMode
 import com.verity.core.ui.molecules.VerityHeader
@@ -41,6 +47,8 @@ import com.verity.core.ui.molecules.VerityInvoiceSummary
 import com.verity.core.ui.molecules.VeritySection
 import com.verity.core.ui.molecules.VerityTransportSummaryRow
 import com.verity.core.ui.molecules.VeritySnackbar
+import com.verity.core.ui.primitives.VerityDivider
+import com.verity.core.ui.primitives.VerityDividerStrength
 import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySuggestion
@@ -167,6 +175,10 @@ fun InvoiceWorkspaceScreen(
 
         VeritySpacer(size = VeritySpace.Large)
 
+        // ─────────────────────────────────────────────
+        // Document Type + Parties — one merged section, matching InvoiceWorkspace.dc.html's
+        // single `.section` (no separate "Parties" header).
+        // ─────────────────────────────────────────────
         VeritySurface(
             type = VeritySurfaceType.Base,
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
@@ -174,6 +186,8 @@ fun InvoiceWorkspaceScreen(
             VeritySection {
 
                 var isDocTypeMenuOpen by remember { mutableStateOf(false) }
+                var isEditingBilledTo by remember { mutableStateOf(false) }
+                var isEditingShippedTo by remember { mutableStateOf(false) }
 
                 VerityText(
                     text = "Document Type",
@@ -182,13 +196,32 @@ fun InvoiceWorkspaceScreen(
 
                 VeritySpacer(size = VeritySpace.ExtraSmall)
 
-                VerityText(
-                    text = draft.documentType.name.lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    style = VerityTextStyle.Body,
+                // Bordered select field, matching `.selectfield` — a plain clickable Text (no
+                // border/chevron) gave no visual affordance this was a selector.
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .border(
+                            width = 1.dp,
+                            color = VerityTheme.colors.borders.subtle,
+                            shape = RoundedCornerShape(4.dp)
+                        )
                         .clickable { isDocTypeMenuOpen = true }
-                )
+                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    VerityText(
+                        text = draft.documentType.name.lowercase()
+                            .replaceFirstChar { it.uppercase() },
+                        style = VerityTextStyle.Body
+                    )
+                    VerityIconGlyph(
+                        icon = VerityIcons.ChevronDown,
+                        contentDescription = null
+                    )
+                }
 
                 DropdownMenu(
                     expanded = isDocTypeMenuOpen,
@@ -213,79 +246,89 @@ fun InvoiceWorkspaceScreen(
                         }
                     )
                 }
-            }
-        }
 
-        VeritySpacer(size = VeritySpace.Small)
+                VeritySpacer(size = VeritySpace.Medium)
 
-        // ─────────────────────────────────────────────
-        // Parties Section (formerly Customer Details)
-        // ─────────────────────────────────────────────
-        VeritySurface(
-            type = VeritySurfaceType.Base,
-            modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
-        ) {
-            VeritySection(title = "Parties") {
                 Row {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        VerityTextField(
-                            role = VerityTextFieldRole.SelectionSearch,
+                    Column(modifier = Modifier.weight(1f)) {
+                        PartyField(
                             label = "Billed To",
-                            placeholder = "Search customer",
-                            value = billedToQuery,
-                            onValueChange = { newValue ->
-                                if (draft.billedTo != null && newValue.isBlank()) {
-                                    viewModel.onBilledToCleared()
-                                }
-                                viewModel.onBilledToQueryChanged(newValue)
-                            },
-                            editing = true,
-                            onEnterEdit = null,
-                            onExitEdit = null,
-                            suggestions = billedToSuggestions.map { it.toVeritySuggestion() },
-                            onSelectSuggestion = { suggestion ->
-                                val original =
-                                    billedToSuggestions.first { it.customerId == suggestion.id }
-                                viewModel.onBilledToSelected(original)
-                                viewModel.onBilledToQueryChanged(original.customerName)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            addLabel = "Add billed-to party",
+                            value = draft.billedTo?.name,
+                            isEditing = isEditingBilledTo,
+                            onStartEditing = { isEditingBilledTo = true },
+                            onCancelEditing = { isEditingBilledTo = false }
+                        ) {
+                            VerityTextField(
+                                role = VerityTextFieldRole.SelectionSearch,
+                                label = "Billed To",
+                                placeholder = "Search customer",
+                                value = billedToQuery,
+                                onValueChange = { newValue ->
+                                    if (draft.billedTo != null && newValue.isBlank()) {
+                                        viewModel.onBilledToCleared()
+                                    }
+                                    viewModel.onBilledToQueryChanged(newValue)
+                                },
+                                editing = true,
+                                onEnterEdit = null,
+                                onExitEdit = null,
+                                suggestions = billedToSuggestions.map { it.toVeritySuggestion() },
+                                onSelectSuggestion = { suggestion ->
+                                    val original =
+                                        billedToSuggestions.first { it.customerId == suggestion.id }
+                                    viewModel.onBilledToSelected(original)
+                                    viewModel.onBilledToQueryChanged(original.customerName)
+                                    isEditingBilledTo = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                     VeritySpacer(size = VeritySpace.Large, horizontal = true)
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        VerityTextField(
-                            role = VerityTextFieldRole.SelectionSearch,
+                    Column(modifier = Modifier.weight(1f)) {
+                        PartyField(
                             label = "Shipped To",
-                            placeholder = draft.billedTo?.name ?: "Search customer",
-                            value = shippedToQuery,
-                            onValueChange = { newValue ->
-                                if (draft.shippedTo != null && newValue.isBlank()) {
-                                    viewModel.onShippedToCleared()
-                                }
-                                viewModel.onShippedToQueryChanged(newValue)
-                            },
-                            editing = true,
-                            onEnterEdit = null,
-                            onExitEdit = null,
-                            suggestions = shippedToSuggestions.map { it.toVeritySuggestion() },
-                            onSelectSuggestion = { suggestion ->
-                                val original =
-                                    shippedToSuggestions.first { it.customerId == suggestion.id }
-                                viewModel.onShippedToSelected(original)
-                                viewModel.onShippedToQueryChanged(original.customerName)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            addLabel = "Add shipped-to party",
+                            value = draft.shippedTo?.name,
+                            isEditing = isEditingShippedTo,
+                            onStartEditing = { isEditingShippedTo = true },
+                            onCancelEditing = { isEditingShippedTo = false }
+                        ) {
+                            VerityTextField(
+                                role = VerityTextFieldRole.SelectionSearch,
+                                label = "Shipped To",
+                                placeholder = draft.billedTo?.name ?: "Search customer",
+                                value = shippedToQuery,
+                                onValueChange = { newValue ->
+                                    if (draft.shippedTo != null && newValue.isBlank()) {
+                                        viewModel.onShippedToCleared()
+                                    }
+                                    viewModel.onShippedToQueryChanged(newValue)
+                                },
+                                editing = true,
+                                onEnterEdit = null,
+                                onExitEdit = null,
+                                suggestions = shippedToSuggestions.map { it.toVeritySuggestion() },
+                                onSelectSuggestion = { suggestion ->
+                                    val original =
+                                        shippedToSuggestions.first { it.customerId == suggestion.id }
+                                    viewModel.onShippedToSelected(original)
+                                    viewModel.onShippedToQueryChanged(original.customerName)
+                                    isEditingShippedTo = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
         }
-        VeritySpacer(size = VeritySpace.Medium)
+
+        VerityDivider(
+            strength = VerityDividerStrength.Divider,
+            modifier = Modifier.padding(vertical = VeritySpace.Medium.dp)
+        )
 
         // ─────────────────────────────────────────────
         // Line Items Section
@@ -514,7 +557,10 @@ fun InvoiceWorkspaceScreen(
             }
         }
 
-        VeritySpacer(size = VeritySpace.Medium)
+        VerityDivider(
+            strength = VerityDividerStrength.Divider,
+            modifier = Modifier.padding(vertical = VeritySpace.Medium.dp)
+        )
 
         // ─────────────────────────────────────────────
         // Transportation Section
@@ -717,6 +763,47 @@ fun InvoiceWorkspaceScreen(
         }
     } // closes Box
 } // closes InvoiceWorkspaceScreen
+
+/**
+ * Billed To / Shipped To — EditBlock pattern (read-only label+value once set → tap to reopen the
+ * search field → selecting a customer commits and collapses again), matching InvoiceWorkspace.dc.html's
+ * `row2` grid and CLAUDE.md's own stated EditBlock convention, consistent with how Line Items and
+ * Transportation below already work. [content] is the SelectionSearch field; selecting a
+ * suggestion is what commits — there is no separate "Save" tap, so [VerityEditBlock] is used with
+ * `onAdd = null`, which renders only a "Cancel" button while expanded.
+ */
+@Composable
+private fun PartyField(
+    label: String,
+    addLabel: String,
+    value: String?,
+    isEditing: Boolean,
+    onStartEditing: () -> Unit,
+    onCancelEditing: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (value != null && !isEditing) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onStartEditing)
+        ) {
+            VerityText(text = label, style = VerityTextStyle.Label)
+            VeritySpacer(size = VeritySpace.ExtraSmall)
+            VerityText(text = value, style = VerityTextStyle.Body)
+        }
+    }
+
+    VerityEditBlock(
+        mode = VerityEditMode.Add,
+        expanded = isEditing,
+        collapsedActionLabel = if (value == null) addLabel else null,
+        onCollapsedAction = onStartEditing,
+        onAdd = null,
+        onCancel = onCancelEditing,
+        content = content
+    )
+}
 
 @Preview(
     name = "Invoice Workspace — Light",
