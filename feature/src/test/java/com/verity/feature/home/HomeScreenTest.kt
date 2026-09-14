@@ -68,7 +68,8 @@ class HomeScreenTest {
                 HomeRoute(
                     viewModel = viewModel,
                     onCreateNew = { createClicked = true },
-                    onSeeAllDocuments = {}
+                    onSeeAllDocuments = {},
+                    onDocumentClick = {}
                 )
             }
         }
@@ -91,7 +92,8 @@ class HomeScreenTest {
                 HomeRoute(
                     viewModel = viewModel,
                     onCreateNew = {},
-                    onSeeAllDocuments = {}
+                    onSeeAllDocuments = {},
+                    onDocumentClick = {}
                 )
             }
         }
@@ -115,7 +117,12 @@ class HomeScreenTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                HomeRoute(viewModel = viewModel, onCreateNew = {}, onSeeAllDocuments = {})
+                HomeRoute(
+                    viewModel = viewModel,
+                    onCreateNew = {},
+                    onSeeAllDocuments = {},
+                    onDocumentClick = {}
+                )
             }
         }
 
@@ -135,12 +142,40 @@ class HomeScreenTest {
                 HomeRoute(
                     viewModel = viewModel,
                     onCreateNew = {},
-                    onSeeAllDocuments = { sawAllClicked = true }
+                    onSeeAllDocuments = { sawAllClicked = true },
+                    onDocumentClick = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("See all").performClick()
         assertTrue("Expected onSeeAllDocuments to be invoked", sawAllClicked)
+    }
+
+    @Test
+    fun `tapping a Recent Documents row invokes onDocumentClick with its documentId`() {
+        val viewModel = HomeViewModel(
+            homeDataSource = FakeHomeDataSource(listOf(documentSummary("1"))),
+            clock = fixedClock
+        )
+        var clickedDocumentId: String? = null
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                HomeRoute(
+                    viewModel = viewModel,
+                    onCreateNew = {},
+                    onSeeAllDocuments = {},
+                    onDocumentClick = { clickedDocumentId = it }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("INV-000001 · Bhargava Industries").performClick()
+
+        assertTrue(
+            "Expected onDocumentClick to be invoked with documentId \"1\"",
+            clickedDocumentId == "1"
+        )
     }
 }

@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.compose.rememberNavController
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.feature.document.DocumentsListViewModel
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
@@ -21,6 +22,7 @@ import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
 import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
+import com.verity.platform.document.DefaultDocumentDetailDataSource
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
@@ -59,6 +61,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Shared across InvoiceWorkspaceViewModel and DocumentDetailViewModel — stateless,
+            // so one Context-bound instance is enough for both.
+            val invoicePdfRenderer = remember { DefaultInvoicePdfRenderer(context = context) }
+
             val invoiceWorkspaceViewModel = remember {
                 InvoiceWorkspaceViewModel(
                     draftStore = InvoiceDraftStore(
@@ -71,15 +77,25 @@ class MainActivity : ComponentActivity() {
                         database = database,
                         clock = Clock.systemDefaultZone()
                     ),
-                    invoicePdfRenderer = DefaultInvoicePdfRenderer(context = context)
+                    invoicePdfRenderer = invoicePdfRenderer
                 )
             }
 
+            val homeDataSource = remember { DefaultHomeDataSource(database = database) }
+
             val homeViewModel = remember {
                 HomeViewModel(
-                    homeDataSource = DefaultHomeDataSource(database = database),
+                    homeDataSource = homeDataSource,
                     clock = Clock.systemDefaultZone()
                 )
+            }
+
+            val documentsListViewModel = remember {
+                DocumentsListViewModel(homeDataSource = homeDataSource)
+            }
+
+            val documentDetailDataSource = remember {
+                DefaultDocumentDetailDataSource(database = database)
             }
 
             VerityTheme(
@@ -89,7 +105,10 @@ class MainActivity : ComponentActivity() {
                 AppNavShell(
                     navController = navController,
                     homeViewModel = homeViewModel,
-                    invoiceWorkspaceViewModel = invoiceWorkspaceViewModel
+                    invoiceWorkspaceViewModel = invoiceWorkspaceViewModel,
+                    documentsListViewModel = documentsListViewModel,
+                    documentDetailDataSource = documentDetailDataSource,
+                    invoicePdfRenderer = invoicePdfRenderer
                 )
             }
         }

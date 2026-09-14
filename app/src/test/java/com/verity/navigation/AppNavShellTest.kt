@@ -18,8 +18,11 @@ import com.verity.core.document.model.DocumentTotals
 import com.verity.core.document.model.DocumentType
 import com.verity.core.document.model.HARDCODED_SELLER
 import com.verity.core.document.model.InvoiceDocumentModel
+import com.verity.core.formatting.money.Money
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.feature.document.DocumentDetailDataSource
+import com.verity.feature.document.DocumentsListViewModel
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
 import com.verity.feature.home.HomeViewModel
@@ -74,6 +77,10 @@ class AppNavShellTest {
         }
     }
 
+    private class NoopDocumentDetailDataSource : DocumentDetailDataSource {
+        override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? = null
+    }
+
     private fun sampleParty() = DocumentParty(
         name = "Bhargava Industries",
         gstin = "27AAACB1234Z1Z",
@@ -120,10 +127,12 @@ class AppNavShellTest {
         invoiceFinalizer: InvoiceFinalizer = NoopInvoiceFinalizer(),
         invoicePdfRenderer: InvoicePdfRenderer = NoopInvoicePdfRenderer()
     ): InvoiceWorkspaceViewModel {
+        val homeDataSource = NoopHomeDataSource()
         val homeViewModel = HomeViewModel(
-            homeDataSource = NoopHomeDataSource(),
+            homeDataSource = homeDataSource,
             clock = Clock.systemUTC()
         )
+        val documentsListViewModel = DocumentsListViewModel(homeDataSource = homeDataSource)
         val workspaceViewModel = InvoiceWorkspaceViewModel(
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
@@ -141,7 +150,10 @@ class AppNavShellTest {
                 AppNavShell(
                     navController = navController,
                     homeViewModel = homeViewModel,
-                    invoiceWorkspaceViewModel = workspaceViewModel
+                    invoiceWorkspaceViewModel = workspaceViewModel,
+                    documentsListViewModel = documentsListViewModel,
+                    documentDetailDataSource = NoopDocumentDetailDataSource(),
+                    invoicePdfRenderer = invoicePdfRenderer
                 )
             }
         }
@@ -172,8 +184,10 @@ class AppNavShellTest {
 
         composeTestRule.onNodeWithText("Documents").performClick()
 
+        // DocumentsListRoute, honestly empty here since NoopHomeDataSource returns no documents —
+        // same empty-state copy as Home's Recent Documents card.
         composeTestRule
-            .onNodeWithText("Every invoice and challan you finalize will be listed and searchable here soon.")
+            .onNodeWithText("Invoices and challans you finalize will show up here.")
             .assertIsDisplayed()
     }
 
@@ -294,5 +308,57 @@ class AppNavShellTest {
         composeTestRule.onNodeWithContentDescription("Create").performClick()
 
         println(composeTestRule.onAllNodes(isRoot())[0].printToString(maxDepth = 50))
+    }
+
+    @Test
+    fun `tapping a Recent Documents row opens Document Detail with a working View PDF action`() {
+        val document = sampleFinalizedDocument()
+        val summary = DocumentSummary(
+            documentId = "doc-1",
+            documentNumber = document.identity.documentNumber,
+            customerName = document.parties.billedTo.name,
+            documentType = document.identity.documentType,
+            issueDate = document.identity.issueDate,
+            grandTotal = Money.ofPaise(document.totals.grandTotalPaise),
+            finalizedAtEpochMillis = 0L
+        )
+        val homeDataSource = object : HomeDataSource {
+            override suspend fun loadAllDocuments(): List<DocumentSummary> = listOf(summary)
+        }
+        val homeViewModel = HomeViewModel(homeDataSource = homeDataSource, clock = Clock.systemUTC())
+        val documentsListViewModel = DocumentsListViewModel(homeDataSource = homeDataSource)
+        val workspaceViewModel = InvoiceWorkspaceViewModel(
+            draftStore = InvoiceDraftStore(),
+            customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
+            invoiceFinalizer = NoopInvoiceFinalizer(),
+            invoicePdfRenderer = NoopInvoicePdfRenderer()
+        )
+        val documentDetailDataSource = object : DocumentDetailDataSource {
+            override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
+                if (documentId == "doc-1") document else null
+        }
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                val navController = rememberNavController()
+                AppNavShell(
+                    navController = navController,
+                    homeViewModel = homeViewModel,
+                    invoiceWorkspaceViewModel = workspaceViewModel,
+                    documentsListViewModel = documentsListViewModel,
+                    documentDetailDataSource = documentDetailDataSource,
+                    invoicePdfRenderer = FakeInvoicePdfRenderer()
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("INV-000043 · Bhargava Industries").performClick()
+
+        // Read-only InvoicePreviewScreen with no Finalize CTA, plus the new View PDF action.
+        // Deliberately not clicking View PDF here: PdfViewerScreen does real file I/O
+        // (ParcelFileDescriptor/PdfRenderer) against whatever ensurePdf() returns, which needs an
+        // actual on-disk PDF - out of scope for this Robolectric wiring test.
+        composeTestRule.onNodeWithText("Finalize Invoice").assertDoesNotExist()
+        composeTestRule.onNodeWithText("View PDF").assertIsDisplayed()
     }
 }

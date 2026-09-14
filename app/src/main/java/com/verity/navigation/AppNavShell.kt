@@ -1,8 +1,10 @@
 package com.verity.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -11,11 +13,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import com.verity.core.ui.icons.VerityIconGlyph
@@ -28,8 +36,13 @@ import com.verity.core.ui.molecules.VerityTopAppBar
 import com.verity.core.ui.molecules.VerityTopBarAction
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.feature.document.DocumentDetailDataSource
+import com.verity.feature.document.DocumentDetailViewModel
+import com.verity.feature.document.DocumentsListRoute
+import com.verity.feature.document.DocumentsListViewModel
 import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
+import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.pdf.PdfViewerScreen
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
@@ -59,6 +72,11 @@ internal object AppRoutes {
     const val FINALIZED = "finalized"
     const val FINALIZED_DOCUMENT = "finalized_document"
     const val PDF_VIEWER = "pdf_viewer"
+    const val DOCUMENT_DETAIL = "document/{documentId}"
+    const val DOCUMENT_PDF = "document/{documentId}/pdf"
+
+    fun documentDetail(documentId: String) = "document/$documentId"
+    fun documentPdf(documentId: String) = "document/$documentId/pdf"
 }
 
 private val bottomNavItems = listOf(
@@ -81,7 +99,10 @@ private val bottomNavItems = listOf(
 fun AppNavShell(
     navController: NavHostController,
     homeViewModel: HomeViewModel,
-    invoiceWorkspaceViewModel: InvoiceWorkspaceViewModel
+    invoiceWorkspaceViewModel: InvoiceWorkspaceViewModel,
+    documentsListViewModel: DocumentsListViewModel,
+    documentDetailDataSource: DocumentDetailDataSource,
+    invoicePdfRenderer: InvoicePdfRenderer
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -160,6 +181,8 @@ fun AppNavShell(
             supportChrome(
                 title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
             ) { navController.popBackStack() }
+        AppRoutes.DOCUMENT_DETAIL, AppRoutes.DOCUMENT_PDF ->
+            supportChrome(title = "Document") { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -211,14 +234,19 @@ fun AppNavShell(
                     HomeRoute(
                         viewModel = homeViewModel,
                         onCreateNew = ::goToWorkspace,
-                        onSeeAllDocuments = { goToTab(AppRoutes.DOCUMENTS) }
+                        onSeeAllDocuments = { goToTab(AppRoutes.DOCUMENTS) },
+                        onDocumentClick = { documentId ->
+                            navController.navigate(AppRoutes.documentDetail(documentId))
+                        }
                     )
                 }
 
                 composable(AppRoutes.DOCUMENTS) {
-                    PlaceholderScreen(
-                        title = "Documents",
-                        message = "Every invoice and challan you finalize will be listed and searchable here soon."
+                    DocumentsListRoute(
+                        viewModel = documentsListViewModel,
+                        onDocumentClick = { documentId ->
+                            navController.navigate(AppRoutes.documentDetail(documentId))
+                        }
                     )
                 }
 
@@ -326,8 +354,75 @@ fun AppNavShell(
 
                     PdfViewerScreen(file = pdfFile)
                 }
+
+                composable(
+                    route = AppRoutes.DOCUMENT_DETAIL,
+                    arguments = listOf(navArgument("documentId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val documentId = requireNotNull(backStackEntry.arguments?.getString("documentId"))
+
+                    val documentDetailViewModel: DocumentDetailViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                DocumentDetailViewModel(
+                                    documentId = documentId,
+                                    dataSource = documentDetailDataSource,
+                                    invoicePdfRenderer = invoicePdfRenderer
+                                )
+                            }
+                        }
+                    )
+                    val document by documentDetailViewModel.document.collectAsState()
+
+                    val loadedDocument = document
+                    if (loadedDocument == null) {
+                        DocumentLoadingIndicator()
+                    } else {
+                        InvoicePreviewScreen(
+                            document = loadedDocument,
+                            onBack = { navController.popBackStack() },
+                            onViewPdf = {
+                                navController.navigate(AppRoutes.documentPdf(documentId))
+                            }
+                        )
+                    }
+                }
+
+                composable(
+                    route = AppRoutes.DOCUMENT_PDF,
+                    arguments = listOf(navArgument("documentId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val documentId = requireNotNull(backStackEntry.arguments?.getString("documentId"))
+
+                    val documentDetailViewModel: DocumentDetailViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                DocumentDetailViewModel(
+                                    documentId = documentId,
+                                    dataSource = documentDetailDataSource,
+                                    invoicePdfRenderer = invoicePdfRenderer
+                                )
+                            }
+                        }
+                    )
+                    val document by documentDetailViewModel.document.collectAsState()
+
+                    // ensurePdf() is idempotent - safe to call every time this route is entered.
+                    val pdfFile by produceState<File?>(initialValue = null, document) {
+                        value = if (document != null) documentDetailViewModel.ensurePdf() else null
+                    }
+
+                    PdfViewerScreen(file = pdfFile)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun DocumentLoadingIndicator() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = VerityTheme.colors.primary)
     }
 }
 

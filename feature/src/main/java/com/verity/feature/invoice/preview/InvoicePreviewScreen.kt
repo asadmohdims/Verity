@@ -46,7 +46,8 @@ fun InvoicePreviewScreen(
     document: InvoiceDocumentModel,
     onBack: () -> Unit,
     onFinalize: (() -> Unit)? = null,
-    isFinalizing: Boolean = false
+    isFinalizing: Boolean = false,
+    onViewPdf: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -204,6 +205,17 @@ fun InvoicePreviewScreen(
                 onClick = onFinalize,
                 role = VerityButtonRole.Primary,
                 state = if (isFinalizing) VerityButtonState.Disabled else VerityButtonState.Enabled,
+                modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            )
+        }
+
+        if (onViewPdf != null) {
+            VeritySpacer(size = VeritySpace.Medium)
+
+            VerityButton(
+                label = "View PDF",
+                onClick = onViewPdf,
+                role = VerityButtonRole.Secondary,
                 modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
             )
         }
