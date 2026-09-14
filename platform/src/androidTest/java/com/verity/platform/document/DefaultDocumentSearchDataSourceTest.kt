@@ -127,14 +127,52 @@ class DefaultDocumentSearchDataSourceTest {
         assertTrue(results.customers.isEmpty())
     }
 
+    @Test
+    fun search_with_two_tokens_requires_both_to_match_ANDed_across_different_fields() = runBlocking {
+        finalizer.finalize(testDraft("Pipes", customerName = "Garg Duplex"), UUID.randomUUID().toString())
+        finalizer.finalize(testDraft("Pipes", customerName = "Acme Traders"), UUID.randomUUID().toString())
+        finalizer.finalize(testDraft("Cement", customerName = "Garg Duplex"), UUID.randomUUID().toString())
+
+        val results = dataSource.search("pipes garg")
+
+        assertEquals(1, results.documents.size)
+        assertEquals("Garg Duplex", results.documents.single().customerName)
+    }
+
+    @Test
+    fun search_with_two_tokens_is_order_independent() = runBlocking {
+        finalizer.finalize(testDraft("Pipes", customerName = "Garg Duplex"), UUID.randomUUID().toString())
+        finalizer.finalize(testDraft("Pipes", customerName = "Acme Traders"), UUID.randomUUID().toString())
+
+        val results = dataSource.search("garg pipes")
+
+        assertEquals(1, results.documents.size)
+        assertEquals("Garg Duplex", results.documents.single().customerName)
+    }
+
+    @Test
+    fun search_prefers_a_line_item_snippet_even_when_a_different_token_wins_on_customer_priority() = runBlocking {
+        finalizer.finalize(testDraft("Pipes", customerName = "Garg Duplex"), UUID.randomUUID().toString())
+
+        val results = dataSource.search("pipes garg")
+
+        val result = results.documents.single()
+        // "garg" matches the customer name, which alone would rank as CUSTOMER with no snippet —
+        // but "pipes" also matches a line item, and that's more useful to highlight since the
+        // customer name is already shown in the result row regardless.
+        assertEquals(DocumentMatchKind.CUSTOMER, result.matchKind)
+        assertTrue(result.matchedSnippet!!.text.lowercase().contains("pipes"))
+    }
+
     private fun testDraft(
         itemDescription: String,
-        vehicleNumber: String? = null
+        vehicleNumber: String? = null,
+        customerName: String = "Test Buyer"
     ): InvoiceDraftUiState =
         InvoiceDraftUiState(
             documentType = DraftDocumentType.INVOICE,
             billedTo = DraftAddress(
-                name = "Test Buyer",
+                name = customerName,
                 gstin = "27AAACB1234Z1Z",
                 addressLine1 = "Test Address",
                 city = "Mumbai",

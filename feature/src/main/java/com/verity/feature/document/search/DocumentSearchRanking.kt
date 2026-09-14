@@ -15,6 +15,14 @@ import com.verity.core.document.model.InvoiceDocumentModel
  * party match is next; then the document's actual content (line items, transport fields); a
  * fallback of "matched somewhere in the flattened index but not one of the fields checked above"
  * (place of supply, notes, amount) ranks lowest but is still a real match.
+ *
+ * Multi-word queries (e.g. "pipes garg") are ANDed: a candidate must satisfy every token
+ * somewhere, but the tokens don't have to hit the same field — one might match a line item,
+ * another a customer name. Priority still follows the single cascade above (does *any* token
+ * reach this level), but the snippet shown to the user is chosen independently: a line-item
+ * match is preferred whenever any token hits one, even if a different token already won a
+ * higher-priority level — customer name is already visible in the result row regardless, so
+ * highlighting the item is more useful than showing no snippet at all.
  */
 enum class DocumentMatchKind {
     DOCUMENT_NUMBER,
@@ -42,12 +50,17 @@ object DocumentSearchRanking {
         documentNumber: String,
         customerName: String,
         document: InvoiceDocumentModel,
-        normalizedQuery: String
+        tokens: List<String>
     ): DocumentMatchOutcome {
-        require(normalizedQuery.isNotBlank()) { "normalizedQuery must not be blank" }
+        require(tokens.isNotEmpty()) { "tokens must not be empty" }
 
-        if (documentNumber.lowercase().contains(normalizedQuery)) {
-            return DocumentMatchOutcome(priority = 0, matchKind = DocumentMatchKind.DOCUMENT_NUMBER, snippet = null)
+        val lineItemSnippet = findLineItemSnippet(document, tokens)
+        val transportSnippet = findTransportSnippet(document, tokens)
+        val bestSnippet = lineItemSnippet ?: transportSnippet
+
+        val lowerDocumentNumber = documentNumber.lowercase()
+        if (tokens.any { lowerDocumentNumber.contains(it) }) {
+            return DocumentMatchOutcome(priority = 0, matchKind = DocumentMatchKind.DOCUMENT_NUMBER, snippet = bestSnippet)
         }
 
         val partyFields = listOf(
@@ -56,31 +69,47 @@ object DocumentSearchRanking {
             document.parties.billedTo.gstin,
             document.parties.shippedTo.name,
             document.parties.shippedTo.gstin
-        )
-        if (partyFields.any { it.lowercase().contains(normalizedQuery) }) {
-            return DocumentMatchOutcome(priority = 1, matchKind = DocumentMatchKind.CUSTOMER, snippet = null)
+        ).map { it.lowercase() }
+        if (tokens.any { token -> partyFields.any { it.contains(token) } }) {
+            return DocumentMatchOutcome(priority = 1, matchKind = DocumentMatchKind.CUSTOMER, snippet = bestSnippet)
         }
 
-        for (item in document.lineItems) {
-            (buildSnippet(item.description, normalizedQuery) ?: buildSnippet(item.hsnCode, normalizedQuery))?.let {
-                return DocumentMatchOutcome(priority = 2, matchKind = DocumentMatchKind.LINE_ITEM, snippet = it)
-            }
+        if (lineItemSnippet != null) {
+            return DocumentMatchOutcome(priority = 2, matchKind = DocumentMatchKind.LINE_ITEM, snippet = lineItemSnippet)
         }
 
-        document.logistics?.let { logistics ->
-            listOfNotNull(
-                logistics.transporterName,
-                logistics.vehicleNumber,
-                logistics.grOrLrNumber,
-                logistics.ewayBillNumber
-            ).forEach { field ->
-                buildSnippet(field, normalizedQuery)?.let {
-                    return DocumentMatchOutcome(priority = 3, matchKind = DocumentMatchKind.TRANSPORT, snippet = it)
-                }
-            }
+        if (transportSnippet != null) {
+            return DocumentMatchOutcome(priority = 3, matchKind = DocumentMatchKind.TRANSPORT, snippet = transportSnippet)
         }
 
         return DocumentMatchOutcome(priority = 4, matchKind = DocumentMatchKind.OTHER, snippet = null)
+    }
+
+    /** First line item (in document order) where any token matches its description or HSN code. */
+    private fun findLineItemSnippet(document: InvoiceDocumentModel, tokens: List<String>): SnippetMatch? {
+        for (item in document.lineItems) {
+            for (token in tokens) {
+                (buildSnippet(item.description, token) ?: buildSnippet(item.hsnCode, token))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    /** First transport field where any token matches. */
+    private fun findTransportSnippet(document: InvoiceDocumentModel, tokens: List<String>): SnippetMatch? {
+        val logistics = document.logistics ?: return null
+        val fields = listOfNotNull(
+            logistics.transporterName,
+            logistics.vehicleNumber,
+            logistics.grOrLrNumber,
+            logistics.ewayBillNumber
+        )
+        for (field in fields) {
+            for (token in tokens) {
+                buildSnippet(field, token)?.let { return it }
+            }
+        }
+        return null
     }
 
     /**

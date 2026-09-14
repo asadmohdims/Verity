@@ -25,6 +25,12 @@ private const val MAX_CUSTOMER_MATCHES = 2
  * DocumentSearchRanking.match() and produce a snippet. Customer matches reuse
  * `getActiveCustomers()` the same way DefaultCustomerAutocompleteDataSource already does — a
  * small table, in-memory filtering is the established pattern there.
+ *
+ * Multi-word queries are ANDed (every token must appear somewhere, order-independent — see
+ * DocumentSearchRanking's doc comment). Room's `search()` query only takes one substring, so it's
+ * called with just the longest token (the most selective single LIKE, and a safe prefilter since
+ * any real match must contain it too); the remaining tokens are checked against the already-
+ * fetched `searchIndexText` column in Kotlin before paying for a JSON decode.
  */
 class DefaultDocumentSearchDataSource(
     private val database: PlatformDatabase
@@ -33,8 +39,8 @@ class DefaultDocumentSearchDataSource(
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun search(query: String): DocumentSearchResults {
-        val normalizedQuery = query.trim().lowercase()
-        if (normalizedQuery.isEmpty()) {
+        val tokens = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (tokens.isEmpty()) {
             return DocumentSearchResults(customers = emptyList(), documents = emptyList())
         }
 
@@ -42,25 +48,28 @@ class DefaultDocumentSearchDataSource(
             .getActiveCustomers()
             .asSequence()
             .filter { customer ->
-                // Same fields DefaultCustomerAutocompleteDataSource already matches on.
-                customer.customerName.lowercase().contains(normalizedQuery) ||
-                    customer.gstin.lowercase().contains(normalizedQuery) ||
-                    customer.city.lowercase().contains(normalizedQuery) ||
-                    customer.state.lowercase().contains(normalizedQuery)
+                // Same fields DefaultCustomerAutocompleteDataSource already matches on, flattened
+                // so a query like "garg mumbai" can match name and city as separate tokens.
+                val searchableText = listOf(customer.customerName, customer.gstin, customer.city, customer.state)
+                    .joinToString(" ") { it.lowercase() }
+                tokens.all { searchableText.contains(it) }
             }
             .take(MAX_CUSTOMER_MATCHES)
             .map { CustomerSearchResult(it.customerId, it.customerName, it.gstin) }
             .toList()
 
+        val prefilterToken = tokens.maxByOrNull { it.length } ?: return DocumentSearchResults(customers, emptyList())
+
         val documents = database.documentDao()
-            .search(normalizedQuery)
+            .search(prefilterToken)
+            .filter { entity -> tokens.all { entity.searchIndexText.contains(it) } }
             .map { entity -> entity to decode(entity) }
             .map { (entity, document) ->
                 val outcome = DocumentSearchRanking.match(
                     documentNumber = entity.documentNumber,
                     customerName = entity.customerName,
                     document = document,
-                    normalizedQuery = normalizedQuery
+                    tokens = tokens
                 )
                 entity to outcome
             }

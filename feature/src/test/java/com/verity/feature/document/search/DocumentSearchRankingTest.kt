@@ -23,7 +23,7 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "inv-000045"
+            tokens = listOf("inv-000045")
         )
 
         assertEquals(0, outcome.priority)
@@ -37,7 +37,7 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "acme"
+            tokens = listOf("acme")
         )
 
         assertEquals(1, outcome.priority)
@@ -51,7 +51,7 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "27aaacb1234z1z"
+            tokens = listOf("27aaacb1234z1z")
         )
 
         assertEquals(DocumentMatchKind.CUSTOMER, outcome.matchKind)
@@ -63,7 +63,7 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "cement"
+            tokens = listOf("cement")
         )
 
         assertEquals(2, outcome.priority)
@@ -81,7 +81,7 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "mh12ab3456"
+            tokens = listOf("mh12ab3456")
         )
 
         assertEquals(3, outcome.priority)
@@ -95,12 +95,67 @@ class DocumentSearchRankingTest {
             documentNumber = "INV-000045",
             customerName = "Acme Traders",
             document = testDocument(),
-            normalizedQuery = "maharashtra"
+            tokens = listOf("maharashtra")
         )
 
         assertEquals(4, outcome.priority)
         assertEquals(DocumentMatchKind.OTHER, outcome.matchKind)
         assertNull(outcome.snippet)
+    }
+
+    @Test
+    fun `two tokens hitting different fields still rank at the higher-priority field`() {
+        // "acme" hits CUSTOMER (priority 1); "cement" hits LINE_ITEM (priority 2). Priority
+        // follows the cascade regardless of how many tokens or which order they were typed in.
+        val outcome = DocumentSearchRanking.match(
+            documentNumber = "INV-000045",
+            customerName = "Acme Traders",
+            document = testDocument(),
+            tokens = listOf("acme", "cement")
+        )
+
+        assertEquals(1, outcome.priority)
+        assertEquals(DocumentMatchKind.CUSTOMER, outcome.matchKind)
+    }
+
+    @Test
+    fun `a line item snippet is shown even when a different token already won a higher-priority field`() {
+        // Same two-token query as above, but the snippet is decided independently of priority:
+        // it prefers the line-item hit ("cement") since the customer name is already visible in
+        // the result row regardless of whether a snippet is shown.
+        val outcome = DocumentSearchRanking.match(
+            documentNumber = "INV-000045",
+            customerName = "Acme Traders",
+            document = testDocument(),
+            tokens = listOf("acme", "cement")
+        )
+
+        assertEquals(DocumentMatchKind.CUSTOMER, outcome.matchKind)
+        val snippet = requireNotNull(outcome.snippet)
+        assertEquals(
+            "cement",
+            snippet.text.substring(snippet.matchRange.first, snippet.matchRange.last + 1).lowercase()
+        )
+    }
+
+    @Test
+    fun `token order does not change the outcome`() {
+        val forward = DocumentSearchRanking.match(
+            documentNumber = "INV-000045",
+            customerName = "Acme Traders",
+            document = testDocument(),
+            tokens = listOf("acme", "cement")
+        )
+        val reversed = DocumentSearchRanking.match(
+            documentNumber = "INV-000045",
+            customerName = "Acme Traders",
+            document = testDocument(),
+            tokens = listOf("cement", "acme")
+        )
+
+        assertEquals(forward.priority, reversed.priority)
+        assertEquals(forward.matchKind, reversed.matchKind)
+        assertEquals(forward.snippet, reversed.snippet)
     }
 
     @Test
