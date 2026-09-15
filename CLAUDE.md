@@ -11,178 +11,53 @@ This file is a **living reference**, not a constitution. Update it in place as d
 
 ## Status (read this before trusting anything else below)
 
-As of 2026-09-10, Verity has (Milestone 1 — local invoice persistence — complete and verified
-end-to-end on-device, not just unit-tested):
-- A working Invoice Workspace UI: draft creation, line items, transport details, GST tax
-  computation, and preview, wired to a **real local Room database**. Customer autocomplete
-  works against seeded fixture data (25 customers). Finalize assigns a real sequential number
-  (`INV-000001`, `INV-000002`, ...), persists the document (as a JSON snapshot of
-  `InvoiceDocumentModel`) and a matching ledger entry in one transaction, and shows a genuine
-  "Invoice Finalized" screen. Verified by creating and finalizing three invoices in one session
-  and inspecting the on-device sqlite database directly — not just by reading code or running
-  `./gradlew test`. Confirmed idempotent seeding across two full process kills.
-- The old event-sourcing design (`EventEntity`, ledger/document-index replay engines) has been
-  **deleted**, not just deprecated — replaced by the simpler `DocumentEntity`/`LedgerEntryEntity`
-  schema described below.
-- The seller printed on every document is still a **hardcoded placeholder** (`core/.../
-  HardcodedSeller.kt`) — needs real business details before this is used for anything but
-  testing.
-- Zero cloud/network code — no Supabase, no Retrofit/Ktor, no `INTERNET` permission yet.
-- Zero PDF/print/share — explicitly out of scope for Milestone 1; finalize stops at the
-  in-app "Invoice Finalized" screen.
-- Two real bugs were found only by actually running the app (not by tests, which all passed):
-  `previewDocument`'s `StateFlow` never started computing because of a `WhileSubscribed`/
-  `.value`-read ordering deadlock, and `onFinalizeInvoice()` raced its own navigation by
-  resetting the draft store synchronously in the same recomposition pass that was supposed to
-  navigate away first. Both fixed — see git history on this file's directory for the exact
-  sequencing reasoning if a similar pattern reappears.
+Current as of 2026-09-15. This is a snapshot of what's actually true, not a changelog — for the
+history of how it got here (bugs found, decisions made mid-build, exact reasoning behind a fix),
+read `git log` and individual commit messages rather than this file. Nothing here counts as "done"
+until it's demonstrably reachable from the running app, not just unit-tested — see Principle 2
+below.
 
-Nothing is "done" here until it's demonstrably reachable from the running app. A well-documented,
-well-tested class sitting in isolation is not a finished feature — see Principle 2 below. Keep
-this section honest and current; that's the entire reason it exists.
+**Invoicing core — built, wired, and verified on-device (both Invoice and Challan)**: draft
+creation → line items → transport details → GST tax computation (skipped for Challan) → preview →
+finalize → PDF, backed by a real local Room database (`DocumentEntity`/`LedgerEntryEntity`; the
+original event-sourcing design was deleted, not deprecated). Finalize assigns a real sequential
+number per document type (`INV-000001`/`CH-000001`, ...; see "Data & sync architecture"), persists
+the document as a JSON snapshot of `InvoiceDocumentModel`, and — Invoice only, since a Challan
+isn't a billing event — a matching ledger entry, all in one transaction. Every finalized document
+gets a real PDF (see "Documents: search, PDF, and schema evolution" below), viewable in-app.
+Customer autocomplete works against seeded fixture data (25 customers), not a real Customer CRUD
+screen yet.
 
-A navigation/IA redesign (Home dashboard landing screen, bottom nav, Documents/Customers/Settings)
-was proposed and **approved by the user on 2026-09-11** — see "UX Direction" below. Phase 1
-(R-13: the nav shell + Home dashboard) is **built and merged to `main`** (2026-09-13, fast-forward
-from `feature/r13-nav-and-home`, no merge commit) — see "Build Roadmap" in the UX Direction section
-for what that covers and what's still Phase 2/3. `main` had been stale since before Milestone 1;
-this merge is what brought it current.
+**Navigation & screens**: bottom nav (Home / Documents / Customers / Settings) plus a FAB for
+Create is built and merged to `main` — see "UX direction" below for what's built vs. still planned.
+Home shows a "This Month" invoiced-total card (Invoice only) and a Recent Documents list. Documents
+has a working List, Detail, and broad-box Search with a minimal read-only customer rollup.
+Customers and Settings are still placeholder screens.
 
-A GST tax invoice **PDF design** — the artifact that makes an in-app "finalize" a physically real
-document, per "PDF generation is the finish line" under Data & Sync below — was finalized on
-2026-09-14: "Familiar Grid, Modernized", a bordered-grid skeleton (the layout Indian GST software/
-auditors expect, for fast field lookup) restyled with real typographic hierarchy and a navy +
-brass accent system. Full mockups, a stress test (Ship-To genuinely differing from Bill-To, 10
-line items), and the rejected "Whitespace Document" alternative live at
-`https://claude.ai/code/artifact/7c9bd3c7-f1f9-4104-89de-645acf683abc`.
+**Cloud/sync: not started.** Zero Supabase/network code, no `INTERNET` permission — everything is
+local-only Room. See "Data & sync architecture" below for the planned design.
 
-**PDF generation is now implemented** (2026-09-14, same day): `DefaultInvoicePdfRenderer`
-(`platform/.../pdf/`) draws `InvoiceDocumentModel` to a real PDF with `android.graphics.pdf.
-PdfDocument`/`Canvas` — no new dependency, fully on-device/offline (no network, no downloadable
-fonts). Stored deterministically at `getExternalFilesDir("documents")/{documentNumber}.pdf` — no
-DB schema change, since `DocumentEntity` is insert-only and the path is always derivable from the
-already-unique `documentNumber`. `onFinalizeInvoice()` generates it eagerly right after finalize;
-the same `ensurePdf()` call also runs defensively whenever the PDF viewer opens, so a failed eager
-attempt self-heals without dedicated retry UI. Viewing is a hand-rolled Compose screen
-(`PdfViewerScreen`, `feature/.../pdf/`) on the stable `android.graphics.pdf.PdfRenderer` API — not
-the newer `androidx.pdf` Compose library, which is still pre-1.0 alpha. The Finalized screen has a
-new "View PDF" action alongside the existing "View Document" (the unrelated in-app Compose
-preview). The line-item table paginates across pages rather than assuming everything fits on one
-(silently truncating a financial document's line items would be a real bug, not a cosmetic one).
+**Known placeholders / gaps to close before this is production-ready**:
+- `HardcodedSeller.kt`'s `pincode` field is still `PLACEHOLDER_PINCODE` — every other seller field
+  is real (Unitech Machineries).
+- Challan→Invoice job-work linkage (Standalone vs. Invoice-Linked declaration, `DocumentLinkCreated`
+  — see "Domain model" below) is designed but not built; only a standalone Challan can be finalized
+  today.
+- Customer CRUD, a Settings theme picker, and a real Business Profile screen (to retire
+  `HardcodedSeller.kt`) aren't built.
+- Share/Print/Export (and the `FileProvider` it needs) isn't built.
+- Several `platform` androidTest suites (real Room — `DefaultInvoiceFinalizerTest`,
+  `Migration1To2Test`, `DefaultDocumentSearchDataSourceTest`) compile and pass in JVM/Robolectric
+  form but need a connected device/emulator for `connectedDebugAndroidTest` itself, which hasn't
+  been run as of this write-up.
+- No on-device pixel-diff pass of the rendered PDF against its approved mockup — green tests don't
+  prove a rendered page matches a design; see "Testing standards" below.
 
-Two model gaps the design needed were closed: **Place of Supply** (`DocumentIdentity.
-placeOfSupplyState`/`placeOfSupplyStateCode`, auto-computed from Shipped To, falling back to
-Billed To) and **E-Way Bill Number** (`DocumentLogistics.ewayBillNumber`, now a real field in the
-Transportation edit block). Two more surfaced while implementing the actual design spec, not
-originally scoped: a **Reverse Charge** flag (`DocumentIdentity.reverseChargeApplicable`, wired
-from `InvoiceDraftUiState.reverseCharge` — a field that already existed but was never connected to
-anything) and an **Amount in Words** line (`core/.../formatting/money/AmountInWords.kt`, Indian
-lakh/crore grouping, unit-tested directly against the design artifact's own worked examples).
-`SellerDetails` gained the bank/MSME/contact/terms fields the design assumes — most are now filled
-with Unitech Machineries' real details sourced from the manual invoice reviewed during the design
-pass, **not fabricated placeholders**, except `pincode` (that source never stated it) which is
-still `PLACEHOLDER_PINCODE` and needs a real value.
-
-Full build (`./gradlew assembleDebug`) and all unit tests (`core`/`feature`/`platform`) pass as of
-this write-up. **Not yet done**: an on-device visual pass against the design artifact — per this
-file's own Compose-testing standards, green tests are not proof a rendered page matches its
-mockup, and that's doubly true for a from-scratch Canvas-drawn PDF that was never pixel-diffed
-against `Main.dc.html`. Also still open: Challan PDF generation (this pass was Invoice-only),
-Share/Print/Export and the `FileProvider` it needs (Phase 4 of the UX roadmap), and a real Business
-Profile screen to replace `HardcodedSeller.kt` (Phase 3).
-
-**Four on-device bugs found testing the PDF pass above were fixed same day (2026-09-14)**: (1)
-freight was silently folded into the Grand Total but never itemized on the in-app Preview screen
-(it was already correct in the PDF) — `InvoicePreviewScreen` now shows a conditional "Add Freight"
-row, matching the PDF renderer's own condition. (2) Supply Date had a model field and a PDF row but
-no UI ever asked for it — added `VerityDateField` (`core/.../ui/molecules/`), Verity's first date
-picker, wrapping Material3's `DatePicker`/`DatePickerDialog` behind a contained
-`@OptIn(ExperimentalMaterial3Api::class)`, wired into the Transportation Mode edit block. A dead,
-unrelated second `supplyDate` field that lived directly on `InvoiceDraftUiState` (never read or
-written) was removed in the same pass. (3) Quantity is now genuinely optional on line items —
-`DraftLineItem.quantity`/`DocumentLineItem.quantity` are `Long?`, not defaulted to a fabricated `1`
-— a job-work line has nothing physical to count or check against delivery, so it stays absent
-end-to-end (Qty column and PDF print "—"); money math still treats an absent quantity as an
-effective multiplier of 1 (`amountPaise = ratePaise`). (4) Shipped To already defaulted to Billed
-To at the data layer (`InvoiceDraftUiState.effectiveShippedTo`, already used by
-`DraftToInvoiceDocument` for the real document) — the bug was that the read-only Workspace display
-showed the raw, un-overridden `null` instead, making it look unset; it now reads
-`effectiveShippedTo` like the document projection always did.
-
-**Three more on-device bugs, found and fixed 2026-09-14–15**: (1) Pressing back from the
-Finalized screen landed on a stale `WORKSPACE` back-stack entry — finalize only popped `PREVIEW`
-off the stack (`popUpTo(PREVIEW)`), not `WORKSPACE`, and since finalize also clears
-`hasActiveDraft`, that stale entry rendered `InvoiceWorkspaceRoute`'s empty-state "Create Invoice"
-prompt instead of anything related to the invoice just finished. Fixed by popping through
-`WORKSPACE` instead (`AppNavShell`'s finalize navigation), which also made that empty-state prompt
-permanently unreachable through normal use, so it — and the `hasActiveDraft` gate in
-`InvoiceWorkspaceRoute` — was deleted outright rather than left as dead code. (2) Separately, the
-Workspace screen's own top-bar back arrow was a literal no-op: `InvoiceWorkspaceViewModel` builds
-it with a placeholder `onClick` ("handled at root"), and `AppNavShell` only ever rewired the
-Preview action icon at the root, never the nav icon. Fixed by wiring it to
-`navController.popBackStack()` alongside the Preview action. (3) Billed To (and Shipped To) would
-silently carry the previous invoice's customer into a freshly-started one: `onSelectSuggestion`'s
-handler called `onBilledToSelected()` (which correctly clears `billedToQuery` back to `""`)
-immediately followed by `onBilledToQueryChanged(name)` — pointlessly re-setting that same query
-right back to the selected name, since the field collapses to a read-only row on the very next
-line regardless (which renders `draft.billedTo`, not `billedToQuery`). `onCreateInvoice()` never
-resets that separate autocomplete-UI state, so the leftover name silently reappeared the moment
-the next invoice's Billed To field was reopened. Fixed by dropping the redundant call in both
-handlers. All three reproduced and verified via Robolectric (`AppNavShellTest`,
-`InvoiceWorkspacePartyFieldTest`), not device screenshots — confirmed against the pre-fix code
-before fixing, per this file's own testing standards.
-
-**Documents search (2026-09-14)**: the Documents tab previously had no search at all
-(`DocumentsListScreen`'s own doc comment said so explicitly). Built end-to-end, reached via a new
-search icon on the Documents tab's chrome (`documents/search` route): a single broad search box
-(no query-syntax operators, no filter chips — chosen deliberately after reviewing QuickBooks/
-Zoho/Gmail/Notion search patterns) matches customer name/GSTIN, line item description/HSN,
-transport fields (vehicle/GR-LR/e-way bill/transporter), and amount, ranked with document-number
-matches first, then customer, then line item, then transport, with a highlighted snippet shown
-inline for body matches — same "show the matched text" pattern Gmail/Notion use, via
-`buildAnnotatedString`. A "Customers" group surfaces above document results when the query matches
-a customer; tapping one opens a new **minimal, read-only customer document rollup**
-(`customer/{customerId}` route — name, document count, running total, document list) rather than
-the full Customer Detail/CRUD screen, which stays unbuilt (`Customers` tab is still a
-`PlaceholderScreen`, Phase 2) — building that now would have been scope creep beyond search.
-
-Architecturally: a new denormalized `DocumentEntity.searchIndexText` column (flattened, lowercase
-text of every searchable field, computed once at finalize time since documents are insert-only)
-backs a plain SQL `LIKE` query — chosen explicitly over Room FTS4 after discussing the trade-off:
-the real latency risk for "lightning speed" search is decoding every document's JSON payload per
-keystroke (what pure in-memory filtering, today's customer-autocomplete pattern, does), not SQL
-scan cost at this app's realistic document volume; `LIKE` on a plain column gets the same
-"don't decode JSON up front" win as FTS without FTS's real new Room machinery (tokenizers,
-external-content sync, virtual-table joins) this codebase has never used. Ranking/snippet
-extraction (`DocumentSearchRanking`, `feature`) is kept as pure, JVM-testable Kotlin — only the SQL
-narrowing and JSON decode live in `platform` (`DefaultDocumentSearchDataSource`).
-
-This is also **the database's first real schema migration**: `PlatformDatabase` went from
-`exportSchema = false` (version 1) to `exportSchema = true` (version 2), since real finalized
-invoices already exist in this app's on-device database and a bare version bump with no
-migration would have hard-crashed the app rather than silently losing data — Room requires an
-explicit `Migration` once a version changes and none is registered. `Migration1To2` adds the
-column and backfills `searchIndexText` for every pre-existing row by decoding its `payloadJson`,
-verified by `Migration1To2Test` (`MigrationTestHelper`, building a real pre-v2 database from the
-now-exported `schemas/1.json` rather than hand-written SQL). Note: `PlatformDatabase`'s prior doc
-comment claimed "no real installs exist anywhere yet" as the reason `exportSchema` was `false` —
-left uninvestigated whether that's still literally true, since building a real migration is safe
-either way and costs little extra; worth revisiting if it turns out no on-device data actually
-needed protecting.
-
-Test coverage: `DocumentSearchIndexTextTest`/`DocumentSearchRankingTest` (pure JVM),
-`DocumentSearchViewModelTest` (JVM, verifies the 300ms debounce actually suppresses per-keystroke
-searches and that `collectLatest` only lets the last of several rapid queries reach the data
-source), `DocumentSearchScreenTest`/`CustomerRollupScreenTest` (Robolectric), and three
-`platform` androidTest suites (`DefaultDocumentSearchDataSourceTest`, `Migration1To2Test`, plus
-the customer-rollup path exercised through existing DAO tests) — the androidTest suites need a
-connected device/emulator to actually run (`connectedDebugAndroidTest`), same as every other
-Room-backed test in this project; not yet run on-device as of this write-up. Also not done: an
-on-device visual pass against a real design mockup (no design canvas was made for this feature —
-it was scoped and built directly against the research/discussion in this session, not a separate
-design pass), and auto-focusing the search field on screen entry (skipped — `VerityTextField` has
-no existing focus-requester plumbing to hook into, and building that felt like scope creep on a
-shared design-system primitive for a nice-to-have).
+**Design references** (both living documents — re-read them rather than trusting a stale summary
+here): the GST invoice PDF design ("Familiar Grid, Modernized" — navy+brass, bordered-grid layout)
+at `https://claude.ai/code/artifact/7c9bd3c7-f1f9-4104-89de-645acf683abc`; the navigation/IA design
+("Verity Design Blueprint") at
+`https://claude.ai/code/artifact/f97670a4-8698-4cc2-9f8e-96015239b995`.
 
 ## Who this is for
 
@@ -248,7 +123,8 @@ coupling.
 - **Customer** is supporting identity data — plain CRUD, not event-sourced. Snapshot customer
   identity into a document at finalization time so a later customer edit never retroactively
   changes a historical document.
-- **Challan → Invoice (job work)**: at Challan finalization, the user explicitly declares intent
+- **Challan → Invoice (job work)** *(designed, not yet built — today a Challan only finalizes
+  standalone; see Status)*: at Challan finalization, the user explicitly declares intent
   — Standalone or Invoice-Linked (job-work) — this is always known upfront, never decided later.
   Every finalized Challan gets its own PDF **immediately at finalization**, identical to Invoice
   (same finalize → PDF → background-sync pattern, PDF is the finish line either way) —
@@ -292,9 +168,10 @@ meets the real requirement (immutable finalized documents, auditable corrections
   day one — every table scoped by `orgId`, policy-enforced, never `using (true)`. Per-user
   accounts, not a shared login — GST audit trail needs to know who finalized what.
 - **Append-only `ledger_entries`** table gives the audit trail without a generic replay engine:
-  written transactionally alongside invoice finalization / payment recording, never updated.
-  Customer balance is `SUM(ledger_entries)` per customer (computed on read, or as a materialized
-  view) — not a hand-rolled Kotlin replay loop.
+  written transactionally alongside invoice finalization / payment recording, never updated. A
+  Challan does not write a ledger entry — it's a delivery document, not a receivable. Customer
+  balance is `SUM(ledger_entries)` per customer (computed on read, or as a materialized view) —
+  not a hand-rolled Kotlin replay loop.
 - **Invoice numbering (resolved 2026-09-09)**: assigned locally at finalize time (last known
   number + 1), immediately followed by PDF generation. From the user's perspective, **PDF
   generation is the finish line** — cloud sync happens after, invisibly, in the background; the
@@ -319,6 +196,35 @@ meets the real requirement (immutable finalized documents, auditable corrections
   queued to the outbox. No distributed-transaction machinery needed on top of the existing
   local-first design.
 
+## Documents: search, PDF, and schema evolution
+
+- **PDF generation**: `DefaultInvoicePdfRenderer` (`platform/.../pdf/`) draws
+  `InvoiceDocumentModel` straight to a PDF via `android.graphics.pdf.PdfDocument`/`Canvas` — no
+  new dependency, fully on-device/offline. Stored at
+  `getExternalFilesDir("documents")/{documentNumber}.pdf`, generated eagerly right after finalize
+  and re-verified defensively (`ensurePdf()`, idempotent) whenever the PDF viewer opens, so a
+  failed eager attempt self-heals with no dedicated retry UI. Viewing is a hand-rolled Compose
+  screen (`PdfViewerScreen`) on the stable `android.graphics.pdf.PdfRenderer` API, not the
+  pre-1.0 `androidx.pdf` Compose library. Uses its own bespoke navy+brass palette
+  (`InvoicePalette`, private to the renderer), deliberately distinct from the app's own
+  `VerityColors` — a printed GST document should look like a formal business document, not carry
+  the app's mobile UI chrome. The line-item table paginates across pages rather than assuming
+  everything fits on one.
+- **Search**: a denormalized `DocumentEntity.searchIndexText` column (flattened lowercase text of
+  every searchable field — customer/GSTIN, line items/HSN, transport fields, amount — computed
+  once at finalize since documents are insert-only) backs a plain SQL `LIKE` query, reached via a
+  single broad search box with no query-syntax operators or filter chips. Chosen over Room FTS4:
+  the real latency risk is decoding every document's JSON payload per keystroke, not `LIKE` scan
+  cost at this app's realistic volume, so a plain indexed column gets FTS4's "don't decode JSON
+  up front" win without its tokenizer/virtual-table machinery. Ranking/snippet extraction
+  (`DocumentSearchRanking`) is pure JVM-testable Kotlin; only the SQL narrowing and JSON decode
+  live in `platform` (`DefaultDocumentSearchDataSource`).
+- **Schema migrations are real from here on.** `PlatformDatabase` moved from `exportSchema =
+  false` to `true` at version 2 (`Migration1To2`, adding `searchIndexText` and backfilling it for
+  pre-existing rows) once real finalized documents existed on-device — a bare version bump with no
+  migration would hard-crash the app rather than silently lose data. Verify any future migration
+  with `MigrationTestHelper` against the exported `schemas/*.json`, not hand-written SQL guesses.
+
 ## UI conventions
 
 - **Draft Spine**: `InvoiceDraftUiState` (data) ← `InvoiceDraftReducer` (pure functions) ←
@@ -342,7 +248,7 @@ meets the real requirement (immutable finalized documents, auditable corrections
 - Autocomplete/search suggestions expand inline below the input field — never a popup/dropdown
   menu.
 
-## UX direction (approved 2026-09-11, not yet built)
+## UX direction (approved 2026-09-11; Phases 1 and part of 2 built — see Status)
 
 Full rationale, WCAG contrast audit, and screen-by-screen mockups (light + dark, built from
 Verity's real tokens) live in the "Verity Design Blueprint" artifact — a living document, kept
@@ -350,10 +256,11 @@ up to date in place, so re-read it rather than trusting a stale summary:
 `https://claude.ai/code/artifact/f97670a4-8698-4cc2-9f8e-96015239b995`. What follows here is the
 condensed, durable version of the same decisions, for when the artifact isn't at hand.
 
-**The problem it solves**: today's app is one screen wearing three names — launch drops straight
-into the Workspace, and there is no way back to a document once you leave it, no customer list
-(customers exist only via `CustomerSeedLoader`'s fixture), no settings. Right scope for Milestone
-1; wrong scope once this needs to be a tool trusted with real customers.
+**The problem it solved**: pre-Phase-1, the app was one screen wearing three names — launch
+dropped straight into the Workspace, with no way back to a document once you left it, no customer
+list (customers existed only via `CustomerSeedLoader`'s fixture), no settings. Right scope for
+Milestone 1; wrong scope once this needed to be a tool trusted with real customers. Phase 1 (nav
+shell + Home) and the Documents-List/Detail/Search half of Phase 2 are now built — see Status.
 
 - **Landing screen**: replace "launch straight into Workspace" with a **Home dashboard** — a
   "This Month" card (invoiced total + document count) and a Recent Documents list, both honest
@@ -367,26 +274,27 @@ into the Workspace, and there is no way back to a document once you leave it, no
   are Brand-mode (no back arrow, switched by the bottom nav, never pushed); anything drilled into
   from them (Document Detail, Customer Detail, Add/Edit Customer, Business Profile) is
   Support-mode, pushed, with a back arrow.
-- **New screens required** (none exist today): Documents List; Document Detail — note this needs
-  a genuinely new `document/{id}` route, since `InvoicePreviewScreen` today only ever renders the
-  *live* `InvoiceWorkspaceViewModel`'s in-memory document, never a persisted one loaded by id,
-  even though `DocumentDao.getById` already supports it; Customers List; Customer Detail; Add/Edit
-  Customer (`CustomerDao.insert` with `OnConflictStrategy.REPLACE` already covers create *and*
-  edit-by-id; still needs a real single-row `deactivate(customerId)` for the "soft-deactivated,
-  not deleted" rule `CustomerDao`'s own doc comment already states but never implements); Business
-  Profile (retires `HardcodedSeller.kt`); and a theme picker in Settings — `MainActivity`
-  currently hardcodes `val isDarkTheme = false`, so `VerityDarkColors` (a complete, WCAG-checked
-  palette) has never been reachable by a user.
+- **New screens required**: Documents List and Document Detail are **built** (a real
+  `document/{id}` route loading a persisted document by id via `DocumentDao.getById`, not just
+  `InvoicePreviewScreen`'s live in-memory draft). Still needed: Customers List; Customer Detail;
+  Add/Edit Customer (`CustomerDao.insert` with `OnConflictStrategy.REPLACE` already covers create
+  *and* edit-by-id; still needs a real single-row `deactivate(customerId)` for the
+  "soft-deactivated, not deleted" rule `CustomerDao`'s own doc comment already states but never
+  implements); Business Profile (retires `HardcodedSeller.kt`); and a theme picker in Settings —
+  `MainActivity` currently hardcodes `val isDarkTheme = false`, so `VerityDarkColors` (a complete,
+  WCAG-checked palette) has never been reachable by a user.
 - **Build order** — four phases, each gated by the one before it, not by a calendar:
-  1. **Foundation** (start here, zero dependencies): the nav shell + Home, plus the three
-     Critical fixes from the Blueprint's audit (line-item validation, Undo on delete, the two
-     light-mode WCAG contrast failures on `text.muted`/`borders.subtle`).
-  2. **Complete the record**: Documents List/Detail, Customer CRUD, remaining High-severity audit
-     fixes (the `accent` color decision, light-mode's `borders.strong == borders.subtle` bug, real
-     screen transitions, auto-focus/IME chaining, Document Type control affordance).
-  3. **Make it yours**: Business Profile, theme wiring, remaining Medium fixes.
-  4. **Close the loop**: Share/PDF export, payment recording — the feature that finally makes
-     Home's hero metric a real Outstanding/Overdue card.
+  1. **Foundation — built.** Nav shell + Home, plus the three Critical fixes from the Blueprint's
+     audit (line-item validation, Undo on delete, the two light-mode WCAG contrast failures on
+     `text.muted`/`borders.subtle`).
+  2. **Complete the record — partially built.** Documents List/Detail/Search are done; Customer
+     CRUD and the remaining High-severity audit fixes (the `accent` color decision — still an
+     unresolved placeholder, see `VerityLightColors`/`VerityDarkColors` — light-mode's
+     `borders.strong == borders.subtle` bug, real screen transitions, auto-focus/IME chaining,
+     Document Type control affordance) are not.
+  3. **Make it yours — not started.** Business Profile, theme wiring, remaining Medium fixes.
+  4. **Close the loop — not started.** Share/PDF export, payment recording — the feature that
+     finally makes Home's hero metric a real Outstanding/Overdue card.
 
 This is a proposal the user reviewed and approved, not a spec to implement unmodified — confirm
 before building if anything here seems to have drifted from the live artifact, and it's fine to
