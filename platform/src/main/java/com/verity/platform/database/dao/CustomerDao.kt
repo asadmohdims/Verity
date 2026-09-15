@@ -73,6 +73,14 @@ interface CustomerDao {
     suspend fun getById(customerId: String): CustomerEntity?
 
     /**
+     * Soft-deactivates a customer — the row stays for historical document lookups
+     * (getById is deliberately not filtered by isActive), it just drops out of
+     * getActiveCustomers().
+     */
+    @Query("UPDATE customers SET isActive = 0 WHERE customerId = :customerId")
+    suspend fun deactivate(customerId: String)
+
+    /**
      * Deletes all customer rows.
      *
      * Used only during administrative or bootstrap scenarios such as Excel re-import.

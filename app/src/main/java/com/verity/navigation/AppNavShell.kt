@@ -36,9 +36,14 @@ import com.verity.core.ui.molecules.VerityTopAppBar
 import com.verity.core.ui.molecules.VerityTopBarAction
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
-import com.verity.feature.customer.rollup.CustomerRollupDataSource
-import com.verity.feature.customer.rollup.CustomerRollupRoute
-import com.verity.feature.customer.rollup.CustomerRollupViewModel
+import com.verity.feature.customer.detail.CustomerDetailDataSource
+import com.verity.feature.customer.detail.CustomerDetailRoute
+import com.verity.feature.customer.detail.CustomerDetailViewModel
+import com.verity.feature.customer.edit.AddEditCustomerRoute
+import com.verity.feature.customer.edit.AddEditCustomerViewModel
+import com.verity.feature.customer.edit.CustomerEditDataSource
+import com.verity.feature.customer.list.CustomersListRoute
+import com.verity.feature.customer.list.CustomersListViewModel
 import com.verity.feature.document.DocumentDetailDataSource
 import com.verity.feature.document.DocumentDetailViewModel
 import com.verity.feature.document.DocumentsListRoute
@@ -53,6 +58,8 @@ import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
+import com.verity.feature.settings.SettingsRoute
+import com.verity.feature.settings.SettingsViewModel
 import java.io.File
 
 /**
@@ -80,11 +87,14 @@ internal object AppRoutes {
     const val DOCUMENT_DETAIL = "document/{documentId}"
     const val DOCUMENT_PDF = "document/{documentId}/pdf"
     const val DOCUMENT_SEARCH = "documents/search"
-    const val CUSTOMER_ROLLUP = "customer/{customerId}"
+    const val CUSTOMER_DETAIL = "customer/{customerId}"
+    const val CUSTOMER_ADD = "customer/add"
+    const val CUSTOMER_EDIT = "customer/{customerId}/edit"
 
     fun documentDetail(documentId: String) = "document/$documentId"
     fun documentPdf(documentId: String) = "document/$documentId/pdf"
-    fun customerRollup(customerId: String) = "customer/$customerId"
+    fun customerDetail(customerId: String) = "customer/$customerId"
+    fun customerEdit(customerId: String) = "customer/$customerId/edit"
 }
 
 private val bottomNavItems = listOf(
@@ -111,7 +121,10 @@ fun AppNavShell(
     documentsListViewModel: DocumentsListViewModel,
     documentDetailDataSource: DocumentDetailDataSource,
     documentSearchViewModel: DocumentSearchViewModel,
-    customerRollupDataSource: CustomerRollupDataSource,
+    customerDetailDataSource: CustomerDetailDataSource,
+    customerEditDataSource: CustomerEditDataSource,
+    customersListViewModel: CustomersListViewModel,
+    settingsViewModel: SettingsViewModel,
     invoicePdfRenderer: InvoicePdfRenderer
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -188,7 +201,16 @@ fun AppNavShell(
                 )
             )
         )
-        AppRoutes.CUSTOMERS -> brandChrome(title = "Customers")
+        AppRoutes.CUSTOMERS -> brandChrome(
+            title = "Customers",
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Add,
+                    contentDescription = "Add customer",
+                    onClick = { navController.navigate(AppRoutes.CUSTOMER_ADD) }
+                )
+            )
+        )
         AppRoutes.SETTINGS -> brandChrome(title = "Settings")
         AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
         AppRoutes.FINALIZED -> supportChrome(title = "Invoice Finalized") { navController.popBackStack() }
@@ -204,8 +226,28 @@ fun AppNavShell(
             supportChrome(title = "Document") { navController.popBackStack() }
         AppRoutes.DOCUMENT_SEARCH ->
             supportChrome(title = "Search") { navController.popBackStack() }
-        AppRoutes.CUSTOMER_ROLLUP ->
-            supportChrome(title = "Customer") { navController.popBackStack() }
+        AppRoutes.CUSTOMER_DETAIL -> {
+            val customerId = navBackStackEntry?.arguments?.getString("customerId")
+            supportChrome(
+                title = "Customer",
+                onBack = { navController.popBackStack() },
+                actions = if (customerId != null) {
+                    listOf(
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Edit,
+                            contentDescription = "Edit customer",
+                            onClick = { navController.navigate(AppRoutes.customerEdit(customerId)) }
+                        )
+                    )
+                } else {
+                    emptyList()
+                }
+            )
+        }
+        AppRoutes.CUSTOMER_ADD ->
+            supportChrome(title = "Add Customer") { navController.popBackStack() }
+        AppRoutes.CUSTOMER_EDIT ->
+            supportChrome(title = "Edit Customer") { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -280,48 +322,89 @@ fun AppNavShell(
                             navController.navigate(AppRoutes.documentDetail(documentId))
                         },
                         onCustomerClick = { customerId ->
-                            navController.navigate(AppRoutes.customerRollup(customerId))
+                            navController.navigate(AppRoutes.customerDetail(customerId))
                         }
                     )
                 }
 
                 composable(
-                    route = AppRoutes.CUSTOMER_ROLLUP,
+                    route = AppRoutes.CUSTOMER_DETAIL,
                     arguments = listOf(navArgument("customerId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val customerId = requireNotNull(backStackEntry.arguments?.getString("customerId"))
 
-                    val customerRollupViewModel: CustomerRollupViewModel = viewModel(
+                    val customerDetailViewModel: CustomerDetailViewModel = viewModel(
                         factory = viewModelFactory {
                             initializer {
-                                CustomerRollupViewModel(
+                                CustomerDetailViewModel(
                                     customerId = customerId,
-                                    dataSource = customerRollupDataSource
+                                    dataSource = customerDetailDataSource
                                 )
                             }
                         }
                     )
 
-                    CustomerRollupRoute(
-                        viewModel = customerRollupViewModel,
+                    CustomerDetailRoute(
+                        viewModel = customerDetailViewModel,
                         onDocumentClick = { documentId ->
                             navController.navigate(AppRoutes.documentDetail(documentId))
+                        },
+                        onNewInvoice = ::goToWorkspace
+                    )
+                }
+
+                composable(AppRoutes.CUSTOMER_ADD) {
+                    val addCustomerViewModel: AddEditCustomerViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                AddEditCustomerViewModel(
+                                    customerId = null,
+                                    dataSource = customerEditDataSource
+                                )
+                            }
                         }
+                    )
+
+                    AddEditCustomerRoute(
+                        viewModel = addCustomerViewModel,
+                        onDone = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = AppRoutes.CUSTOMER_EDIT,
+                    arguments = listOf(navArgument("customerId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val customerId = requireNotNull(backStackEntry.arguments?.getString("customerId"))
+
+                    val editCustomerViewModel: AddEditCustomerViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                AddEditCustomerViewModel(
+                                    customerId = customerId,
+                                    dataSource = customerEditDataSource
+                                )
+                            }
+                        }
+                    )
+
+                    AddEditCustomerRoute(
+                        viewModel = editCustomerViewModel,
+                        onDone = { navController.popBackStack() }
                     )
                 }
 
                 composable(AppRoutes.CUSTOMERS) {
-                    PlaceholderScreen(
-                        title = "Customers",
-                        message = "Your customer list, balances, and document history will live here soon."
+                    CustomersListRoute(
+                        viewModel = customersListViewModel,
+                        onCustomerClick = { customerId ->
+                            navController.navigate(AppRoutes.customerDetail(customerId))
+                        }
                     )
                 }
 
                 composable(AppRoutes.SETTINGS) {
-                    PlaceholderScreen(
-                        title = "Settings",
-                        message = "Business profile and theme settings are coming soon."
-                    )
+                    SettingsRoute(viewModel = settingsViewModel)
                 }
 
                 composable(AppRoutes.WORKSPACE) {
@@ -496,9 +579,13 @@ private fun brandChrome(
     chromeMode = VerityChromeMode.Brand
 )
 
-private fun supportChrome(title: String, onBack: () -> Unit): WorkspaceChromeSpec = WorkspaceChromeSpec(
+private fun supportChrome(
+    title: String,
+    actions: List<VerityTopBarAction> = emptyList(),
+    onBack: () -> Unit
+): WorkspaceChromeSpec = WorkspaceChromeSpec(
     title = title,
     navigationIcon = VerityNavIcon.Back(onClick = onBack, contentDescription = "Back"),
-    actions = emptyList(),
+    actions = actions,
     chromeMode = VerityChromeMode.Support
 )

@@ -3,8 +3,11 @@ package com.verity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -14,18 +17,23 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.verity.app.BuildConfig
+import com.verity.core.theme.ThemeMode
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.feature.customer.list.CustomersListViewModel
 import com.verity.feature.document.DocumentsListViewModel
 import com.verity.feature.document.search.DocumentSearchViewModel
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
+import com.verity.feature.settings.SettingsViewModel
 import com.verity.navigation.AppNavShell
 import com.verity.platform.autocomplete.DefaultCustomerAutocompleteDataSource
+import com.verity.platform.customer.DefaultCustomerDetailDataSource
+import com.verity.platform.customer.DefaultCustomerEditDataSource
+import com.verity.platform.customer.DefaultCustomerListDataSource
 import com.verity.platform.database.PlatformDatabaseFactory
-import com.verity.platform.customer.DefaultCustomerRollupDataSource
 import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
 import com.verity.platform.document.DefaultDocumentDetailDataSource
@@ -34,6 +42,7 @@ import com.verity.platform.finalize.DEFAULT_ORG_ID
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
+import com.verity.platform.settings.ThemePreferenceStore
 import com.verity.platform.sync.DefaultFirebaseRestoreClient
 import com.verity.platform.sync.DefaultFirebaseSyncClient
 import com.verity.platform.sync.DefaultInvoiceNumberAllocator
@@ -56,7 +65,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val isDarkTheme = false
+            val context = LocalContext.current
+            val themePreferenceStore = remember { ThemePreferenceStore(context = context) }
+            val themeMode by themePreferenceStore.themeMode.collectAsState()
+            val isDarkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
             val navController = rememberNavController()
             val view = LocalView.current
             SideEffect {
@@ -65,7 +82,6 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightNavigationBars = !isDarkTheme
             }
 
-            val context = LocalContext.current
             val database = remember { PlatformDatabaseFactory.create(context) }
 
             // Cloud sync wiring (see the cloud-sync plan) — constructed once at the composition
@@ -181,8 +197,26 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            val customerRollupDataSource = remember {
-                DefaultCustomerRollupDataSource(database = database)
+            val customerDetailDataSource = remember {
+                DefaultCustomerDetailDataSource(database = database)
+            }
+
+            val customerEditDataSource = remember {
+                DefaultCustomerEditDataSource(database = database)
+            }
+
+            val customersListViewModel = remember {
+                CustomersListViewModel(
+                    dataSource = DefaultCustomerListDataSource(database = database)
+                )
+            }
+
+            val settingsViewModel = remember {
+                SettingsViewModel(
+                    themeSettingsDataSource = themePreferenceStore,
+                    homeDataSource = homeDataSource,
+                    appVersionLabel = BuildConfig.VERSION_NAME
+                )
             }
 
             VerityTheme(
@@ -196,7 +230,10 @@ class MainActivity : ComponentActivity() {
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = documentDetailDataSource,
                     documentSearchViewModel = documentSearchViewModel,
-                    customerRollupDataSource = customerRollupDataSource,
+                    customerDetailDataSource = customerDetailDataSource,
+                    customerEditDataSource = customerEditDataSource,
+                    customersListViewModel = customersListViewModel,
+                    settingsViewModel = settingsViewModel,
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }

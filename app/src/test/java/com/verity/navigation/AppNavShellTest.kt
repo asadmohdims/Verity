@@ -21,8 +21,14 @@ import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.money.Money
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
-import com.verity.feature.customer.rollup.CustomerRollup
-import com.verity.feature.customer.rollup.CustomerRollupDataSource
+import com.verity.core.theme.ThemeMode
+import com.verity.feature.customer.detail.CustomerDetail
+import com.verity.feature.customer.detail.CustomerDetailDataSource
+import com.verity.feature.customer.edit.CustomerEditDataSource
+import com.verity.feature.customer.edit.CustomerFormData
+import com.verity.feature.customer.list.CustomerListDataSource
+import com.verity.feature.customer.list.CustomerListItem
+import com.verity.feature.customer.list.CustomersListViewModel
 import com.verity.feature.document.DocumentDetailDataSource
 import com.verity.feature.document.DocumentsListViewModel
 import com.verity.feature.document.search.DocumentSearchDataSource
@@ -39,6 +45,10 @@ import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
+import com.verity.feature.settings.SettingsViewModel
+import com.verity.feature.settings.ThemeSettingsDataSource
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -93,8 +103,23 @@ class AppNavShellTest {
             DocumentSearchResults(customers = emptyList(), documents = emptyList())
     }
 
-    private class NoopCustomerRollupDataSource : CustomerRollupDataSource {
-        override suspend fun loadRollup(customerId: String): CustomerRollup? = null
+    private class NoopCustomerDetailDataSource : CustomerDetailDataSource {
+        override suspend fun loadDetail(customerId: String): CustomerDetail? = null
+    }
+
+    private class NoopCustomerEditDataSource : CustomerEditDataSource {
+        override suspend fun loadCustomer(customerId: String): CustomerFormData? = null
+        override suspend fun save(form: CustomerFormData) {}
+        override suspend fun deactivate(customerId: String) {}
+    }
+
+    private class NoopCustomerListDataSource : CustomerListDataSource {
+        override suspend fun loadCustomers(): List<CustomerListItem> = emptyList()
+    }
+
+    private class NoopThemeSettingsDataSource : ThemeSettingsDataSource {
+        override val themeMode: StateFlow<ThemeMode> = MutableStateFlow(ThemeMode.SYSTEM)
+        override fun setThemeMode(mode: ThemeMode) {}
     }
 
     private fun sampleParty() = DocumentParty(
@@ -159,6 +184,12 @@ class AppNavShellTest {
             homeDataSource = homeDataSource,
             searchDataSource = NoopDocumentSearchDataSource()
         )
+        val customersListViewModel = CustomersListViewModel(dataSource = NoopCustomerListDataSource())
+        val settingsViewModel = SettingsViewModel(
+            themeSettingsDataSource = NoopThemeSettingsDataSource(),
+            homeDataSource = homeDataSource,
+            appVersionLabel = "test"
+        )
         // Deliberately NOT calling onCreateInvoice() here — AppNavShell's FAB/Create actions are
         // responsible for that (see the FAB test below). Pre-creating a draft in test setup would
         // hide a real regression: InvoiceWorkspaceRoute's own empty-state prompt showing up
@@ -174,7 +205,10 @@ class AppNavShellTest {
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = NoopDocumentDetailDataSource(),
                     documentSearchViewModel = documentSearchViewModel,
-                    customerRollupDataSource = NoopCustomerRollupDataSource(),
+                    customerDetailDataSource = NoopCustomerDetailDataSource(),
+                    customerEditDataSource = NoopCustomerEditDataSource(),
+                    customersListViewModel = customersListViewModel,
+                    settingsViewModel = settingsViewModel,
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }
@@ -364,6 +398,12 @@ class AppNavShellTest {
             homeDataSource = homeDataSource,
             searchDataSource = NoopDocumentSearchDataSource()
         )
+        val customersListViewModel = CustomersListViewModel(dataSource = NoopCustomerListDataSource())
+        val settingsViewModel = SettingsViewModel(
+            themeSettingsDataSource = NoopThemeSettingsDataSource(),
+            homeDataSource = homeDataSource,
+            appVersionLabel = "test"
+        )
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
@@ -375,7 +415,10 @@ class AppNavShellTest {
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = documentDetailDataSource,
                     documentSearchViewModel = documentSearchViewModel,
-                    customerRollupDataSource = NoopCustomerRollupDataSource(),
+                    customerDetailDataSource = NoopCustomerDetailDataSource(),
+                    customerEditDataSource = NoopCustomerEditDataSource(),
+                    customersListViewModel = customersListViewModel,
+                    settingsViewModel = settingsViewModel,
                     invoicePdfRenderer = FakeInvoicePdfRenderer()
                 )
             }

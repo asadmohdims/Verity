@@ -1,7 +1,7 @@
-package com.verity.feature.customer.rollup
-
+package com.verity.feature.customer.detail
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -22,7 +22,7 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w360dp-h800dp")
-class CustomerRollupScreenTest {
+class CustomerDetailScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -48,22 +48,69 @@ class CustomerRollupScreenTest {
         )
     )
 
+    private fun sampleDetail(documents: List<DocumentSummary>, balanceDuePaise: Long = 3_000_00) = CustomerDetail(
+        customerId = "cust-1",
+        customerName = "Acme Traders",
+        phone = "9999999999",
+        gstin = "27AAACB1234Z1Z",
+        addressLine1 = "Industrial Area",
+        city = "Mumbai",
+        state = "Maharashtra",
+        stateCode = "27",
+        pincode = "400001",
+        balanceDue = Money.ofPaise(balanceDuePaise),
+        documents = documents
+    )
+
     @Test
-    fun `header shows the document count and summed running total`() {
+    fun `profile header and balance hero show the customer's real data`() {
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                CustomerRollupScreen(
-                    state = CustomerRollupUiState(
-                        isLoading = false,
-                        rollup = CustomerRollup(customerId = "cust-1", customerName = "Acme Traders", documents = documents)
-                    ),
-                    onDocumentClick = {}
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(isLoading = false, detail = sampleDetail(documents)),
+                    onDocumentClick = {},
+                    onNewInvoice = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Acme Traders").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2 documents · ₹3,000").assertIsDisplayed()
+        composeTestRule.onNodeWithText("₹3,000").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Across 2 documents").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Record Payment quick action is disabled - no Payment entity exists yet`() {
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(isLoading = false, detail = sampleDetail(documents)),
+                    onDocumentClick = {},
+                    onNewInvoice = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Record Payment").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `tapping New Invoice fires onNewInvoice`() {
+        var tapped = false
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(isLoading = false, detail = sampleDetail(documents)),
+                    onDocumentClick = {},
+                    onNewInvoice = { tapped = true }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("New Invoice").performClick()
+
+        assertEquals(true, tapped)
     }
 
     @Test
@@ -72,12 +119,10 @@ class CustomerRollupScreenTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                CustomerRollupScreen(
-                    state = CustomerRollupUiState(
-                        isLoading = false,
-                        rollup = CustomerRollup(customerId = "cust-1", customerName = "Acme Traders", documents = documents)
-                    ),
-                    onDocumentClick = { clicked = it }
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(isLoading = false, detail = sampleDetail(documents)),
+                    onDocumentClick = { clicked = it },
+                    onNewInvoice = {}
                 )
             }
         }
@@ -91,17 +136,17 @@ class CustomerRollupScreenTest {
     fun `zero documents shows the empty state, not a crash`() {
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                CustomerRollupScreen(
-                    state = CustomerRollupUiState(
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(
                         isLoading = false,
-                        rollup = CustomerRollup(customerId = "cust-1", customerName = "New Customer", documents = emptyList())
+                        detail = sampleDetail(documents = emptyList(), balanceDuePaise = 0)
                     ),
-                    onDocumentClick = {}
+                    onDocumentClick = {},
+                    onNewInvoice = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("0 documents · ₹0").assertIsDisplayed()
         composeTestRule.onNodeWithText("No documents yet for this customer.").assertIsDisplayed()
     }
 
@@ -109,9 +154,10 @@ class CustomerRollupScreenTest {
     fun `an unknown customer shows the not-found state`() {
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                CustomerRollupScreen(
-                    state = CustomerRollupUiState(isLoading = false, rollup = null),
-                    onDocumentClick = {}
+                CustomerDetailScreen(
+                    state = CustomerDetailUiState(isLoading = false, detail = null),
+                    onDocumentClick = {},
+                    onNewInvoice = {}
                 )
             }
         }

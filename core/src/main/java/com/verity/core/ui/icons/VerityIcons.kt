@@ -3,6 +3,7 @@ package com.verity.core.ui.icons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -60,6 +61,9 @@ object VerityIcons {
 
     val ChevronDown: VerityIcon =
         VerityIcon.Material(Icons.Filled.KeyboardArrowDown)
+
+    val ChevronRight: VerityIcon =
+        VerityIcon.Material(Icons.Filled.KeyboardArrowRight)
 
     val Overflow: VerityIcon =
         VerityIcon.Material(Icons.Filled.MoreVert)
