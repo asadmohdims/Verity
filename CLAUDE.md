@@ -109,18 +109,17 @@ implied by "UX direction" below:
    (`android.print.PrintManager`), not a share-to-a-printing-app workaround. Needs a
    `FileProvider` — the PDF lives in app-private external files storage today (see "Documents:
    search, PDF, and schema evolution"), not shareable as a raw `file://` URI as-is.
-2. ~~Customers screen and Settings screen~~ — **built 2026-09-15** (branch
-   `feature/customers-and-settings-screens`, not yet merged to `main`). Customers List/Detail/
-   Add-Edit (including the soft-deactivate `CustomerDao` always documented but never implemented),
-   and Settings (System/Light/Dark theme picker via a new `ThemePreferenceStore`, a sync-status row
-   reusing Home's existing pending/synced logic, a version row, and a Business Profile row that
-   ships visible-but-inert — no design exists yet for that screen, deliberately deferred rather
-   than built undesigned). Real Business Profile screen (to retire `HardcodedSeller.kt`) remains
-   not built. 34 new tests (ViewModels + Robolectric screens + a real-Room `CustomerDao.deactivate`
-   test), full 137-test suite green, `compileDebugAndroidTestKotlin` clean. **Not yet on-device
-   verified** — per Principle 2 this isn't "done" until someone actually installs the APK and taps
-   through it; that step was deliberately left for the user rather than driving the emulator
-   unattended.
+2. ~~Customers screen and Settings screen~~ — **built and merged to `main` (2026-09-15)**.
+   Customers List/Detail/Add-Edit (including the soft-deactivate `CustomerDao` always documented
+   but never implemented), and Settings (System/Light/Dark theme picker via a new
+   `ThemePreferenceStore`, a sync-status row reusing Home's existing pending/synced logic, a
+   version row, and a Business Profile row that ships visible-but-inert — no design exists yet for
+   that screen, deliberately deferred rather than built undesigned). Real Business Profile screen
+   (to retire `HardcodedSeller.kt`) remains not built. 34 new tests (ViewModels + Robolectric
+   screens + a real-Room `CustomerDao.deactivate` test), full 137-test suite green,
+   `compileDebugAndroidTestKotlin` clean. Installed on a real device (`installDebug`) and reviewed
+   by the user — some issues found during that pass, not yet itemized here; expect a near-term
+   follow-up commit fixing them once scoped.
 3. **App icon** — real Verity branding before any store listing or install; currently the stock
    Android Studio default. Backlog, not urgent, but must land before going live.
 
