@@ -93,6 +93,9 @@ fun HomeScreen(
                 monthLabel = state.thisMonthLabel
             )
 
+            VeritySpacer(size = VeritySpace.Small)
+            SyncStatusLine(status = state.syncStatus)
+
             VeritySpacer(size = VeritySpace.Large)
 
             Row(
@@ -162,6 +165,37 @@ private fun ThisMonthCard(total: String, documentCount: Int, monthLabel: String)
                 style = VerityTextStyle.Caption
             )
         }
+    }
+}
+
+/**
+ * SyncStatusLine
+ *
+ * One line, not a new screen (per the cloud-sync plan's "small, not a new screen" instruction):
+ * "N pending" whenever the cloud mirror hasn't caught up yet, else "Synced · Xm ago" (or nothing
+ * if sync has never run — e.g. cloud not yet configured). No spinner, no retry button — this is
+ * an affordance for a human to notice staleness (see the plan's free-tier-pause discussion for
+ * why noticing is the actual mitigation), not a control surface.
+ */
+@Composable
+private fun SyncStatusLine(status: SyncStatus) {
+    val text = when {
+        status.pendingCount > 0 -> if (status.pendingCount == 1) "1 pending" else "${status.pendingCount} pending"
+        status.lastSyncedAtEpochMillis != null -> "Synced · ${relativeTimeAgo(status.lastSyncedAtEpochMillis)}"
+        else -> null
+    }
+    if (text != null) {
+        VerityText(text = text, style = VerityTextStyle.Caption)
+    }
+}
+
+private fun relativeTimeAgo(epochMillis: Long): String {
+    val elapsedMinutes = (System.currentTimeMillis() - epochMillis) / 60_000
+    return when {
+        elapsedMinutes < 1 -> "just now"
+        elapsedMinutes < 60 -> "${elapsedMinutes}m ago"
+        elapsedMinutes < 24 * 60 -> "${elapsedMinutes / 60}h ago"
+        else -> "${elapsedMinutes / (24 * 60)}d ago"
     }
 }
 

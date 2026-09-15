@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// Mirrors firestore.rules — same org_id custom-claim scoping, for the PDF backups under
+// orgs/{orgId}/pdfs/ (see FirebaseSyncClient's pushPdf/downloadPdf and
+// DefaultInvoicePdfRenderer's ensurePdf() fallback chain).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /orgs/{orgId}/{allPaths=**} {
+      allow read, write: if request.auth != null
+                          && request.auth.token.org_id == orgId;
+    }
+  }
+}

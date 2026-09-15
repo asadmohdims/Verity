@@ -9,7 +9,12 @@ import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.database.PlatformDatabase
+import com.verity.platform.database.entities.DocumentEntity
+import com.verity.platform.database.entities.LedgerEntryEntity
+import com.verity.platform.sync.DefaultInvoiceNumberAllocator
+import com.verity.platform.sync.FirebaseSyncClient
 import kotlinx.coroutines.runBlocking
+import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.junit.After
@@ -29,12 +34,21 @@ import java.util.UUID
  * round-tripping, and the ledger entry written alongside Invoice finalization (but not Challan,
  * which isn't a billing event) — against a real Room instance, not mocks (same pattern the
  * deleted EventDaoTest used for the old event store).
+ *
+ * The number allocator's online counter always fails here (FailingOnlineCounterSource), so every
+ * test exercises the local-fallback numbering path — deliberately, since that's the path that
+ * must keep working offline regardless of cloud config. See InvoiceNumberAllocatorTest for the
+ * online/timeout/fallback branching itself. The sync client is a recording fake (see below) so
+ * tests can assert finalize() pushes without ever touching real network — see
+ * FirebaseSyncClient's doc comment for why that push is fire-and-forget and must never block
+ * finalize's return.
  */
 @RunWith(AndroidJUnit4::class)
 class DefaultInvoiceFinalizerTest {
 
     private lateinit var database: PlatformDatabase
     private lateinit var finalizer: DefaultInvoiceFinalizer
+    private lateinit var syncClient: RecordingFirebaseSyncClient
     private val json = Json { ignoreUnknownKeys = false }
     private val clock: Clock = Clock.fixed(Instant.parse("2026-09-09T00:00:00Z"), ZoneOffset.UTC)
 
@@ -47,7 +61,16 @@ class DefaultInvoiceFinalizerTest {
             .allowMainThreadQueries() // instrumentation tests only
             .build()
 
-        finalizer = DefaultInvoiceFinalizer(database, clock)
+        syncClient = RecordingFirebaseSyncClient()
+        finalizer = DefaultInvoiceFinalizer(
+            database = database,
+            clock = clock,
+            numberAllocator = DefaultInvoiceNumberAllocator(
+                onlineCounterSource = { _, _ -> error("test: online counter always fails") },
+                documentDao = database.documentDao()
+            ),
+            syncClient = syncClient
+        )
     }
 
     @After
@@ -122,6 +145,30 @@ class DefaultInvoiceFinalizerTest {
         assertEquals(firstInvoice.totals.grandTotalPaise + secondInvoice.totals.grandTotalPaise, balance)
     }
 
+    @Test
+    fun finalize_pushes_the_document_and_ledger_entry_after_committing_locally() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        val document = finalizer.finalize(testDraft(), customerId)
+
+        // FirebaseSyncClient.pushDocument/pushLedgerEntry are non-suspend by design (see that
+        // interface's doc comment) specifically so finalize() can never accidentally await them -
+        // this test confirms the wiring calls them with the right data, not the non-blocking
+        // guarantee itself, which the type signature already enforces at compile time.
+        assertEquals(1, syncClient.pushedDocuments.size)
+        assertEquals(document.identity.documentNumber, syncClient.pushedDocuments.single().documentNumber)
+        assertEquals(1, syncClient.pushedLedgerEntries.size)
+        assertEquals(document.totals.grandTotalPaise, syncClient.pushedLedgerEntries.single().amountPaise)
+    }
+
+    @Test
+    fun finalize_challan_pushes_the_document_but_no_ledger_entry() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        finalizer.finalize(testDraft().copy(documentType = DraftDocumentType.CHALLAN), customerId)
+
+        assertEquals(1, syncClient.pushedDocuments.size)
+        assertEquals(0, syncClient.pushedLedgerEntries.size)
+    }
+
     private fun testDraft(): InvoiceDraftUiState =
         InvoiceDraftUiState(
             documentType = DraftDocumentType.INVOICE,
@@ -145,4 +192,21 @@ class DefaultInvoiceFinalizerTest {
                 )
             )
         )
+
+    private class RecordingFirebaseSyncClient : FirebaseSyncClient {
+        val pushedDocuments = mutableListOf<DocumentEntity>()
+        val pushedLedgerEntries = mutableListOf<LedgerEntryEntity>()
+
+        override fun pushDocument(document: DocumentEntity) {
+            pushedDocuments += document
+        }
+
+        override fun pushLedgerEntry(entry: LedgerEntryEntity) {
+            pushedLedgerEntries += entry
+        }
+
+        override fun pushPdf(orgId: String, documentNumber: String, file: File) = Unit
+
+        override suspend fun downloadPdf(orgId: String, documentNumber: String, destination: File) = false
+    }
 }

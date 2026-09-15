@@ -12,6 +12,8 @@ import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.database.PlatformDatabase
 import com.verity.platform.database.entities.CustomerEntity
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
+import com.verity.platform.testsupport.NoOpFirebaseSyncClient
+import com.verity.platform.testsupport.localOnlyInvoiceNumberAllocator
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -48,7 +50,9 @@ class DefaultDocumentSearchDataSourceTest {
             .allowMainThreadQueries()
             .build()
 
-        finalizer = DefaultInvoiceFinalizer(database, clock)
+        finalizer = DefaultInvoiceFinalizer(
+            database, clock, localOnlyInvoiceNumberAllocator(database.documentDao()), NoOpFirebaseSyncClient
+        )
         dataSource = DefaultDocumentSearchDataSource(database)
     }
 

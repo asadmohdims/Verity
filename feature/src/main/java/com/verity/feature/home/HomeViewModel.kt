@@ -15,7 +15,8 @@ data class HomeUiState(
     val thisMonthTotal: Money = Money.ofPaise(0),
     val thisMonthDocumentCount: Int = 0,
     val thisMonthLabel: String = "",
-    val recentDocuments: List<DocumentSummary> = emptyList()
+    val recentDocuments: List<DocumentSummary> = emptyList(),
+    val syncStatus: SyncStatus = SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)
 )
 
 /**
@@ -55,13 +56,15 @@ class HomeViewModel(
                 documents = documents,
                 referenceDate = LocalDate.now(clock)
             )
+            val syncStatus = homeDataSource.loadSyncStatus()
 
             _uiState.value = HomeUiState(
                 isLoading = false,
                 thisMonthTotal = dashboard.thisMonthTotal,
                 thisMonthDocumentCount = dashboard.thisMonthDocumentCount,
                 thisMonthLabel = dashboard.thisMonthLabel,
-                recentDocuments = dashboard.recentDocuments
+                recentDocuments = dashboard.recentDocuments,
+                syncStatus = syncStatus
             )
         }
     }

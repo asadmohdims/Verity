@@ -2,6 +2,7 @@ package com.verity.platform.database.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.verity.platform.database.entities.DocumentEntity
 
@@ -17,6 +18,24 @@ interface DocumentDao {
 
     @Insert
     suspend fun insert(document: DocumentEntity)
+
+    /**
+     * REPLACE, unlike insert() above — used only by FirebaseRestoreClient's new-device bulk
+     * restore, where re-running after an interrupted attempt must be safe (see
+     * platform/sync/FirebaseRestoreClient.kt). Never called from the normal finalize path.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAllFromCloud(documents: List<DocumentEntity>)
+
+    @Query("UPDATE documents SET syncedToCloud = 1 WHERE documentId = :documentId")
+    suspend fun markSyncedToCloud(documentId: String)
+
+    @Query("SELECT COUNT(*) FROM documents WHERE syncedToCloud = 0")
+    suspend fun getPendingSyncCount(): Int
+
+    /** Backs the new-device restore trigger — see MainActivity and FirebaseRestoreClient. */
+    @Query("SELECT COUNT(*) FROM documents")
+    suspend fun count(): Int
 
     /**
      * Highest sequence number assigned so far for this org+type, or null if none exist yet.

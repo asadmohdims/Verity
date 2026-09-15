@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// Verity Phase 1 cloud sync — see the cloud-sync plan and CLAUDE.md's Data & sync architecture.
+// Per-org scoping via the org_id custom claim set on the one fixed business account's Firebase
+// Auth token (see set_org_claim.js) — deliberately NOT a blanket "any authenticated user" rule
+// (that was Unitech Attendance's known-weak pattern, explicitly rejected for Verity).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /orgs/{orgId}/{document=**} {
+      allow read, write: if request.auth != null
+                          && request.auth.token.org_id == orgId;
+    }
+  }
+}

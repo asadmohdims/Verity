@@ -14,6 +14,7 @@ import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.money.AmountInWords
 import com.verity.core.formatting.money.Money
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
+import com.verity.platform.sync.FirebaseSyncClient
 import java.io.File
 import java.io.FileOutputStream
 import java.time.format.DateTimeFormatter
@@ -32,17 +33,35 @@ import java.time.format.DateTimeFormatter
  * Typography uses Android's built-in sans-serif/monospace families rather than bundling the
  * mockup's exact web fonts (Public Sans / IBM Plex Mono) - a deliberate simplification to avoid
  * new font assets for a first pass; easy to upgrade later without touching layout logic.
+ *
+ * ensurePdf()'s fallback order is local file -> Storage download -> regenerate (last resort).
+ * Regeneration is no longer the normal "file missing" path: since the exact PDF is backed up to
+ * Firebase Storage after generation (see the cloud-sync plan's PDF backup section - chosen for
+ * GST audit fidelity over relying on regeneration, which could drift from the original if the
+ * renderer's output ever changes in a future app version), a missing local file on a restored or
+ * reinstalled device should almost always be satisfied by the Storage download instead.
+ * Regeneration remains only for the rare case where even the upload hasn't landed yet.
  */
-class DefaultInvoicePdfRenderer(private val context: Context) : InvoicePdfRenderer {
+class DefaultInvoicePdfRenderer(
+    private val context: Context,
+    private val syncClient: FirebaseSyncClient,
+    private val orgId: String
+) : InvoicePdfRenderer {
 
     override suspend fun ensurePdf(document: InvoiceDocumentModel): File {
         val file = pdfFile(document.identity.documentNumber)
         if (file.exists()) return file
 
+        val downloaded = syncClient.downloadPdf(orgId, document.identity.documentNumber, file)
+        if (downloaded) return file
+
         val pdfDocument = InvoicePdfPageDrawer(document).draw()
         file.parentFile?.mkdirs()
         FileOutputStream(file).use { pdfDocument.writeTo(it) }
         pdfDocument.close()
+        // Fire-and-forget, mirroring FirebaseSyncClient's push pattern elsewhere - never blocks
+        // the PDF viewer on the upload.
+        syncClient.pushPdf(orgId, document.identity.documentNumber, file)
         return file
     }
 

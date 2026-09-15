@@ -34,8 +34,27 @@ Home shows a "This Month" invoiced-total card (Invoice only) and a Recent Docume
 has a working List, Detail, and broad-box Search with a minimal read-only customer rollup.
 Customers and Settings are still placeholder screens.
 
-**Cloud/sync: not started.** Zero Supabase/network code, no `INTERNET` permission — everything is
-local-only Room. See "Data & sync architecture" below for the planned design.
+**Cloud/sync — Phase 1 built, and the core push path is now verified for real (2026-09-15).**
+Firebase (Firestore + Auth + Storage), not Supabase — see "Data & sync architecture" below for
+the full reasoning (vendor lock-in analysis, why Firebase's built-in offline queue changes the
+architecture, the atomic-numbering hardening for a shared login). `FirebaseSyncClient`/
+`FirebaseRestoreClient`/`InvoiceNumberAllocator`/`FirebaseAuthGate` exist in `platform/.../sync/`,
+wired into `DefaultInvoiceFinalizer`/`DefaultInvoicePdfRenderer`/`MainActivity`; `INTERNET`
+permission added; `platform/firebase/{firestore,storage}.rules` are the checked-in source of
+truth for access control. A real Firebase project now exists (console set up, Auth account
+created, `org_id` custom claim set via `set_org_claim.js`, rules deployed), and a genuine
+online-finalize round trip was run on a real emulator against it: finalizing `INV-000001` produced
+a Firestore document and ledger entry with `syncedToCloud = 1` (confirmed by pulling the on-device
+Room database directly, not just trusting the UI), the PDF generated, uploaded to Storage, and was
+independently confirmed present in the Storage console and re-viewable from the app. Firestore's
+own offline-persistence cache was observed active on-device, confirming the built-in-offline-queue
+architecture claim, not just assuming it. This is real Principle-2 "wired and verified" for the
+happy path — **still open, not yet run even once**: an offline-finalize-then-reconnect test, the
+new-device restore flow (`FirebaseRestoreClient`), confirming `firestore.rules`/`storage.rules`
+genuinely *reject* a request with a missing/wrong `org_id` claim (only the allow path has been
+exercised), and the two-device concurrent-numbering scenario `InvoiceNumberAllocator` was built
+for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`,
+`FirebaseRestoreClientTest`, `Migration2To3Test`, the extended `DefaultInvoiceFinalizerTest`).
 
 **Known placeholders / gaps to close before this is production-ready**:
 - `HardcodedSeller.kt`'s `pincode` field is still `PLACEHOLDER_PINCODE` — every other seller field
@@ -52,6 +71,23 @@ local-only Room. See "Data & sync architecture" below for the planned design.
   been run as of this write-up.
 - No on-device pixel-diff pass of the rendered PDF against its approved mockup — green tests don't
   prove a rendered page matches a design; see "Testing standards" below.
+- Cloud sync's real Firebase project setup is **done** (2026-09-15) — project created, Android app
+  added, `app/google-services.json` in place (not committed either way yet, that's the user's
+  call — Firebase's own guidance is that the file is safe to commit, no secrets in it), the one
+  fixed business Auth account created, `org_id` claim set via `set_org_claim.js`, credentials in
+  `local.properties`, rules deployed. The online-finalize path is verified for real — see the
+  Status paragraph above. **Still to run**: finalize offline then reconnect and confirm the
+  pending write syncs automatically; wipe local data (or a second device/emulator) and confirm
+  `FirebaseRestoreClient` pulls everything back down, including PDFs downloading from Storage
+  rather than regenerating; confirm `firestore.rules`/`storage.rules` genuinely *reject* a request
+  with a missing/wrong `org_id` (only the allow path has been exercised so far); the two-device
+  concurrent-finalize numbering scenario `InvoiceNumberAllocator` exists to handle.
+- The `ensurePdf()` local → Storage → regenerate fallback order (`DefaultInvoicePdfRenderer`) has
+  no automated test — the first two tiers return before touching `android.graphics.pdf`, so a
+  plain JVM test could cover them, but doing so needs a fake `Context` this module doesn't
+  currently have infrastructure for, and the third tier (regenerate) needs Robolectric or a real
+  device either way. Skipped rather than forced into an awkward shape — worth returning to if/when
+  `platform` grows a Robolectric setup for something else.
 
 **Design references** (both living documents — re-read them rather than trusting a stale summary
 here): the GST invoice PDF design ("Familiar Grid, Modernized" — navy+brass, bordered-grid layout)
@@ -98,8 +134,10 @@ at `https://claude.ai/code/artifact/7c9bd3c7-f1f9-4104-89de-645acf683abc`; the n
 - **`core`** — pure Kotlin/Compose. Design system (`Verity*` components), theme tokens,
   money/date formatting, domain models that touch neither Android nor persistence. No platform
   or feature knowledge.
-- **`platform`** — the only module allowed to touch Room, KSP, or (once it exists) Supabase/
-  network code. Infrastructure only, no UI dependencies.
+- **`platform`** — the only module allowed to touch Room, KSP, or Firebase/network code (`app`
+  constructs Firebase SDK instances at the composition root, same manual-DI pattern as everything
+  else, but all sync logic itself lives in `platform/.../sync/`). Infrastructure only, no UI
+  dependencies.
 - **`feature`** — one package per feature (currently `invoice`). Compose screens, ViewModels,
   feature-local state. No cross-feature dependencies; features reach persistence only through
   interfaces `platform` implements.
@@ -150,51 +188,113 @@ coupling.
   add, not because the requirement is confirmed — whether this needs to be more than a plain
   optional field is still open.
 
-## Data & sync architecture (local half built and verified; cloud half not yet built — see Status)
+## Data & sync architecture (Phase 1 built, not yet on-device-verified — see Status)
 
-Replaced the original generic event-sourcing/replay design with something simpler that still
-meets the real requirement (immutable finalized documents, auditable corrections):
+Cloud is a **backup and restore** layer, not a live multi-device sync system: the app stays
+local-first and single-primary-device by design (confirmed explicitly, 2026-09-15 — see
+"Commercialization scope check" below for why real multi-user support is deliberately deferred).
+Every local write mirrors to the cloud in the background so a device loss doesn't lose the
+business's records, and a replacement/new device can pull everything back down and be fully
+operational again.
 
-- **Room is the local source of truth.** Every write lands in Room first and returns immediately
-  — the UI never waits on network. **Built and verified**: `DocumentEntity` (one table for
-  Invoice and Challan, JSON payload + indexed columns) and `LedgerEntryEntity` (append-only) are
-  live; the outbox/WorkManager/Supabase points below are still just the plan, not yet built.
-- **A local outbox table**, keyed by a client-generated UUID, holds pending writes. A background
-  job (WorkManager: periodic + an expedited one-off enqueued right after every local write) syncs
-  the outbox to Supabase via `upsert()` on that same UUID. Retries are naturally safe because
-  upsert-by-UUID can't create duplicates. This is deliberately copied from a pattern already
-  proven reliable in a sibling project (Unitech Attendance), not a first attempt.
-- **Supabase (Postgres + Auth + Realtime)** is the cloud backend. Real Row Level Security from
-  day one — every table scoped by `orgId`, policy-enforced, never `using (true)`. Per-user
-  accounts, not a shared login — GST audit trail needs to know who finalized what.
-- **Append-only `ledger_entries`** table gives the audit trail without a generic replay engine:
-  written transactionally alongside invoice finalization / payment recording, never updated. A
-  Challan does not write a ledger entry — it's a delivery document, not a receivable. Customer
-  balance is `SUM(ledger_entries)` per customer (computed on read, or as a materialized view) —
-  not a hand-rolled Kotlin replay loop.
-- **Invoice numbering (resolved 2026-09-09)**: assigned locally at finalize time (last known
-  number + 1), immediately followed by PDF generation. From the user's perspective, **PDF
-  generation is the finish line** — cloud sync happens after, invisibly, in the background; the
-  user never waits on it or confirms it. Deliberately no server-side arbitration, no collision
-  detection, no renumber/reprint flow: usage is one user, primarily one device, with rare
-  deliberate device switches (not simultaneous multi-device use), and sync is expected to
-  complete almost always before the next finalize. A genuine numbering collision is an accepted,
-  unhandled rare risk, not something engineered against. Concrete consequence: **no database
-  UNIQUE constraint on invoice number** — enforcing one would require the exact reconciliation
-  machinery this decision rejects. A duplicate number in the rare collision case is a silent
-  data-quality footnote, not a sync failure.
-- **Device-loss data durability (accepted risk, resolved 2026-09-09)**: if a device is lost or
-  destroyed before an outbox write syncs, that record can be permanently gone from the cloud's
-  perspective even though a PDF/paper copy may already exist in the world. Deliberately not
-  mitigated with a secondary backup path (e.g. auto-email, Drive export) — the risk is a
-  compound, low-probability event (connectivity returning is near-certain; a device being
-  destroyed inside the narrow pre-sync window is separately rare), and building for it would be
-  exactly the speculative complexity Principle 7 rules out.
-- **Challan↔Invoice linkage atomicity**: a finalized Invoice originating from a Challan must
-  never exist without its `DocumentLinkCreated` fact. Satisfied trivially — write both the
-  Invoice finalization and the linkage fact in one local database transaction before either is
-  queued to the outbox. No distributed-transaction machinery needed on top of the existing
-  local-first design.
+- **Room is the local source of truth**, unchanged. Every write lands in Room first and returns
+  immediately — the UI never waits on network. `DocumentEntity`/`LedgerEntryEntity` now also
+  carry `syncedToCloud: Boolean` (schema v3, `Migration2To3`) for the Home "N pending" indicator.
+- **Firebase, not Supabase (decided 2026-09-15, superseding this section's earlier Supabase/
+  outbox design)**. The two reference implementations already in this codebase's sibling
+  projects were compared on the *providers'* merits, not just how well each reference app used
+  them: Supabase's open-source self-hosting escape hatch (the whole stack — Postgres, GoTrue,
+  PostgREST, Realtime, Storage — can be run identically outside Supabase Inc.) and its fit for
+  this relational ledger domain were the stronger architectural case. Firebase was chosen anyway,
+  for two concrete operational reasons: Supabase's free tier auto-pauses a project after 7 days
+  of zero API requests (a manual dashboard "Restore" click, no data loss, but a chore the app
+  owner didn't want to own), and the risk that Supabase could shorten that window unilaterally in
+  the future. Firebase's Spark (free) tier has no inactivity pause, only hard daily caps (20K
+  writes/day, 50K reads/day, 1GB storage) far above this app's realistic single-business volume.
+  A real trade-off, made with eyes open, not a reversal of the earlier analysis.
+- **No hand-rolled outbox table or WorkManager sync worker for the push side.** Firestore's
+  Android SDK has offline persistence and a durable local write queue *built in* — writes are
+  cached, optimistically applied, and automatically retried on reconnect, with no app code needed.
+  That's the one thing that genuinely changes the architecture, not just the SDK import: the
+  outbox pattern (used in Attendance, and in this file's pre-2026-09-15 Supabase draft) exists
+  specifically to compensate for a backend with no client-side offline queue of its own —
+  Firestore already has one, so building a second, parallel one would be redundant (Principle 1).
+  `FirebaseSyncClient` (`platform/.../sync/`) is a thin, **fire-and-forget, never-awaited**
+  wrapper: `pushDocument`/`pushLedgerEntry`/`pushPdf` call straight into the SDK and return; a
+  success listener flips `syncedToCloud` and records a `SyncStatusStore` timestamp, a failure
+  listener only logs (the SDK's own queue handles retry — re-implementing retry on top of it
+  would be two queues fighting for the same job, a Principle 3 violation).
+- **Restore-to-new-device** (`FirebaseRestoreClient`): a one-time bulk pull, triggered from
+  `MainActivity` only when a device has no local documents yet and a
+  `SyncStatusStore.isInitialRestoreCompleted()` flag is false. Fetches the whole
+  `orgs/{orgId}/documents` and `orgs/{orgId}/ledgerEntries` collections in one call each (fine at
+  a single business's realistic multi-year volume) and inserts with `OnConflictStrategy.REPLACE`,
+  making a re-run after an interrupted attempt harmless — no separate resume/pagination logic.
+  Deliberately **not** a live subscription (no `addSnapshotListener`): since restore only ever
+  targets an empty local database, there's no merge/conflict logic needed, matching the
+  single-primary-device design above.
+- **PDF backup** (revisiting the 2026-09-09 "no secondary backup path" decision below, now that
+  real cloud infrastructure exists for other reasons): the exact generated PDF bytes are uploaded
+  to Firebase Storage after generation (`orgs/{orgId}/pdfs/{documentNumber}.pdf`), not just the
+  JSON they're rendered from — chosen over relying on `ensurePdf()`'s existing regeneration
+  ability, for GST audit fidelity: a future renderer change could otherwise make an old document
+  look subtly different from what was actually issued. `ensurePdf()`'s fallback order is now
+  local file → Storage download → regenerate (last resort, only when even the upload hasn't
+  landed yet).
+- **Auth**: one fixed Firebase Auth account (email/password), signed in silently on launch by
+  `FirebaseAuthGate` — no login screen. Firestore/Storage Security Rules
+  (`platform/firebase/{firestore,storage}.rules`, checked in, not just a console click — the
+  discipline gap HelloCredit, an earlier reference project, was missing) enforce per-`org_id`
+  scoping via a custom claim on that account's token, set once via
+  `platform/firebase/set_org_claim.js` (Admin SDK — no console UI for custom claims, unlike
+  Supabase's dashboard-editable `app_metadata`). See "Commercialization scope check" below for
+  why a single shared login — not per-employee accounts — is the deliberate choice, including for
+  the app's intended commercial future.
+- **Append-only `ledger_entries`** table gives the audit trail without a generic replay engine,
+  unchanged. Customer balance is `SUM(ledger_entries)` per customer, computed against local Room
+  — not the cloud copy, and not a hand-rolled Kotlin replay loop. Firestore's own aggregation
+  queries have real limits (no `GROUP BY`) that only matter if a future server-side reporting
+  surface is ever built outside the app; not a concern for Phase 1, since the app's own UI never
+  queries the cloud copy directly.
+- **Invoice numbering — hardened 2026-09-15 for a shared login used from more than one device**
+  (see "Commercialization scope check" below). The original 2026-09-09 decision (local
+  `last known number + 1`, accepted collision risk) is superseded by `InvoiceNumberAllocator`:
+  atomic online (a Firestore transaction against `orgs/{orgId}/counters/{documentType}`, short
+  timeout), local-fallback offline. This shrinks the collision window from "every finalize" down
+  to "two devices both offline and finalizing at the exact same moment" — full elimination would
+  require every finalize to round-trip the network, which would break the never-blocked-on-network
+  guarantee (Principle 6) this app is otherwise built around, so it's not attempted. **Still no
+  database UNIQUE constraint on invoice number** — the residual risk (an online transaction
+  succeeding server-side just as this call times out, followed by a local-fallback allocation) is
+  narrower than before but not literally zero, and is an accepted, named trade-off, not
+  reconciliation machinery. **PDF generation is still the finish line** from the user's
+  perspective — numbering resolves (online or local-fallback) before it, cloud sync happens after,
+  invisibly, in the background.
+- **Device-loss data durability**: meaningfully improved by Phase 1, not just superseded. With
+  the local outbox model this section used to describe, a lost device before sync meant the
+  record could be gone from the cloud's perspective entirely. With Firestore's own durable local
+  queue plus the PDF backup above, the actual risk window shrinks to "created and lost before the
+  SDK ever got a network window to sync" — still possible, still not specially engineered around
+  beyond what Firebase's SDK already does, but a smaller gap than the 2026-09-09 framing assumed.
+- **Challan↔Invoice linkage atomicity**: unchanged in spirit — a finalized Invoice originating
+  from a Challan must never exist without its `DocumentLinkCreated` fact, satisfied by writing
+  both facts in one local database transaction before either reaches the cloud. No
+  distributed-transaction machinery needed on top of the existing local-first design.
+
+### Commercialization scope check (2026-09-15)
+
+Verity's intended commercial audience is small industries, potentially with more than one person
+managing invoices at a shared business. Real multi-user support — per-employee accounts, roles/
+permissions, live real-time sync (`addSnapshotListener`), invite/remove-teammate flows — was
+deliberately **not** built now: none of it has a confirmed real customer to design against yet
+(Principle 1 — "if you're building infrastructure and can't name the third concrete case it
+serves today, stop"). The resolution: **a single shared login per org is the deliberate choice**,
+including for the commercial future, not a placeholder for real accounts — small operations
+sharing one business account is a legitimate, common pattern, not a compromise waiting to be
+fixed. The one piece that *does* need hardening under a shared login is invoice numbering (two
+physical devices, same account, both finalizing) — see above. Real per-user accounts, live sync,
+and roles remain explicitly deferred to a future phase, designed against an actual paying
+multi-person customer rather than guessed at now.
 
 ## Documents: search, PDF, and schema evolution
 
@@ -304,8 +404,10 @@ drawn.
 ## Tech stack
 
 Kotlin 2.x · Jetpack Compose · Material 3 (tokens only) · Navigation-Compose · ViewModel +
-StateFlow · Room + KSP · Coroutines · WorkManager · Kotlinx Serialization · Gradle version
-catalogs · Supabase (`supabase-kt`, pinned to an exact version) for cloud.
+StateFlow · Room + KSP · Coroutines · Kotlinx Serialization · Gradle version catalogs · Firebase
+(Firestore + Auth + Storage, via the Firebase BOM) for cloud — see "Data & sync architecture" for
+why Firebase over Supabase, and why WorkManager/an outbox table are *not* part of this stack
+(Firestore's own offline queue makes them redundant).
 
 **Not using Hilt.** Manual dependency construction at the composition root is sufficient at this
 scale — don't introduce a DI framework until the object graph is actually painful to wire by

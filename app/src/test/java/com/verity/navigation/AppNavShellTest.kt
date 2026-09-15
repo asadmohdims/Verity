@@ -31,6 +31,7 @@ import com.verity.feature.document.search.DocumentSearchViewModel
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
 import com.verity.feature.home.HomeViewModel
+import com.verity.feature.home.SyncStatus
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.draft.InvoiceDraftStore
@@ -63,6 +64,7 @@ class AppNavShellTest {
 
     private class NoopHomeDataSource : HomeDataSource {
         override suspend fun loadAllDocuments(): List<DocumentSummary> = emptyList()
+        override suspend fun loadSyncStatus(): SyncStatus = SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)
     }
 
     private class NoopCustomerAutocompleteDataSource : CustomerAutocompleteDataSource {
@@ -344,6 +346,7 @@ class AppNavShellTest {
         )
         val homeDataSource = object : HomeDataSource {
             override suspend fun loadAllDocuments(): List<DocumentSummary> = listOf(summary)
+            override suspend fun loadSyncStatus(): SyncStatus = SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)
         }
         val homeViewModel = HomeViewModel(homeDataSource = homeDataSource, clock = Clock.systemUTC())
         val documentsListViewModel = DocumentsListViewModel(homeDataSource = homeDataSource)

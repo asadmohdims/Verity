@@ -4,8 +4,10 @@ import com.verity.core.document.model.DocumentType
 import com.verity.core.formatting.money.Money
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
+import com.verity.feature.home.SyncStatus
 import com.verity.platform.database.PlatformDatabase
 import com.verity.platform.database.entities.DocumentEntity
+import com.verity.platform.sync.SyncStatusStore
 import java.time.LocalDate
 
 /**
@@ -17,11 +19,21 @@ import java.time.LocalDate
  * needs the full InvoiceDocumentModel.
  */
 class DefaultHomeDataSource(
-    private val database: PlatformDatabase
+    private val database: PlatformDatabase,
+    private val syncStatusStore: SyncStatusStore
 ) : HomeDataSource {
 
     override suspend fun loadAllDocuments(): List<DocumentSummary> =
         database.documentDao().getAll().map { it.toDocumentSummary() }
+
+    override suspend fun loadSyncStatus(): SyncStatus {
+        val pending = database.documentDao().getPendingSyncCount() +
+            database.ledgerEntryDao().getPendingSyncCount()
+        return SyncStatus(
+            pendingCount = pending,
+            lastSyncedAtEpochMillis = syncStatusStore.lastSyncedAtEpochMillis()
+        )
+    }
 }
 
 private fun DocumentEntity.toDocumentSummary(): DocumentSummary =

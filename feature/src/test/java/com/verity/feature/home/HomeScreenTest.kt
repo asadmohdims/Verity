@@ -43,6 +43,7 @@ class HomeScreenTest {
         private val documents: List<DocumentSummary>
     ) : HomeDataSource {
         override suspend fun loadAllDocuments(): List<DocumentSummary> = documents
+        override suspend fun loadSyncStatus(): SyncStatus = SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)
     }
 
     private fun documentSummary(id: String) = DocumentSummary(

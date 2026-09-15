@@ -10,6 +10,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.verity.app.BuildConfig
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.feature.document.DocumentsListViewModel
@@ -26,9 +30,17 @@ import com.verity.platform.database.seed.CustomerSeedLoader
 import com.verity.platform.database.seed.toEntity
 import com.verity.platform.document.DefaultDocumentDetailDataSource
 import com.verity.platform.document.DefaultDocumentSearchDataSource
+import com.verity.platform.finalize.DEFAULT_ORG_ID
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
+import com.verity.platform.sync.DefaultFirebaseRestoreClient
+import com.verity.platform.sync.DefaultFirebaseSyncClient
+import com.verity.platform.sync.DefaultInvoiceNumberAllocator
+import com.verity.platform.sync.FirebaseAuthGate
+import com.verity.platform.sync.FirestoreOnlineCounterSource
+import com.verity.platform.sync.FirestoreRestoreSource
+import com.verity.platform.sync.SyncStatusStore
 import java.time.Clock
 
 /**
@@ -56,6 +68,33 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val database = remember { PlatformDatabaseFactory.create(context) }
 
+            // Cloud sync wiring (see the cloud-sync plan) — constructed once at the composition
+            // root, same manual-DI pattern as everything else here (no Hilt, see CLAUDE.md).
+            val syncStatusStore = remember { SyncStatusStore(context = context) }
+            val firebaseAuthGate = remember { FirebaseAuthGate(auth = FirebaseAuth.getInstance()) }
+            val firebaseSyncClient = remember {
+                DefaultFirebaseSyncClient(
+                    firestore = FirebaseFirestore.getInstance(),
+                    storage = FirebaseStorage.getInstance(),
+                    documentDao = database.documentDao(),
+                    ledgerEntryDao = database.ledgerEntryDao(),
+                    syncStatusStore = syncStatusStore
+                )
+            }
+            val invoiceNumberAllocator = remember {
+                DefaultInvoiceNumberAllocator(
+                    onlineCounterSource = FirestoreOnlineCounterSource(FirebaseFirestore.getInstance()),
+                    documentDao = database.documentDao()
+                )
+            }
+            val firebaseRestoreClient = remember {
+                DefaultFirebaseRestoreClient(
+                    remoteSource = FirestoreRestoreSource(FirebaseFirestore.getInstance()),
+                    documentDao = database.documentDao(),
+                    ledgerEntryDao = database.ledgerEntryDao()
+                )
+            }
+
             // One-time seed bootstrap: populate customers from the fixture asset on first run.
             LaunchedEffect(Unit) {
                 if (database.customerDao().count() == 0) {
@@ -64,9 +103,39 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Sign in with the fixed business account, then - only on a device with no local
+            // documents yet, and only once ever - bulk-restore from the cloud (see
+            // FirebaseRestoreClient's doc comment). A no-op on the existing primary device: its
+            // Room already has data, so restoreAll() is never even attempted there.
+            //
+            // Bug fixed 2026-09-15: this used to check only the isInitialRestoreCompleted() flag,
+            // not actual local document count - so on ANY device's first launch with this feature
+            // (including an existing device with years of real local data), the flag started
+            // false and restore ran anyway, merging in whatever happened to be in the cloud.
+            // Caught by testing on a real device that already had local test data: a document
+            // that only existed on a different device (the emulator) showed up here too. Restore
+            // itself worked exactly as designed - only the trigger condition was wrong.
+            LaunchedEffect(Unit) {
+                val signedIn = firebaseAuthGate.ensureSignedIn(
+                    email = BuildConfig.FIREBASE_AUTH_EMAIL,
+                    password = BuildConfig.FIREBASE_AUTH_PASSWORD
+                )
+                val isNewDevice = database.documentDao().count() == 0
+                if (signedIn && isNewDevice && !syncStatusStore.isInitialRestoreCompleted()) {
+                    runCatching { firebaseRestoreClient.restoreAll(DEFAULT_ORG_ID) }
+                        .onSuccess { syncStatusStore.markInitialRestoreCompleted() }
+                }
+            }
+
             // Shared across InvoiceWorkspaceViewModel and DocumentDetailViewModel — stateless,
             // so one Context-bound instance is enough for both.
-            val invoicePdfRenderer = remember { DefaultInvoicePdfRenderer(context = context) }
+            val invoicePdfRenderer = remember {
+                DefaultInvoicePdfRenderer(
+                    context = context,
+                    syncClient = firebaseSyncClient,
+                    orgId = DEFAULT_ORG_ID
+                )
+            }
 
             val invoiceWorkspaceViewModel = remember {
                 InvoiceWorkspaceViewModel(
@@ -78,13 +147,17 @@ class MainActivity : ComponentActivity() {
                     ),
                     invoiceFinalizer = DefaultInvoiceFinalizer(
                         database = database,
-                        clock = Clock.systemDefaultZone()
+                        clock = Clock.systemDefaultZone(),
+                        numberAllocator = invoiceNumberAllocator,
+                        syncClient = firebaseSyncClient
                     ),
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }
 
-            val homeDataSource = remember { DefaultHomeDataSource(database = database) }
+            val homeDataSource = remember {
+                DefaultHomeDataSource(database = database, syncStatusStore = syncStatusStore)
+            }
 
             val homeViewModel = remember {
                 HomeViewModel(

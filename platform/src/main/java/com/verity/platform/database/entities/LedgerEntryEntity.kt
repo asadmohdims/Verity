@@ -27,5 +27,8 @@ data class LedgerEntryEntity(
 
     val occurredAt: Long,
 
-    val createdAt: Long
+    val createdAt: Long,
+
+    /** Same meaning and lifecycle as DocumentEntity.syncedToCloud — see that doc comment. */
+    val syncedToCloud: Boolean = false
 )

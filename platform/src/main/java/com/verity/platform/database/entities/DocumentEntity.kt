@@ -55,5 +55,13 @@ data class DocumentEntity(
      * platform/database/migrations/Migration1To2.kt) alongside a one-time backfill for rows
      * finalized before this column existed.
      */
-    val searchIndexText: String
+    val searchIndexText: String,
+
+    /**
+     * Flips to true once FirebaseSyncClient's push succeeds (see platform/sync/). False here is
+     * not HelloCredit's dead isSynced boolean: it's actually read by Home ("N pending"), and
+     * retry is real because it's delegated to Firestore's own persistent offline queue rather
+     * than reimplemented. Added in schema v3 — see Migration2To3.
+     */
+    val syncedToCloud: Boolean = false
 )

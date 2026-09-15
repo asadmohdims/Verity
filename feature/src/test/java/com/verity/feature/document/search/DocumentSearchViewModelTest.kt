@@ -4,6 +4,7 @@ import com.verity.core.document.model.DocumentType
 import com.verity.core.formatting.money.Money
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
+import com.verity.feature.home.SyncStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -42,6 +43,7 @@ class DocumentSearchViewModelTest {
 
     private class FakeHomeDataSource(private val documents: List<DocumentSummary>) : HomeDataSource {
         override suspend fun loadAllDocuments(): List<DocumentSummary> = documents
+        override suspend fun loadSyncStatus(): SyncStatus = SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)
     }
 
     private class FakeDocumentSearchDataSource : DocumentSearchDataSource {

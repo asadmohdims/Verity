@@ -9,7 +9,12 @@ import com.verity.feature.invoice.draft.InvoiceDraftReducer
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.platform.database.PlatformDatabaseFactory
 import com.verity.platform.database.entities.CustomerEntity
+import com.verity.platform.database.entities.DocumentEntity
+import com.verity.platform.database.entities.LedgerEntryEntity
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
+import com.verity.platform.sync.DefaultInvoiceNumberAllocator
+import com.verity.platform.sync.FirebaseSyncClient
+import java.io.File
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -72,6 +77,13 @@ object SampleDataSeeder {
         if (customers.isEmpty()) return 0
 
         val random = Random(seed = 42)
+        // Debug fixture data never touches the network - no-op sync (never pollutes a real
+        // Firebase project with fake demo invoices) and a numbering allocator whose online path
+        // always fails immediately, falling straight to the local sequence.
+        val numberAllocator = DefaultInvoiceNumberAllocator(
+            onlineCounterSource = { _, _ -> error("SampleDataSeeder never allocates online") },
+            documentDao = database.documentDao()
+        )
 
         repeat(count) { index ->
             val customer = customers[index % customers.size]
@@ -80,10 +92,19 @@ object SampleDataSeeder {
                 Instant.now().minus(random.nextLong(0, 60), ChronoUnit.DAYS),
                 ZoneOffset.UTC
             )
-            DefaultInvoiceFinalizer(database, clock).finalize(draft, customer.customerId)
+            DefaultInvoiceFinalizer(database, clock, numberAllocator, NoOpFirebaseSyncClient)
+                .finalize(draft, customer.customerId)
         }
 
         return count
+    }
+
+    /** See seed()'s comment above on why debug fixture data never actually reaches Firebase. */
+    private object NoOpFirebaseSyncClient : FirebaseSyncClient {
+        override fun pushDocument(document: DocumentEntity) = Unit
+        override fun pushLedgerEntry(entry: LedgerEntryEntity) = Unit
+        override fun pushPdf(orgId: String, documentNumber: String, file: File) = Unit
+        override suspend fun downloadPdf(orgId: String, documentNumber: String, destination: File) = false
     }
 
     private fun buildDraft(customer: CustomerEntity, random: Random): InvoiceDraftUiState {

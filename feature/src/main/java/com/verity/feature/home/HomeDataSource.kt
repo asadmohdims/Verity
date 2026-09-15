@@ -17,7 +17,21 @@ import java.time.LocalDate
  */
 interface HomeDataSource {
     suspend fun loadAllDocuments(): List<DocumentSummary>
+
+    /** Cloud sync status for the small Home indicator — see SyncStatus's doc comment. */
+    suspend fun loadSyncStatus(): SyncStatus
 }
+
+/**
+ * pendingCount is a plain count of local rows not yet mirrored to the cloud (documents +
+ * ledger entries combined) — read from a boolean column, not a separate outbox table, since
+ * Phase 1 cloud sync has no outbox (see FirebaseSyncClient). lastSyncedAtEpochMillis is null
+ * until the first successful push ever completes.
+ */
+data class SyncStatus(
+    val pendingCount: Int,
+    val lastSyncedAtEpochMillis: Long?
+)
 
 /**
  * Denormalized projection of a finalized document, just enough to render a Home dashboard row.
