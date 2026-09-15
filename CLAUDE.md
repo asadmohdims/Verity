@@ -25,14 +25,18 @@ number per document type (`INV-000001`/`CH-000001`, ...; see "Data & sync archit
 the document as a JSON snapshot of `InvoiceDocumentModel`, and — Invoice only, since a Challan
 isn't a billing event — a matching ledger entry, all in one transaction. Every finalized document
 gets a real PDF (see "Documents: search, PDF, and schema evolution" below), viewable in-app.
-Customer autocomplete works against seeded fixture data (25 customers), not a real Customer CRUD
-screen yet.
+Invoice-workspace customer autocomplete still reads `CustomerSeedLoader`'s original 25-customer
+fixture set at seed time, but the customers themselves are now real CRUD-managed rows (see below),
+not a closed fixture — a customer added or edited through the new Customers screens is real data
+the autocomplete picks up too, it's just that the *initial* seed population is still fixture-based.
 
 **Navigation & screens**: bottom nav (Home / Documents / Customers / Settings) plus a FAB for
 Create is built and merged to `main` — see "UX direction" below for what's built vs. still planned.
 Home shows a "This Month" invoiced-total card (Invoice only) and a Recent Documents list. Documents
-has a working List, Detail, and broad-box Search with a minimal read-only customer rollup.
-Customers and Settings are still placeholder screens.
+has a working List, Detail, and broad-box Search with a minimal read-only customer rollup. Customers
+(List/Detail/Add/Edit, including soft-deactivate) and Settings (theme picker, sync status, version,
+an inert Business Profile row) are now built too — see "Next up" below for what's genuinely
+verified vs. only JVM/Robolectric-tested so far.
 
 **Cloud/sync — Phase 1 built, and the core push path is now verified for real (2026-09-15).**
 Firebase (Firestore + Auth + Storage), not Supabase — see "Data & sync architecture" below for
@@ -62,8 +66,10 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
 - Challan→Invoice job-work linkage (Standalone vs. Invoice-Linked declaration, `DocumentLinkCreated`
   — see "Domain model" below) is designed but not built; only a standalone Challan can be finalized
   today.
-- Customer CRUD, a Settings theme picker, and a real Business Profile screen (to retire
-  `HardcodedSeller.kt`) aren't built.
+- A real Business Profile screen (to retire `HardcodedSeller.kt`) isn't built — the Settings
+  screen's Business Profile row ships visible-but-inert until it exists, deliberately, since no
+  design exists for that screen yet (see "Next up" below). Customer CRUD and the Settings theme
+  picker, by contrast, are now built — see "Next up".
 - Share/Print/Export (and the `FileProvider` it needs) isn't built — now top priority, see
   "Next up" above.
 - No real app icon — still the stock Android Studio default. See "Next up" above.
@@ -103,11 +109,20 @@ implied by "UX direction" below:
    (`android.print.PrintManager`), not a share-to-a-printing-app workaround. Needs a
    `FileProvider` — the PDF lives in app-private external files storage today (see "Documents:
    search, PDF, and schema evolution"), not shareable as a raw `file://` URI as-is.
-2. **Customers screen** (List/Detail/Add/Edit — real CRUD, replacing `CustomerSeedLoader` fixture
-   data) and **Settings screen** (Business Profile to retire `HardcodedSeller.kt`, theme picker to
-   make `VerityDarkColors` reachable) — both still blank placeholders, needed next.
+2. ~~Customers screen and Settings screen~~ — **built 2026-09-15** (branch
+   `feature/customers-and-settings-screens`, not yet merged to `main`). Customers List/Detail/
+   Add-Edit (including the soft-deactivate `CustomerDao` always documented but never implemented),
+   and Settings (System/Light/Dark theme picker via a new `ThemePreferenceStore`, a sync-status row
+   reusing Home's existing pending/synced logic, a version row, and a Business Profile row that
+   ships visible-but-inert — no design exists yet for that screen, deliberately deferred rather
+   than built undesigned). Real Business Profile screen (to retire `HardcodedSeller.kt`) remains
+   not built. 34 new tests (ViewModels + Robolectric screens + a real-Room `CustomerDao.deactivate`
+   test), full 137-test suite green, `compileDebugAndroidTestKotlin` clean. **Not yet on-device
+   verified** — per Principle 2 this isn't "done" until someone actually installs the APK and taps
+   through it; that step was deliberately left for the user rather than driving the emulator
+   unattended.
 3. **App icon** — real Verity branding before any store listing or install; currently the stock
-   Android Studio default. Backlog, not urgent relative to 1–2, but must land before going live.
+   Android Studio default. Backlog, not urgent, but must land before going live.
 
 **Explicitly deferred to Day 2** (confirmed 2026-09-15, not before this ships to the single
 current business): real per-device/per-user authentication so a *new* business could download the
@@ -405,23 +420,23 @@ shell + Home) and the Documents-List/Detail/Search half of Phase 2 are now built
   Support-mode, pushed, with a back arrow.
 - **New screens required**: Documents List and Document Detail are **built** (a real
   `document/{id}` route loading a persisted document by id via `DocumentDao.getById`, not just
-  `InvoicePreviewScreen`'s live in-memory draft). Still needed: Customers List; Customer Detail;
-  Add/Edit Customer (`CustomerDao.insert` with `OnConflictStrategy.REPLACE` already covers create
-  *and* edit-by-id; still needs a real single-row `deactivate(customerId)` for the
-  "soft-deactivated, not deleted" rule `CustomerDao`'s own doc comment already states but never
-  implements); Business Profile (retires `HardcodedSeller.kt`); and a theme picker in Settings —
-  `MainActivity` currently hardcodes `val isDarkTheme = false`, so `VerityDarkColors` (a complete,
-  WCAG-checked palette) has never been reachable by a user.
+  `InvoicePreviewScreen`'s live in-memory draft). Customers List, Customer Detail, and Add/Edit
+  Customer (including `deactivate(customerId)` for the "soft-deactivated, not deleted" rule
+  `CustomerDao`'s doc comment always stated) are now **built** too (2026-09-15, see "Next up"), as
+  is a theme picker in Settings (`ThemePreferenceStore`, finally making `VerityDarkColors` reachable
+  by a user). Still needed: a real Business Profile screen (retires `HardcodedSeller.kt`) — the
+  Settings row for it ships visible-but-inert until that screen has its own design pass.
 - **Build order** — four phases, each gated by the one before it, not by a calendar:
   1. **Foundation — built.** Nav shell + Home, plus the three Critical fixes from the Blueprint's
      audit (line-item validation, Undo on delete, the two light-mode WCAG contrast failures on
      `text.muted`/`borders.subtle`).
-  2. **Complete the record — partially built.** Documents List/Detail/Search are done; Customer
-     CRUD and the remaining High-severity audit fixes (the `accent` color decision — still an
-     unresolved placeholder, see `VerityLightColors`/`VerityDarkColors` — light-mode's
-     `borders.strong == borders.subtle` bug, real screen transitions, auto-focus/IME chaining,
-     Document Type control affordance) are not.
-  3. **Make it yours — not started.** Business Profile, theme wiring, remaining Medium fixes.
+  2. **Complete the record — built.** Documents List/Detail/Search and Customer CRUD are both done.
+     Remaining High-severity audit fixes (the `accent` color decision — still an unresolved
+     placeholder, see `VerityLightColors`/`VerityDarkColors` — real screen transitions,
+     auto-focus/IME chaining, Document Type control affordance) are not; light-mode's
+     `borders.strong == borders.subtle` bug was already fixed before this file's 2026-09-15 review.
+  3. **Make it yours — partially built.** Theme wiring is done (Settings' theme picker); Business
+     Profile and remaining Medium fixes are not.
   4. **Close the loop — not started.** Share/PDF export, payment recording — the feature that
      finally makes Home's hero metric a real Outstanding/Overdue card.
 
