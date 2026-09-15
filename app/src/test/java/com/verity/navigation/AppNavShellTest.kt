@@ -21,8 +21,13 @@ import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.money.Money
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
+import com.verity.feature.customer.rollup.CustomerRollup
+import com.verity.feature.customer.rollup.CustomerRollupDataSource
 import com.verity.feature.document.DocumentDetailDataSource
 import com.verity.feature.document.DocumentsListViewModel
+import com.verity.feature.document.search.DocumentSearchDataSource
+import com.verity.feature.document.search.DocumentSearchResults
+import com.verity.feature.document.search.DocumentSearchViewModel
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
 import com.verity.feature.home.HomeViewModel
@@ -79,6 +84,15 @@ class AppNavShellTest {
 
     private class NoopDocumentDetailDataSource : DocumentDetailDataSource {
         override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? = null
+    }
+
+    private class NoopDocumentSearchDataSource : DocumentSearchDataSource {
+        override suspend fun search(query: String): DocumentSearchResults =
+            DocumentSearchResults(customers = emptyList(), documents = emptyList())
+    }
+
+    private class NoopCustomerRollupDataSource : CustomerRollupDataSource {
+        override suspend fun loadRollup(customerId: String): CustomerRollup? = null
     }
 
     private fun sampleParty() = DocumentParty(
@@ -139,6 +153,10 @@ class AppNavShellTest {
             invoiceFinalizer = invoiceFinalizer,
             invoicePdfRenderer = invoicePdfRenderer
         )
+        val documentSearchViewModel = DocumentSearchViewModel(
+            homeDataSource = homeDataSource,
+            searchDataSource = NoopDocumentSearchDataSource()
+        )
         // Deliberately NOT calling onCreateInvoice() here — AppNavShell's FAB/Create actions are
         // responsible for that (see the FAB test below). Pre-creating a draft in test setup would
         // hide a real regression: InvoiceWorkspaceRoute's own empty-state prompt showing up
@@ -153,6 +171,8 @@ class AppNavShellTest {
                     invoiceWorkspaceViewModel = workspaceViewModel,
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = NoopDocumentDetailDataSource(),
+                    documentSearchViewModel = documentSearchViewModel,
+                    customerRollupDataSource = NoopCustomerRollupDataSource(),
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }
@@ -337,6 +357,10 @@ class AppNavShellTest {
             override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
                 if (documentId == "doc-1") document else null
         }
+        val documentSearchViewModel = DocumentSearchViewModel(
+            homeDataSource = homeDataSource,
+            searchDataSource = NoopDocumentSearchDataSource()
+        )
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
@@ -347,6 +371,8 @@ class AppNavShellTest {
                     invoiceWorkspaceViewModel = workspaceViewModel,
                     documentsListViewModel = documentsListViewModel,
                     documentDetailDataSource = documentDetailDataSource,
+                    documentSearchViewModel = documentSearchViewModel,
+                    customerRollupDataSource = NoopCustomerRollupDataSource(),
                     invoicePdfRenderer = FakeInvoicePdfRenderer()
                 )
             }
