@@ -64,7 +64,9 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
   today.
 - Customer CRUD, a Settings theme picker, and a real Business Profile screen (to retire
   `HardcodedSeller.kt`) aren't built.
-- Share/Print/Export (and the `FileProvider` it needs) isn't built.
+- Share/Print/Export (and the `FileProvider` it needs) isn't built — now top priority, see
+  "Next up" above.
+- No real app icon — still the stock Android Studio default. See "Next up" above.
 - Several `platform` androidTest suites (real Room — `DefaultInvoiceFinalizerTest`,
   `Migration1To2Test`, `DefaultDocumentSearchDataSourceTest`) compile and pass in JVM/Robolectric
   form but need a connected device/emulator for `connectedDebugAndroidTest` itself, which hasn't
@@ -72,8 +74,8 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
 - No on-device pixel-diff pass of the rendered PDF against its approved mockup — green tests don't
   prove a rendered page matches a design; see "Testing standards" below.
 - Cloud sync's real Firebase project setup is **done** (2026-09-15) — project created, Android app
-  added, `app/google-services.json` in place (not committed either way yet, that's the user's
-  call — Firebase's own guidance is that the file is safe to commit, no secrets in it), the one
+  added, `app/google-services.json` in place and now gitignored — decided 2026-09-15 not to commit
+  it, despite Firebase's own guidance that the file is safe to commit (no secrets in it) — the one
   fixed business Auth account created, `org_id` claim set via `set_org_claim.js`, credentials in
   `local.properties`, rules deployed. The online-finalize path is verified for real — see the
   Status paragraph above. **Still to run**: finalize offline then reconnect and confirm the
@@ -88,6 +90,33 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
   currently have infrastructure for, and the third tier (regenerate) needs Robolectric or a real
   device either way. Skipped rather than forced into an awkward shape — worth returning to if/when
   `platform` grows a Robolectric setup for something else.
+
+## Next up (prioritized 2026-09-15)
+
+Decided in this session's review, reflecting actual priority now rather than the phase order
+implied by "UX direction" below:
+
+1. **PDF open/share/print — crucial.** Nothing lets a finalized invoice leave the app today (see
+   the Share/Print/Export gap below). Needs, at minimum: open the generated PDF in the device's
+   own PDF viewer, share it via any installed app (WhatsApp explicitly named as the real-world
+   delivery channel), and print directly via Android's native print framework
+   (`android.print.PrintManager`), not a share-to-a-printing-app workaround. Needs a
+   `FileProvider` — the PDF lives in app-private external files storage today (see "Documents:
+   search, PDF, and schema evolution"), not shareable as a raw `file://` URI as-is.
+2. **Customers screen** (List/Detail/Add/Edit — real CRUD, replacing `CustomerSeedLoader` fixture
+   data) and **Settings screen** (Business Profile to retire `HardcodedSeller.kt`, theme picker to
+   make `VerityDarkColors` reachable) — both still blank placeholders, needed next.
+3. **App icon** — real Verity branding before any store listing or install; currently the stock
+   Android Studio default. Backlog, not urgent relative to 1–2, but must land before going live.
+
+**Explicitly deferred to Day 2** (confirmed 2026-09-15, not before this ships to the single
+current business): real per-device/per-user authentication so a *new* business could download the
+app and use it standalone under their own `org_id`, with Verity managing that provisioning. Today
+there's one shared Firebase Auth account signed in silently on every install — fine for one
+business on known devices, not fine for self-serve multi-tenant distribution. Same deferral
+already recorded under "Commercialization scope check" below (per-employee accounts/roles),
+reconfirmed here to also cover the *provisioning* side — how a brand-new org's device would get
+an `org_id` and credentials in the first place — which that section didn't originally scope.
 
 **Design references** (both living documents — re-read them rather than trusting a stale summary
 here): the GST invoice PDF design ("Familiar Grid, Modernized" — navy+brass, bordered-grid layout)

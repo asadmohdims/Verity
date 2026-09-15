@@ -9,6 +9,9 @@ build/
 # --- Local configuration ---
 local.properties
 
+# --- Firebase config (per-developer/device, not a secret but not meant to be committed here) ---
+/app/google-services.json
+
 # --- Android build outputs ---
 /captures
 .externalNativeBuild/
