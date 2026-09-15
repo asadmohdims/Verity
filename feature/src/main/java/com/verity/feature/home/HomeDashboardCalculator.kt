@@ -1,5 +1,6 @@
 package com.verity.feature.home
 
+import com.verity.core.document.model.DocumentType
 import com.verity.core.formatting.money.Money
 import java.time.LocalDate
 import java.time.YearMonth
@@ -27,8 +28,10 @@ private val monthLabelFormatter: DateTimeFormatter =
  *
  * "This month" is scoped to the calendar month of [referenceDate], compared against each
  * document's issueDate (the business date, not finalizedAt) — matching what a user means by
- * "this month's invoicing". "Recent" is ordered by finalizedAtEpochMillis, since that's the one
- * field that can never be backdated.
+ * "this month's invoicing", and counts Invoice documents only: a Challan is a delivery document,
+ * not a sale, so it shouldn't inflate an "invoiced total". "Recent" is ordered by
+ * finalizedAtEpochMillis, since that's the one field that can never be backdated, and does
+ * include Challans — it's just a feed of what was finalized, not a revenue figure.
  */
 object HomeDashboardCalculator {
 
@@ -41,7 +44,9 @@ object HomeDashboardCalculator {
     ): HomeDashboardData {
         val referenceMonth = YearMonth.from(referenceDate)
 
-        val thisMonthDocuments = documents.filter { YearMonth.from(it.issueDate) == referenceMonth }
+        val thisMonthDocuments = documents.filter {
+            YearMonth.from(it.issueDate) == referenceMonth && it.documentType == DocumentType.INVOICE
+        }
         val thisMonthTotalPaise = thisMonthDocuments.sumOf { it.grandTotal.raw }
 
         val recentDocuments = documents

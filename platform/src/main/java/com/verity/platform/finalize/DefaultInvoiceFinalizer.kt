@@ -22,9 +22,11 @@ const val DEFAULT_ORG_ID = "default-org"
 /**
  * DefaultInvoiceFinalizer
  *
- * Assigns the next sequence number, projects the draft into an InvoiceDocumentModel via the
- * existing (feature-owned) DraftToInvoiceDocument, and persists both the document and its
- * ledger entry in one transaction.
+ * Assigns the next sequence number (independently per document type — "INV-" / "CH-" each have
+ * their own count), projects the draft into an InvoiceDocumentModel via the existing
+ * (feature-owned) DraftToInvoiceDocument, and persists the document — plus a ledger entry, for
+ * Invoice only, since a Challan is a delivery document rather than a billing event — in one
+ * transaction.
  *
  * Numbering has no collision detection or reconciliation by design — see CLAUDE.md's Invoice
  * numbering decision. The sequence read happens inside the transaction purely to avoid a
@@ -39,13 +41,18 @@ class DefaultInvoiceFinalizer(
     private val json = Json { ignoreUnknownKeys = false }
 
     override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel {
-        require(draft.documentType == DraftDocumentType.INVOICE) {
-            "Only Invoice finalize is supported in this milestone"
-        }
-
         return database.withTransaction {
-            val nextSequence = (database.documentDao().getMaxSequenceNumber(DEFAULT_ORG_ID, "INVOICE") ?: 0L) + 1
-            val documentNumber = "INV-" + nextSequence.toString().padStart(6, '0')
+            val documentTypeColumn = when (draft.documentType) {
+                DraftDocumentType.INVOICE -> "INVOICE"
+                DraftDocumentType.CHALLAN -> "CHALLAN"
+            }
+            val numberPrefix = when (draft.documentType) {
+                DraftDocumentType.INVOICE -> "INV-"
+                DraftDocumentType.CHALLAN -> "CH-"
+            }
+
+            val nextSequence = (database.documentDao().getMaxSequenceNumber(DEFAULT_ORG_ID, documentTypeColumn) ?: 0L) + 1
+            val documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
 
             val document = DraftToInvoiceDocument.project(
                 draft = draft,
@@ -61,7 +68,7 @@ class DefaultInvoiceFinalizer(
                 DocumentEntity(
                     documentId = documentId,
                     orgId = DEFAULT_ORG_ID,
-                    documentType = "INVOICE",
+                    documentType = documentTypeColumn,
                     sequenceNumber = nextSequence,
                     documentNumber = documentNumber,
                     customerId = customerId,
@@ -75,17 +82,21 @@ class DefaultInvoiceFinalizer(
                 )
             )
 
-            database.ledgerEntryDao().insert(
-                LedgerEntryEntity(
-                    entryId = UUID.randomUUID().toString(),
-                    orgId = DEFAULT_ORG_ID,
-                    customerId = customerId,
-                    documentId = documentId,
-                    amountPaise = document.totals.grandTotalPaise,
-                    occurredAt = now,
-                    createdAt = now
+            // Only Invoice finalization is a billing event - a Challan is a delivery document,
+            // not a receivable, so it doesn't get a ledger entry.
+            if (draft.documentType == DraftDocumentType.INVOICE) {
+                database.ledgerEntryDao().insert(
+                    LedgerEntryEntity(
+                        entryId = UUID.randomUUID().toString(),
+                        orgId = DEFAULT_ORG_ID,
+                        customerId = customerId,
+                        documentId = documentId,
+                        amountPaise = document.totals.grandTotalPaise,
+                        occurredAt = now,
+                        createdAt = now
+                    )
                 )
-            )
+            }
 
             document
         }

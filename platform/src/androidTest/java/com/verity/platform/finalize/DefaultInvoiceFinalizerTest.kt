@@ -25,9 +25,10 @@ import java.util.UUID
 /**
  * DefaultInvoiceFinalizerTest
  *
- * Verifies sequence numbering, persisted payload round-tripping, and the ledger entry written
- * alongside finalization — against a real Room instance, not mocks (same pattern the deleted
- * EventDaoTest used for the old event store).
+ * Verifies sequence numbering (independently per document type), persisted payload
+ * round-tripping, and the ledger entry written alongside Invoice finalization (but not Challan,
+ * which isn't a billing event) — against a real Room instance, not mocks (same pattern the
+ * deleted EventDaoTest used for the old event store).
  */
 @RunWith(AndroidJUnit4::class)
 class DefaultInvoiceFinalizerTest {
@@ -87,6 +88,38 @@ class DefaultInvoiceFinalizerTest {
 
         val balance = database.ledgerEntryDao().getBalanceForCustomer(DEFAULT_ORG_ID, customerId)
         assertEquals(first.totals.grandTotalPaise + second.totals.grandTotalPaise, balance)
+    }
+
+    @Test
+    fun finalize_challan_gets_its_own_ch_prefixed_number_and_no_ledger_entry() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        val document = finalizer.finalize(testDraft().copy(documentType = DraftDocumentType.CHALLAN), customerId)
+
+        assertEquals("CH-000001", document.identity.documentNumber)
+
+        val rows = database.documentDao().getAll()
+        assertEquals(1, rows.size)
+        assertEquals("CHALLAN", rows.single().documentType)
+
+        val balance = database.ledgerEntryDao().getBalanceForCustomer(DEFAULT_ORG_ID, customerId)
+        assertEquals(null, balance)
+    }
+
+    @Test
+    fun invoice_and_challan_sequences_are_independent() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        val draft = testDraft()
+
+        val firstInvoice = finalizer.finalize(draft, customerId)
+        val firstChallan = finalizer.finalize(draft.copy(documentType = DraftDocumentType.CHALLAN), customerId)
+        val secondInvoice = finalizer.finalize(draft, customerId)
+
+        assertEquals("INV-000001", firstInvoice.identity.documentNumber)
+        assertEquals("CH-000001", firstChallan.identity.documentNumber)
+        assertEquals("INV-000002", secondInvoice.identity.documentNumber)
+
+        val balance = database.ledgerEntryDao().getBalanceForCustomer(DEFAULT_ORG_ID, customerId)
+        assertEquals(firstInvoice.totals.grandTotalPaise + secondInvoice.totals.grandTotalPaise, balance)
     }
 
     private fun testDraft(): InvoiceDraftUiState =

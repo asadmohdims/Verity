@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.DocumentTaxMode
+import com.verity.core.document.model.DocumentType
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.date.DocumentDate
 import com.verity.core.formatting.money.Money
@@ -169,16 +170,18 @@ fun InvoicePreviewScreen(
                     )
                 }
 
-                VeritySpacer(size = VeritySpace.Small)
+                val taxation = document.taxation
+                if (taxation != null) {
+                    VeritySpacer(size = VeritySpace.Small)
 
-                SummaryRow(
-                    label = when (document.taxation?.mode) {
-                        DocumentTaxMode.INTRA_STATE -> "CGST + SGST"
-                        DocumentTaxMode.INTER_STATE -> "IGST"
-                        null -> "Tax"
-                    },
-                    value = Money.ofPaise(document.totals.taxTotalPaise).format()
-                )
+                    SummaryRow(
+                        label = when (taxation.mode) {
+                            DocumentTaxMode.INTRA_STATE -> "CGST + SGST"
+                            DocumentTaxMode.INTER_STATE -> "IGST"
+                        },
+                        value = Money.ofPaise(document.totals.taxTotalPaise).format()
+                    )
+                }
 
                 VeritySpacer(size = VeritySpace.Medium)
                 VerityDivider(strength = VerityDividerStrength.Subtle)
@@ -200,8 +203,12 @@ fun InvoicePreviewScreen(
         if (onFinalize != null) {
             VeritySpacer(size = VeritySpace.Medium)
 
+            val documentNoun = when (document.identity.documentType) {
+                DocumentType.INVOICE -> "Invoice"
+                DocumentType.CHALLAN -> "Challan"
+            }
             VerityButton(
-                label = if (isFinalizing) "Finalizing…" else "Finalize Invoice",
+                label = if (isFinalizing) "Finalizing…" else "Finalize $documentNoun",
                 onClick = onFinalize,
                 role = VerityButtonRole.Primary,
                 state = if (isFinalizing) VerityButtonState.Disabled else VerityButtonState.Enabled,

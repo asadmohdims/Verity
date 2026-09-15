@@ -8,6 +8,8 @@ import com.verity.core.document.model.DocumentFooter
 import com.verity.core.document.model.DocumentIdentity
 import com.verity.core.document.model.DocumentParties
 import com.verity.core.document.model.DocumentParty
+import com.verity.core.document.model.DocumentTaxation
+import com.verity.core.document.model.DocumentTaxMode
 import com.verity.core.document.model.DocumentTotals
 import com.verity.core.document.model.DocumentType
 import com.verity.core.document.model.HARDCODED_SELLER
@@ -26,7 +28,7 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w360dp-h800dp")
-class InvoiceFinalizedScreenTest {
+class InvoicePreviewScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -39,7 +41,10 @@ class InvoiceFinalizedScreenTest {
         stateCode = "27"
     )
 
-    private fun sampleDocument(documentType: DocumentType = DocumentType.INVOICE) = InvoiceDocumentModel(
+    private fun sampleDocument(
+        documentType: DocumentType,
+        taxation: DocumentTaxation?
+    ) = InvoiceDocumentModel(
         identity = DocumentIdentity(
             documentType = documentType,
             documentNumber = "INV-000043",
@@ -54,55 +59,68 @@ class InvoiceFinalizedScreenTest {
         ),
         lineItems = emptyList(),
         logistics = null,
-        taxation = null,
+        taxation = taxation,
         totals = DocumentTotals(
             itemsSubtotalPaise = 595000,
             freightPaise = 0,
-            taxTotalPaise = 107100,
-            grandTotalPaise = 702100
+            taxTotalPaise = if (taxation != null) 107100 else 0,
+            grandTotalPaise = if (taxation != null) 702100 else 595000
         ),
         footer = DocumentFooter(declarationText = "", notes = null)
     )
 
     @Test
-    fun `shows the title and document number with grand total`() {
+    fun `shows Finalize Invoice for an invoice document with a tax row`() {
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = {}, onViewPdf = {})
-            }
-        }
-
-        composeTestRule.onNodeWithText("Invoice Finalized").assertIsDisplayed()
-        composeTestRule.onNodeWithText("INV-000043 · ₹7,021").assertIsDisplayed()
-    }
-
-    @Test
-    fun `shows Challan Finalized for a challan document`() {
-        composeTestRule.setContent {
-            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceFinalizedScreen(
-                    document = sampleDocument(documentType = DocumentType.CHALLAN),
-                    onViewDocument = {},
-                    onViewPdf = {}
+                InvoicePreviewScreen(
+                    document = sampleDocument(
+                        documentType = DocumentType.INVOICE,
+                        taxation = DocumentTaxation(mode = DocumentTaxMode.INTRA_STATE, cgst = null, sgst = null, igst = null)
+                    ),
+                    onBack = {},
+                    onFinalize = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Challan Finalized").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Finalize Invoice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("CGST + SGST").assertIsDisplayed()
     }
 
     @Test
-    fun `tapping View Document invokes the callback`() {
+    fun `shows Finalize Challan and no tax row for a challan document`() {
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                InvoicePreviewScreen(
+                    document = sampleDocument(documentType = DocumentType.CHALLAN, taxation = null),
+                    onBack = {},
+                    onFinalize = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Finalize Challan").assertIsDisplayed()
+        composeTestRule.onNodeWithText("CGST + SGST").assertDoesNotExist()
+        composeTestRule.onNodeWithText("IGST").assertDoesNotExist()
+    }
+
+    @Test
+    fun `tapping Finalize invokes the callback`() {
         var tapped = false
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceFinalizedScreen(document = sampleDocument(), onViewDocument = { tapped = true }, onViewPdf = {})
+                InvoicePreviewScreen(
+                    document = sampleDocument(documentType = DocumentType.INVOICE, taxation = null),
+                    onBack = {},
+                    onFinalize = { tapped = true }
+                )
             }
         }
 
-        composeTestRule.onNodeWithText("View Document").performClick()
+        composeTestRule.onNodeWithText("Finalize Invoice").performClick()
 
-        assertTrue("Expected onViewDocument to be invoked", tapped)
+        assertTrue("Expected onFinalize to be invoked", tapped)
     }
 }

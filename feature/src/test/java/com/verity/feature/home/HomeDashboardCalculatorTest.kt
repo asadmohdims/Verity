@@ -88,6 +88,34 @@ class HomeDashboardCalculatorTest {
     }
 
     @Test
+    fun `challans in the reference month are excluded from this month's total`() {
+        val invoice = summary(
+            documentId = "1",
+            documentType = DocumentType.INVOICE,
+            issueDate = LocalDate.of(2026, 9, 1),
+            grandTotalRupees = 500,
+            finalizedAtEpochMillis = 1
+        )
+        val challan = summary(
+            documentId = "2",
+            documentType = DocumentType.CHALLAN,
+            issueDate = LocalDate.of(2026, 9, 2),
+            grandTotalRupees = 300,
+            finalizedAtEpochMillis = 2
+        )
+
+        val dashboard = HomeDashboardCalculator.buildDashboard(
+            documents = listOf(invoice, challan),
+            referenceDate = september15
+        )
+
+        assertEquals(Money.ofRupees(500), dashboard.thisMonthTotal)
+        assertEquals(1, dashboard.thisMonthDocumentCount)
+        // The challan still shows up in "Recent" - it's a feed of what was finalized, not revenue.
+        assertEquals(listOf("2", "1"), dashboard.recentDocuments.map { it.documentId })
+    }
+
+    @Test
     fun `recent documents are ordered by finalizedAt descending, not issueDate`() {
         val finalizedFirst = summary(
             documentId = "old",
