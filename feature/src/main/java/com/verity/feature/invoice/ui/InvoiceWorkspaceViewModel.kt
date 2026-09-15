@@ -26,6 +26,8 @@ import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.referencelist.ReferenceListDataSource
+import com.verity.feature.referencelist.ReferenceListKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,11 +56,50 @@ class InvoiceWorkspaceViewModel(
     private val draftStore: InvoiceDraftStore,
     private val customerAutocompleteDataSource: CustomerAutocompleteDataSource,
     private val invoiceFinalizer: InvoiceFinalizer,
-    private val invoicePdfRenderer: InvoicePdfRenderer
+    private val invoicePdfRenderer: InvoicePdfRenderer,
+    private val referenceListDataSource: ReferenceListDataSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
     val uiState: StateFlow<InvoiceDraftUiState> = _uiState.asStateFlow()
+
+    // Transporter Name / HSN Code / Unit suggestions (Settings-managed reference lists — see
+    // ReferenceListDataSource). Loaded once, up front: all three lists are small (a business's
+    // own curated values), so there's no need for the per-keystroke query round trip Customer
+    // autocomplete uses — the Screen filters this already-loaded list in memory as the user types.
+    private val _transporterNameSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val transporterNameSuggestions: StateFlow<List<String>> = _transporterNameSuggestions.asStateFlow()
+
+    private val _hsnCodeSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val hsnCodeSuggestions: StateFlow<List<String>> = _hsnCodeSuggestions.asStateFlow()
+
+    private val _unitSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val unitSuggestions: StateFlow<List<String>> = _unitSuggestions.asStateFlow()
+
+    init {
+        refreshReferenceListSuggestions()
+    }
+
+    /**
+     * Re-loads all three suggestion lists. Also called from onCreateInvoice() — this ViewModel
+     * is tab-persistent (constructed once at the composition root, not per-navigation), so a
+     * value added in Settings after launch would otherwise never show up here until app restart;
+     * a fresh invoice is the natural moment to catch up.
+     */
+    private fun refreshReferenceListSuggestions() {
+        viewModelScope.launch {
+            _transporterNameSuggestions.value =
+                referenceListDataSource.getAll(ReferenceListKind.TRANSPORTER_NAME).map { it.value }
+        }
+        viewModelScope.launch {
+            _hsnCodeSuggestions.value =
+                referenceListDataSource.getAll(ReferenceListKind.HSN_CODE).map { it.value }
+        }
+        viewModelScope.launch {
+            _unitSuggestions.value =
+                referenceListDataSource.getAll(ReferenceListKind.UNIT).map { it.value }
+        }
+    }
 
     private val _hasActiveDraft = MutableStateFlow(false)
     val hasActiveDraft: StateFlow<Boolean> = _hasActiveDraft.asStateFlow()
@@ -144,7 +185,7 @@ class InvoiceWorkspaceViewModel(
 
     val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
 
-    fun onCreateInvoice() {
+    fun onCreateInvoice(prefillBilledTo: DraftAddress? = null) {
         // Clear whatever the previous invoice left behind: its draft data (deferred here from
         // finalize, not reset there - see onFinalizeInvoice) and its finalize result, so this
         // is a genuinely fresh draft and the next Preview visit doesn't navigate straight to
@@ -152,7 +193,15 @@ class InvoiceWorkspaceViewModel(
         draftStore.reset()
         _finalizedDocument.value = null
         _hasActiveDraft.value = true
+
+        // "New Invoice" from a Customer Detail screen arrives with the customer already known -
+        // prefill billed-to the same way a manual autocomplete pick does (shipped-to already
+        // defaults to billed-to unless overridden, so no separate call is needed for it).
+        if (prefillBilledTo != null) {
+            draftStore.setBilledTo(prefillBilledTo)
+        }
         _uiState.value = draftStore.currentDraft
+        refreshReferenceListSuggestions()
 
         _chromeSpec.value = WorkspaceChromeSpec(
             title = "Invoice",

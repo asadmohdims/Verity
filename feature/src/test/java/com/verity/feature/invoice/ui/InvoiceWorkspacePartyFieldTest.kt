@@ -16,6 +16,9 @@ import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
+import com.verity.feature.referencelist.ReferenceListDataSource
+import com.verity.feature.referencelist.ReferenceListItem
+import com.verity.feature.referencelist.ReferenceListKind
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,12 +70,19 @@ class InvoiceWorkspacePartyFieldTest {
         }
     }
 
+    private class NoopReferenceListDataSource : ReferenceListDataSource {
+        override suspend fun getAll(kind: ReferenceListKind): List<ReferenceListItem> = emptyList()
+        override suspend fun add(kind: ReferenceListKind, value: String) {}
+        override suspend fun delete(kind: ReferenceListKind, id: String) {}
+    }
+
     private fun buildViewModel(): InvoiceWorkspaceViewModel {
         val viewModel = InvoiceWorkspaceViewModel(
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = FakeCustomerAutocompleteDataSource(listOf(bhargavaIndustries)),
             invoiceFinalizer = NoopInvoiceFinalizer(),
-            invoicePdfRenderer = NoopInvoicePdfRenderer()
+            invoicePdfRenderer = NoopInvoicePdfRenderer(),
+            referenceListDataSource = NoopReferenceListDataSource()
         )
         viewModel.onCreateInvoice()
         return viewModel

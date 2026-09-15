@@ -13,6 +13,13 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val syncStatusLabel: String? = null,
+    /**
+     * True once every local write has reached the cloud mirror (pendingCount == 0 and at least
+     * one sync has actually run) — distinguishes the "Synced" success state (checkmark, matching
+     * Settings.dc.html's `.settingsrow__val.ok`) from "N pending" or "never synced", neither of
+     * which the design gives its own treatment.
+     */
+    val isSynced: Boolean = false,
     val appVersionLabel: String = ""
 )
 
@@ -44,7 +51,10 @@ class SettingsViewModel(
     fun refreshSyncStatus() {
         viewModelScope.launch {
             val status = homeDataSource.loadSyncStatus()
-            _uiState.value = _uiState.value.copy(syncStatusLabel = syncStatusText(status))
+            _uiState.value = _uiState.value.copy(
+                syncStatusLabel = syncStatusText(status),
+                isSynced = status.pendingCount == 0 && status.lastSyncedAtEpochMillis != null
+            )
         }
     }
 

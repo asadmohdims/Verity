@@ -40,6 +40,9 @@ import com.verity.feature.home.HomeViewModel
 import com.verity.feature.home.SyncStatus
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.referencelist.ReferenceListDataSource
+import com.verity.feature.referencelist.ReferenceListItem
+import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
@@ -80,6 +83,12 @@ class AppNavShellTest {
     private class NoopCustomerAutocompleteDataSource : CustomerAutocompleteDataSource {
         override suspend fun recentCustomers(limit: Int): List<CustomerAutocompleteItem> = emptyList()
         override suspend fun searchCustomers(query: String, limit: Int): List<CustomerAutocompleteItem> = emptyList()
+    }
+
+    private class NoopReferenceListDataSource : ReferenceListDataSource {
+        override suspend fun getAll(kind: ReferenceListKind): List<ReferenceListItem> = emptyList()
+        override suspend fun add(kind: ReferenceListKind, value: String) {}
+        override suspend fun delete(kind: ReferenceListKind, id: String) {}
     }
 
     private class NoopInvoiceFinalizer : InvoiceFinalizer {
@@ -178,7 +187,8 @@ class AppNavShellTest {
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = invoiceFinalizer,
-            invoicePdfRenderer = invoicePdfRenderer
+            invoicePdfRenderer = invoicePdfRenderer,
+            referenceListDataSource = NoopReferenceListDataSource()
         )
         val documentSearchViewModel = DocumentSearchViewModel(
             homeDataSource = homeDataSource,
@@ -209,7 +219,8 @@ class AppNavShellTest {
                     customerEditDataSource = NoopCustomerEditDataSource(),
                     customersListViewModel = customersListViewModel,
                     settingsViewModel = settingsViewModel,
-                    invoicePdfRenderer = invoicePdfRenderer
+                    invoicePdfRenderer = invoicePdfRenderer,
+                    referenceListDataSource = NoopReferenceListDataSource()
                 )
             }
         }
@@ -388,7 +399,8 @@ class AppNavShellTest {
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = NoopInvoiceFinalizer(),
-            invoicePdfRenderer = NoopInvoicePdfRenderer()
+            invoicePdfRenderer = NoopInvoicePdfRenderer(),
+            referenceListDataSource = NoopReferenceListDataSource()
         )
         val documentDetailDataSource = object : DocumentDetailDataSource {
             override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
@@ -419,7 +431,8 @@ class AppNavShellTest {
                     customerEditDataSource = NoopCustomerEditDataSource(),
                     customersListViewModel = customersListViewModel,
                     settingsViewModel = settingsViewModel,
-                    invoicePdfRenderer = FakeInvoicePdfRenderer()
+                    invoicePdfRenderer = FakeInvoicePdfRenderer(),
+                    referenceListDataSource = NoopReferenceListDataSource()
                 )
             }
         }

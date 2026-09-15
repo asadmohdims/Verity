@@ -5,9 +5,11 @@ import androidx.room.RoomDatabase
 import com.verity.platform.database.dao.CustomerDao
 import com.verity.platform.database.dao.DocumentDao
 import com.verity.platform.database.dao.LedgerEntryDao
+import com.verity.platform.database.dao.ReferenceListDao
 import com.verity.platform.database.entities.CustomerEntity
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
+import com.verity.platform.database.entities.ReferenceListEntity
 
 /**
  * PlatformDatabase
@@ -23,14 +25,18 @@ import com.verity.platform.database.entities.LedgerEntryEntity
  *
  * v3 (2026-09-15) adds syncedToCloud to documents/ledger_entries for cloud sync — see
  * Migration2To3 and CLAUDE.md's Data & sync architecture section.
+ *
+ * v4 (2026-09-15) adds reference_list_items, backing the manually-curated Transporter Name / HSN
+ * Code lists — see Migration3To4 and ReferenceListEntity.
  */
 @Database(
     entities = [
         CustomerEntity::class,
         DocumentEntity::class,
-        LedgerEntryEntity::class
+        LedgerEntryEntity::class,
+        ReferenceListEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class PlatformDatabase : RoomDatabase() {
@@ -40,4 +46,6 @@ abstract class PlatformDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
 
     abstract fun ledgerEntryDao(): LedgerEntryDao
+
+    abstract fun referenceListDao(): ReferenceListDao
 }

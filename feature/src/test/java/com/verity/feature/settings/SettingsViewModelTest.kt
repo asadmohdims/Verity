@@ -87,6 +87,33 @@ class SettingsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("3 pending", viewModel.uiState.value.syncStatusLabel)
+        assertEquals(false, viewModel.uiState.value.isSynced)
+    }
+
+    @Test
+    fun `isSynced is true once every write has reached the cloud mirror`() = runTest(dispatcher) {
+        val viewModel = SettingsViewModel(
+            themeSettingsDataSource = FakeThemeSettingsDataSource(),
+            homeDataSource = FakeHomeDataSource(
+                SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = System.currentTimeMillis())
+            ),
+            appVersionLabel = "1.0"
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.isSynced)
+    }
+
+    @Test
+    fun `isSynced is false when sync has never run`() = runTest(dispatcher) {
+        val viewModel = SettingsViewModel(
+            themeSettingsDataSource = FakeThemeSettingsDataSource(),
+            homeDataSource = FakeHomeDataSource(SyncStatus(pendingCount = 0, lastSyncedAtEpochMillis = null)),
+            appVersionLabel = "1.0"
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isSynced)
     }
 
     @Test

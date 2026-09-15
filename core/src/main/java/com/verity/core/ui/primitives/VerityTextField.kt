@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -73,7 +74,15 @@ fun VerityTextField(
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
-    errorText: String? = null
+    errorText: String? = null,
+    /**
+     * SelectionSearch only. When true, the full (unfiltered) suggestion list opens as soon as
+     * the field gains focus, instead of waiting for the first keystroke — a "dropdown" feel for
+     * a short, closed-ish list (HSN Code, Unit) without introducing an actual popup menu, which
+     * CLAUDE.md's UI conventions rule out ("suggestions expand inline below the input field —
+     * never a popup/dropdown menu"). Free text past the list is still accepted either way.
+     */
+    expandSuggestionsOnFocus: Boolean = false
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(
@@ -92,6 +101,7 @@ fun VerityTextField(
             onValueChange = onValueChange,
             suggestions = suggestions,
             onSelectSuggestion = onSelectSuggestion,
+            expandSuggestionsOnFocus = expandSuggestionsOnFocus,
             modifier = modifier
         )
     }
@@ -106,6 +116,7 @@ private fun SelectionSearchField(
     onValueChange: (String) -> Unit,
     suggestions: List<VeritySuggestion>,
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
+    expandSuggestionsOnFocus: Boolean,
     modifier: Modifier
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -125,7 +136,13 @@ private fun SelectionSearchField(
                     Text(placeholder)
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    if (expandSuggestionsOnFocus && focusState.isFocused) {
+                        expanded = true
+                    }
+                },
             singleLine = true,
             textStyle = VerityTheme.typography.body.copy(
                 color = VerityTheme.colors.text.primary
@@ -149,7 +166,7 @@ private fun SelectionSearchField(
         )
 
         AnimatedVisibility(
-            visible = expanded && value.isNotBlank() && suggestions.isNotEmpty(),
+            visible = expanded && suggestions.isNotEmpty() && (expandSuggestionsOnFocus || value.isNotBlank()),
             enter = fadeIn(),
             exit = fadeOut()
         ) {

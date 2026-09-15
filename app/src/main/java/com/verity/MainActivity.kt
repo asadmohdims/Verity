@@ -42,6 +42,7 @@ import com.verity.platform.finalize.DEFAULT_ORG_ID
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
+import com.verity.platform.referencelist.DefaultReferenceListDataSource
 import com.verity.platform.settings.ThemePreferenceStore
 import com.verity.platform.sync.DefaultFirebaseRestoreClient
 import com.verity.platform.sync.DefaultFirebaseSyncClient
@@ -153,6 +154,10 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            val referenceListDataSource = remember {
+                DefaultReferenceListDataSource(referenceListDao = database.referenceListDao())
+            }
+
             val invoiceWorkspaceViewModel = remember {
                 InvoiceWorkspaceViewModel(
                     draftStore = InvoiceDraftStore(
@@ -167,6 +172,7 @@ class MainActivity : ComponentActivity() {
                         numberAllocator = invoiceNumberAllocator,
                         syncClient = firebaseSyncClient
                     ),
+                    referenceListDataSource = referenceListDataSource,
                     invoicePdfRenderer = invoicePdfRenderer
                 )
             }
@@ -234,7 +240,8 @@ class MainActivity : ComponentActivity() {
                     customerEditDataSource = customerEditDataSource,
                     customersListViewModel = customersListViewModel,
                     settingsViewModel = settingsViewModel,
-                    invoicePdfRenderer = invoicePdfRenderer
+                    invoicePdfRenderer = invoicePdfRenderer,
+                    referenceListDataSource = referenceListDataSource
                 )
             }
         }

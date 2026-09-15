@@ -63,6 +63,9 @@ import com.verity.core.ui.primitives.VerityTextStyle
 import com.verity.core.ui.primitives.dp
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.referencelist.ReferenceListDataSource
+import com.verity.feature.referencelist.ReferenceListItem
+import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.invoice.draft.DraftCustomer
 import com.verity.feature.invoice.draft.DraftDocumentType
@@ -89,6 +92,16 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
         secondary = secondaryText
     )
 }
+
+/**
+ * Filters a Settings-managed reference list (Transporter Name / HSN Code) down to entries
+ * matching [query], client-side — both lists are small enough (a business's own curated values)
+ * that this doesn't need a query round trip the way Customer autocomplete's does. A blank query
+ * shows the whole list, same as tapping into an empty field to browse what's available.
+ */
+private fun List<String>.toMatchingSuggestions(query: String): List<VeritySuggestion> =
+    filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+        .map { VeritySuggestion(id = it, primary = it) }
 
 /**
  * InvoiceWorkspaceScreen
@@ -127,6 +140,10 @@ fun InvoiceWorkspaceScreen(
 
     val shippedToQuery by viewModel.shippedToQuery.collectAsState()
     val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
+
+    val transporterNameSuggestions by viewModel.transporterNameSuggestions.collectAsState()
+    val hsnCodeSuggestions by viewModel.hsnCodeSuggestions.collectAsState()
+    val unitSuggestions by viewModel.unitSuggestions.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -474,15 +491,16 @@ fun InvoiceWorkspaceScreen(
                     VeritySpacer(size = VeritySpace.Small)
 
                     VerityTextField(
-                        role = VerityTextFieldRole.Basic,
+                        role = VerityTextFieldRole.SelectionSearch,
                         label = "HSN Code",
                         value = itemHsn,
                         onValueChange = { itemHsn = it },
                         editing = true,
                         onEnterEdit = null,
                         onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        suggestions = hsnCodeSuggestions.toMatchingSuggestions(itemHsn),
+                        onSelectSuggestion = { itemHsn = it.primary },
+                        expandSuggestionsOnFocus = true
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -503,15 +521,16 @@ fun InvoiceWorkspaceScreen(
                     VeritySpacer(size = VeritySpace.Small)
 
                     VerityTextField(
-                        role = VerityTextFieldRole.Basic,
+                        role = VerityTextFieldRole.SelectionSearch,
                         label = "Unit",
                         value = itemUnit,
                         onValueChange = { itemUnit = it },
                         editing = true,
                         onEnterEdit = null,
                         onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        suggestions = unitSuggestions.toMatchingSuggestions(itemUnit),
+                        onSelectSuggestion = { itemUnit = it.primary },
+                        expandSuggestionsOnFocus = true
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -646,15 +665,15 @@ fun InvoiceWorkspaceScreen(
                     }
                 ) {
                     VerityTextField(
-                        role = VerityTextFieldRole.Basic,
+                        role = VerityTextFieldRole.SelectionSearch,
                         label = "Transporter Name",
                         value = transporterName,
                         onValueChange = { transporterName = it },
                         editing = true,
                         onEnterEdit = null,
                         onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        suggestions = transporterNameSuggestions.toMatchingSuggestions(transporterName),
+                        onSelectSuggestion = { transporterName = it.primary }
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -882,7 +901,8 @@ private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
             draftStore = previewDraftStore(),
             customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
             invoiceFinalizer = previewInvoiceFinalizer(),
-            invoicePdfRenderer = previewInvoicePdfRenderer()
+            invoicePdfRenderer = previewInvoicePdfRenderer(),
+            referenceListDataSource = previewReferenceListDataSource()
         )
     }
 }
@@ -908,6 +928,14 @@ private fun previewInvoicePdfRenderer(): InvoicePdfRenderer {
 
 private fun previewDraftStore(): InvoiceDraftStore {
     return InvoiceDraftStore(initialDraft = previewInvoiceDraft())
+}
+
+private fun previewReferenceListDataSource(): ReferenceListDataSource {
+    return object : ReferenceListDataSource {
+        override suspend fun getAll(kind: ReferenceListKind): List<ReferenceListItem> = emptyList()
+        override suspend fun add(kind: ReferenceListKind, value: String) {}
+        override suspend fun delete(kind: ReferenceListKind, id: String) {}
+    }
 }
 
 private fun previewCustomerAutocompleteDataSource(): CustomerAutocompleteDataSource {

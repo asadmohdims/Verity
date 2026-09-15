@@ -37,7 +37,16 @@ import com.verity.core.ui.primitives.VeritySurfaceType
  * Chrome mode for VerityTopAppBar.
  */
 sealed interface VerityChromeMode {
-    object Brand : VerityChromeMode
+    /**
+     * Brand-tier chrome (no back arrow), used by all four bottom-nav root screens.
+     *
+     * [isEntrySurface] distinguishes Home's big splash title (Main.dc.html's 24px/800
+     * `.topbar-brand__title`) from Documents/Customers/Settings' smaller, plain one
+     * (DocumentsList.dc.html/CustomersList.dc.html/Settings.dc.html's 18px/600
+     * `.topbar-brand2__title`) — the mockups only ever gave Home the large splash treatment,
+     * the other three tabs you navigate *to* read as plain section headers.
+     */
+    data class Brand(val isEntrySurface: Boolean = false) : VerityChromeMode
     object Workspace : VerityChromeMode
     object Support : VerityChromeMode
 }
@@ -62,7 +71,7 @@ sealed interface VerityChromeMode {
 fun VerityTopAppBar(
     title: String,
     subtitle: String? = null,
-    chromeMode: VerityChromeMode = VerityChromeMode.Brand,
+    chromeMode: VerityChromeMode = VerityChromeMode.Brand(),
     navigationIcon: VerityNavIcon = VerityNavIcon.None,
     actions: List<VerityTopBarAction> = emptyList()
 ) {
@@ -77,7 +86,7 @@ fun VerityTopAppBar(
             val workspaceTitleStart = navZoneWidth + 8.dp
 
             val barHeight = when (chromeMode) {
-                VerityChromeMode.Brand -> 50.dp
+                is VerityChromeMode.Brand -> 50.dp
                 VerityChromeMode.Workspace -> 60.dp
                 VerityChromeMode.Support -> 50.dp
             }
@@ -129,14 +138,30 @@ fun VerityTopAppBar(
                         .padding(end = 110.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Brand mode ("Verity", "Documents", ...) uses the large chromeTitle style;
-                    // Workspace/Support ("Invoice", "Invoice Preview", ...) use the smaller Title
-                    // style — matches InvoiceWorkspace.dc.html/Preview.dc.html's 18px/600
-                    // `.topbar-ws__title`/`.topbar-sp__title`, distinct from Main.dc.html's 24px/800
-                    // `.topbar-brand__title`.
-                    val titleStyle = when (chromeMode) {
-                        VerityChromeMode.Brand -> VerityTheme.typography.chromeTitle
-                        VerityChromeMode.Workspace, VerityChromeMode.Support -> VerityTheme.typography.title
+                    // Only Home (isEntrySurface) gets the large chromeTitle splash style, matching
+                    // Main.dc.html's 24px/800 `.topbar-brand__title`. Documents/Customers/Settings
+                    // (Brand, not an entry surface) and Workspace/Support ("Invoice", "Invoice
+                    // Preview", ...) all use the smaller Title style — matches
+                    // DocumentsList.dc.html/CustomersList.dc.html/Settings.dc.html's 18px/600
+                    // `.topbar-brand2__title` and InvoiceWorkspace.dc.html/Preview.dc.html's
+                    // matching `.topbar-ws__title`/`.topbar-sp__title`.
+                    val isEntrySurface = chromeMode is VerityChromeMode.Brand && chromeMode.isEntrySurface
+
+                    val titleStyle = if (isEntrySurface) {
+                        VerityTheme.typography.chromeTitle
+                    } else {
+                        VerityTheme.typography.title
+                    }
+
+                    // Only the entry-surface splash title (Home) is brand-colored, matching
+                    // Main.dc.html's `.topbar-brand__title{color:var(--primary)}`; the other three
+                    // Brand-tier tabs use plain text-primary, matching `.topbar-brand2__title`.
+                    // Workspace/Support keep the existing primary-tinted title unchanged here —
+                    // out of scope for this pass (not part of what was flagged/approved).
+                    val titleColor = if (chromeMode is VerityChromeMode.Brand && !isEntrySurface) {
+                        VerityTheme.colors.text.primary
+                    } else {
+                        VerityTheme.colors.primary
                     }
 
                     Text(
@@ -144,7 +169,7 @@ fun VerityTopAppBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = titleStyle,
-                        color = VerityTheme.colors.primary
+                        color = titleColor
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))

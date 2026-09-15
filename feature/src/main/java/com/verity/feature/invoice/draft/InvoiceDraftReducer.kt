@@ -1,5 +1,7 @@
 package com.verity.feature.invoice.draft
 
+import com.verity.core.document.model.HARDCODED_SELLER
+
 /**
  * Pure reducer functions for InvoiceDraftUiState.
  *
@@ -21,7 +23,6 @@ package com.verity.feature.invoice.draft
  */
 object InvoiceDraftReducer {
 
-    private const val ASSUMED_SELLER_STATE_CODE = "27"
     /**
      * GST rates expressed as whole-number percentages.
      *
@@ -208,10 +209,9 @@ object InvoiceDraftReducer {
         // -----------------------------
         // Draft Tax Calculation (Atom 6.2)
         // -----------------------------
-        // TODO (FINALIZATION):
-        // Remove hardcoded ASSUMED_SELLER_STATE_CODE.
-        // Seller GST state must come from Organization Profile / GSTIN
-        // once Draft → Final boundary is introduced.
+        // Seller GST state comes from HARDCODED_SELLER (the same seller identity already used
+        // at finalization/PDF) rather than a separate constant here, so there's only one place
+        // that can drift from the seller's real GSTIN state.
 
         val buyerStateCode = draft.billedTo?.stateCode.orEmpty()
 
@@ -221,7 +221,7 @@ object InvoiceDraftReducer {
             } else if (buyerStateCode.isBlank()) {
                 null
             } else {
-                val isIntraState = buyerStateCode == ASSUMED_SELLER_STATE_CODE
+                val isIntraState = buyerStateCode == HARDCODED_SELLER.stateCode
 
                 if (isIntraState) {
                     DraftTaxBreakdown(

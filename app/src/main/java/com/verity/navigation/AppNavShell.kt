@@ -36,9 +36,11 @@ import com.verity.core.ui.molecules.VerityTopAppBar
 import com.verity.core.ui.molecules.VerityTopBarAction
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.feature.customer.detail.CustomerDetail
 import com.verity.feature.customer.detail.CustomerDetailDataSource
 import com.verity.feature.customer.detail.CustomerDetailRoute
 import com.verity.feature.customer.detail.CustomerDetailViewModel
+import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.customer.edit.AddEditCustomerRoute
 import com.verity.feature.customer.edit.AddEditCustomerViewModel
 import com.verity.feature.customer.edit.CustomerEditDataSource
@@ -58,6 +60,10 @@ import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
+import com.verity.feature.referencelist.ManageReferenceListRoute
+import com.verity.feature.referencelist.ManageReferenceListViewModel
+import com.verity.feature.referencelist.ReferenceListDataSource
+import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.settings.SettingsRoute
 import com.verity.feature.settings.SettingsViewModel
 import java.io.File
@@ -90,11 +96,13 @@ internal object AppRoutes {
     const val CUSTOMER_DETAIL = "customer/{customerId}"
     const val CUSTOMER_ADD = "customer/add"
     const val CUSTOMER_EDIT = "customer/{customerId}/edit"
+    const val REFERENCE_LIST = "settings/reference-list/{kind}"
 
     fun documentDetail(documentId: String) = "document/$documentId"
     fun documentPdf(documentId: String) = "document/$documentId/pdf"
     fun customerDetail(customerId: String) = "customer/$customerId"
     fun customerEdit(customerId: String) = "customer/$customerId/edit"
+    fun referenceList(kind: ReferenceListKind) = "settings/reference-list/${kind.name}"
 }
 
 private val bottomNavItems = listOf(
@@ -125,7 +133,8 @@ fun AppNavShell(
     customerEditDataSource: CustomerEditDataSource,
     customersListViewModel: CustomersListViewModel,
     settingsViewModel: SettingsViewModel,
-    invoicePdfRenderer: InvoicePdfRenderer
+    invoicePdfRenderer: InvoicePdfRenderer,
+    referenceListDataSource: ReferenceListDataSource
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -145,6 +154,27 @@ fun AppNavShell(
         // InvoiceWorkspaceRoute.
         if (!invoiceWorkspaceViewModel.hasActiveDraft.value) {
             invoiceWorkspaceViewModel.onCreateInvoice()
+        }
+        navController.navigate(AppRoutes.WORKSPACE)
+    }
+
+    fun goToWorkspaceForCustomer(customer: CustomerDetail) {
+        // Same "don't clobber an in-progress draft" rule as goToWorkspace() above — a customer
+        // arrived here already known, so billed-to (and, by the existing default, shipped-to) is
+        // prefilled the same way a manual autocomplete pick would set it.
+        if (!invoiceWorkspaceViewModel.hasActiveDraft.value) {
+            invoiceWorkspaceViewModel.onCreateInvoice(
+                prefillBilledTo = DraftAddress(
+                    name = customer.customerName,
+                    gstin = customer.gstin,
+                    addressLine1 = customer.addressLine1,
+                    city = customer.city,
+                    state = customer.state,
+                    stateCode = customer.stateCode,
+                    pincode = customer.pincode,
+                    customerId = customer.customerId
+                )
+            )
         }
         navController.navigate(AppRoutes.WORKSPACE)
     }
@@ -190,7 +220,7 @@ fun AppNavShell(
     }
 
     val effectiveChromeSpec = when (currentRoute) {
-        AppRoutes.HOME -> brandChrome(title = "Verity")
+        AppRoutes.HOME -> brandChrome(title = "Verity", isEntrySurface = true)
         AppRoutes.DOCUMENTS -> brandChrome(
             title = "Documents",
             actions = listOf(
@@ -212,6 +242,18 @@ fun AppNavShell(
             )
         )
         AppRoutes.SETTINGS -> brandChrome(title = "Settings")
+        AppRoutes.REFERENCE_LIST -> {
+            val kind = navBackStackEntry?.arguments?.getString("kind")
+                ?.let { runCatching { ReferenceListKind.valueOf(it) }.getOrNull() }
+            supportChrome(
+                title = when (kind) {
+                    ReferenceListKind.TRANSPORTER_NAME -> "Transporter Names"
+                    ReferenceListKind.HSN_CODE -> "HSN Codes"
+                    ReferenceListKind.UNIT -> "Units"
+                    null -> "Reference List"
+                }
+            ) { navController.popBackStack() }
+        }
         AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
         AppRoutes.FINALIZED -> supportChrome(title = "Invoice Finalized") { navController.popBackStack() }
         AppRoutes.FINALIZED_DOCUMENT ->
@@ -349,7 +391,7 @@ fun AppNavShell(
                         onDocumentClick = { documentId ->
                             navController.navigate(AppRoutes.documentDetail(documentId))
                         },
-                        onNewInvoice = ::goToWorkspace
+                        onNewInvoice = ::goToWorkspaceForCustomer
                     )
                 }
 
@@ -404,7 +446,40 @@ fun AppNavShell(
                 }
 
                 composable(AppRoutes.SETTINGS) {
-                    SettingsRoute(viewModel = settingsViewModel)
+                    SettingsRoute(
+                        viewModel = settingsViewModel,
+                        onManageTransporterNames = {
+                            navController.navigate(AppRoutes.referenceList(ReferenceListKind.TRANSPORTER_NAME))
+                        },
+                        onManageHsnCodes = {
+                            navController.navigate(AppRoutes.referenceList(ReferenceListKind.HSN_CODE))
+                        },
+                        onManageUnits = {
+                            navController.navigate(AppRoutes.referenceList(ReferenceListKind.UNIT))
+                        }
+                    )
+                }
+
+                composable(
+                    route = AppRoutes.REFERENCE_LIST,
+                    arguments = listOf(navArgument("kind") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val kind = ReferenceListKind.valueOf(
+                        requireNotNull(backStackEntry.arguments?.getString("kind"))
+                    )
+
+                    val referenceListViewModel: ManageReferenceListViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                ManageReferenceListViewModel(
+                                    kind = kind,
+                                    dataSource = referenceListDataSource
+                                )
+                            }
+                        }
+                    )
+
+                    ManageReferenceListRoute(viewModel = referenceListViewModel)
                 }
 
                 composable(AppRoutes.WORKSPACE) {
@@ -571,12 +646,13 @@ private fun DocumentLoadingIndicator() {
 
 private fun brandChrome(
     title: String,
-    actions: List<VerityTopBarAction> = emptyList()
+    actions: List<VerityTopBarAction> = emptyList(),
+    isEntrySurface: Boolean = false
 ): WorkspaceChromeSpec = WorkspaceChromeSpec(
     title = title,
     navigationIcon = VerityNavIcon.None,
     actions = actions,
-    chromeMode = VerityChromeMode.Brand
+    chromeMode = VerityChromeMode.Brand(isEntrySurface = isEntrySurface)
 )
 
 private fun supportChrome(

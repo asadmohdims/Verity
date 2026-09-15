@@ -228,14 +228,76 @@ class InvoiceDraftReducerTest {
         assertEquals(null, result.transportDetails)
     }
 
-    private fun testBilledTo(): DraftAddress =
+    @Test
+    fun `inter-state invoice applies IGST when buyer state code differs from seller`() {
+        val draft = InvoiceDraftUiState(
+            billedTo = testBilledTo(stateCode = "27", gstin = "27AAACB1234Z1Z"),
+            lineItems = listOf(
+                DraftLineItem(
+                    description = "Item A",
+                    hsnCode = "1001",
+                    quantity = 10,
+                    unit = "PCS",
+                    ratePaise = 1_000
+                )
+            )
+        )
+
+        val result = InvoiceDraftReducer.updateLineItem(
+            draft,
+            index = 0,
+            item = draft.lineItems.first()
+        )
+
+        val tax = result.summary.tax!!
+
+        assertEquals(DraftTaxMode.INTER_STATE, tax.mode)
+        assertEquals(18L, tax.igst!!.ratePercent)
+        assertEquals(1_800, tax.igst!!.amountPaise)
+    }
+
+    // Regression test for a real-world bug: a buyer with the seller's own state code (09,
+    // Uttar Pradesh) was being taxed as inter-state (IGST) because the reducer compared against
+    // a stale hardcoded seller state ("27") instead of the seller's real GSTIN state.
+    @Test
+    fun `buyer sharing the seller's state code applies CGST and SGST, not IGST`() {
+        val draft = InvoiceDraftUiState(
+            billedTo = testBilledTo(stateCode = "09", gstin = "09AAACB1234Z1Z"),
+            lineItems = listOf(
+                DraftLineItem(
+                    description = "Item A",
+                    hsnCode = "1001",
+                    quantity = 10,
+                    unit = "PCS",
+                    ratePaise = 1_000
+                )
+            )
+        )
+
+        val result = InvoiceDraftReducer.updateLineItem(
+            draft,
+            index = 0,
+            item = draft.lineItems.first()
+        )
+
+        val tax = result.summary.tax!!
+
+        assertEquals(DraftTaxMode.INTRA_STATE, tax.mode)
+        assertEquals(900, tax.cgst!!.amountPaise)
+        assertEquals(900, tax.sgst!!.amountPaise)
+    }
+
+    private fun testBilledTo(
+        stateCode: String = "09",
+        gstin: String = "09AAACB1234Z1Z"
+    ): DraftAddress =
         DraftAddress(
             name = "Test Buyer",
             addressLine1 = "Test Address",
-            city = "Mumbai",
-            state = "Maharashtra",
-            stateCode = "27",
-            gstin = "27AAACB1234Z1Z",
-            pincode = "400001"
+            city = "Muzaffarnagar",
+            state = "Uttar Pradesh",
+            stateCode = stateCode,
+            gstin = gstin,
+            pincode = "251001"
         )
 }

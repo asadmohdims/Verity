@@ -31,7 +31,10 @@ class SettingsScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 SettingsScreen(
                     state = SettingsUiState(themeMode = ThemeMode.SYSTEM, appVersionLabel = "1.0"),
-                    onThemeModeSelected = { selected = it }
+                    onThemeModeSelected = { selected = it },
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
                 )
             }
         }
@@ -47,7 +50,10 @@ class SettingsScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 SettingsScreen(
                     state = SettingsUiState(syncStatusLabel = "3 pending", appVersionLabel = "1.0"),
-                    onThemeModeSelected = {}
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
                 )
             }
         }
@@ -62,7 +68,10 @@ class SettingsScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 SettingsScreen(
                     state = SettingsUiState(syncStatusLabel = null, appVersionLabel = "1.0"),
-                    onThemeModeSelected = {}
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
                 )
             }
         }
@@ -76,7 +85,10 @@ class SettingsScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 SettingsScreen(
                     state = SettingsUiState(appVersionLabel = "1.0 (Milestone 1)"),
-                    onThemeModeSelected = {}
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
                 )
             }
         }
@@ -90,12 +102,78 @@ class SettingsScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 SettingsScreen(
                     state = SettingsUiState(appVersionLabel = "1.0"),
-                    onThemeModeSelected = {}
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Business Profile").assertIsDisplayed()
         composeTestRule.onNodeWithText("UNITECH MACHINERIES").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping Transporter Names fires onManageTransporterNames`() {
+        var tapped = false
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                SettingsScreen(
+                    state = SettingsUiState(appVersionLabel = "1.0"),
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = { tapped = true },
+                    onManageHsnCodes = {},
+                    onManageUnits = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Transporter Names").performClick()
+
+        assertEquals(true, tapped)
+    }
+
+    @Test
+    fun `tapping HSN Codes fires onManageHsnCodes`() {
+        var tapped = false
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                SettingsScreen(
+                    state = SettingsUiState(appVersionLabel = "1.0"),
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = { tapped = true },
+                    onManageUnits = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("HSN Codes").performClick()
+
+        assertEquals(true, tapped)
+    }
+
+    @Test
+    fun `tapping Units fires onManageUnits`() {
+        var tapped = false
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                SettingsScreen(
+                    state = SettingsUiState(appVersionLabel = "1.0"),
+                    onThemeModeSelected = {},
+                    onManageTransporterNames = {},
+                    onManageHsnCodes = {},
+                    onManageUnits = { tapped = true }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Units").performClick()
+
+        assertEquals(true, tapped)
     }
 }

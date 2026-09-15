@@ -38,7 +38,7 @@ import com.verity.feature.document.DocumentSummaryRow
 fun CustomerDetailRoute(
     viewModel: CustomerDetailViewModel,
     onDocumentClick: (String) -> Unit,
-    onNewInvoice: () -> Unit
+    onNewInvoice: (CustomerDetail) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -66,7 +66,7 @@ fun CustomerDetailRoute(
 fun CustomerDetailScreen(
     state: CustomerDetailUiState,
     onDocumentClick: (String) -> Unit,
-    onNewInvoice: () -> Unit,
+    onNewInvoice: (CustomerDetail) -> Unit,
     modifier: Modifier = Modifier
 ) {
     VeritySurface(
@@ -91,7 +91,7 @@ fun CustomerDetailScreen(
                     BalanceDueHero(detail)
                     VeritySpacer(size = VeritySpace.Medium)
 
-                    QuickActionsRow(onNewInvoice = onNewInvoice)
+                    QuickActionsRow(onNewInvoice = { onNewInvoice(detail) })
                     VeritySpacer(size = VeritySpace.Large)
 
                     VerityText(text = "Documents", style = VerityTextStyle.Label)
