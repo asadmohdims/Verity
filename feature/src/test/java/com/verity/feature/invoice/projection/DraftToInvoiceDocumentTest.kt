@@ -11,10 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 class DraftToInvoiceDocumentTest {
 
@@ -23,12 +20,24 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = baseDraft(),
             documentNumber = "INV-000001",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals("Maharashtra", document.identity.placeOfSupplyState)
         assertEquals("27", document.identity.placeOfSupplyStateCode)
+    }
+
+    @Test
+    fun `issue date maps through from the draft, not the system clock`() {
+        val draft = baseDraft().copy(issueDate = LocalDate.of(2026, 1, 5))
+
+        val document = DraftToInvoiceDocument.project(
+            draft = draft,
+            documentNumber = "INV-000009",
+            seller = testSeller()
+        )
+
+        assertEquals(LocalDate.of(2026, 1, 5), document.identity.issueDate)
     }
 
     @Test
@@ -44,8 +53,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000002",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals("Uttar Pradesh", document.identity.placeOfSupplyState)
@@ -61,8 +69,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000003",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals("3412 1099 8877", document.logistics?.ewayBillNumber)
@@ -77,8 +84,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000006",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals(java.time.LocalDate.of(2026, 9, 20), document.logistics?.supplyDate)
@@ -101,8 +107,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000007",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         val item = document.lineItems.single()
@@ -115,8 +120,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = baseDraft(),
             documentNumber = "INV-000004",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertNull(document.logistics)
@@ -129,8 +133,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000005",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertTrue(document.identity.reverseChargeApplicable)
@@ -148,8 +151,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "CH-000001",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals("CUST-CH-0042", document.inboundChallanReference?.challanNumber)
@@ -172,8 +174,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = draft,
             documentNumber = "INV-000043",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertEquals("CH-000012", document.jobWorkLink?.linkedDocumentNumber)
@@ -186,8 +187,7 @@ class DraftToInvoiceDocumentTest {
         val document = DraftToInvoiceDocument.project(
             draft = baseDraft(),
             documentNumber = "INV-000008",
-            seller = testSeller(),
-            clock = fixedClock()
+            seller = testSeller()
         )
 
         assertNull(document.inboundChallanReference)
@@ -230,7 +230,4 @@ class DraftToInvoiceDocumentTest {
             stateCode = "27",
             pincode = "400001"
         )
-
-    private fun fixedClock(): Clock =
-        Clock.fixed(Instant.parse("2026-09-14T00:00:00Z"), ZoneOffset.UTC)
 }

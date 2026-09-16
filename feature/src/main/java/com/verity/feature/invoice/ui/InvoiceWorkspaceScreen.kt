@@ -396,6 +396,19 @@ fun InvoiceWorkspaceScreen(
 
                 VeritySpacer(size = VeritySpace.Medium)
 
+                // Defaults to today (InvoiceDraftUiState.issueDate) — capped at today so the
+                // picker can only backdate, never post-date, matching GST practice of never
+                // issuing a document ahead of the day it's actually raised.
+                VerityDateField(
+                    label = "$numberNoun Date",
+                    value = draft.issueDate,
+                    onValueChange = { date -> date?.let(viewModel::onIssueDateChanged) },
+                    formatter = { DocumentDate.format(it) },
+                    maxDate = LocalDate.now()
+                )
+
+                VeritySpacer(size = VeritySpace.Medium)
+
                 Row {
                     Column(modifier = Modifier.weight(1f)) {
                         PartyField(

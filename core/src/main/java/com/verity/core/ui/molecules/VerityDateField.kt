@@ -13,6 +13,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
@@ -55,7 +56,9 @@ fun VerityDateField(
     onValueChange: (LocalDate?) -> Unit,
     formatter: (LocalDate) -> String,
     modifier: Modifier = Modifier,
-    placeholder: String = "Select date"
+    placeholder: String = "Select date",
+    /** Latest date the picker will let the user land on, e.g. today for a "no post-dating" field. */
+    maxDate: LocalDate? = null
 ) {
     var isPickerOpen by remember { mutableStateOf(false) }
 
@@ -96,7 +99,22 @@ fun VerityDateField(
             .atStartOfDay(ZoneOffset.UTC)
             .toInstant()
             .toEpochMilli()
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        val selectableDates = remember(maxDate) {
+            if (maxDate == null) {
+                DatePickerDefaults.AllDates
+            } else {
+                object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                        return !date.isAfter(maxDate)
+                    }
+                }
+            }
+        }
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            selectableDates = selectableDates
+        )
 
         DatePickerDialog(
             onDismissRequest = { isPickerOpen = false },

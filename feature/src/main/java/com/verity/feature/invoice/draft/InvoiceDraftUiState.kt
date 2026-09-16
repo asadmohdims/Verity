@@ -22,6 +22,8 @@ import java.time.LocalDate
  */
 data class InvoiceDraftUiState(
     val documentType: DraftDocumentType = DraftDocumentType.INVOICE,
+    /** Defaults to today; editable via onIssueDateChanged() to backdate a document. */
+    val issueDate: LocalDate = LocalDate.now(),
     val customer: DraftCustomer? = null,
     val billedTo: DraftAddress? = null,
     val shippedTo: DraftAddress? = null,

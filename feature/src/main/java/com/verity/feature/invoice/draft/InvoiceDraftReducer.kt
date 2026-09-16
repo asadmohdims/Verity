@@ -1,6 +1,7 @@
 package com.verity.feature.invoice.draft
 
 import com.verity.core.document.model.HARDCODED_SELLER
+import java.time.LocalDate
 
 /**
  * Pure reducer functions for InvoiceDraftUiState.
@@ -212,6 +213,13 @@ object InvoiceDraftReducer {
         link: DraftJobWorkChallanLink?
     ): InvoiceDraftUiState {
         return draft.copy(jobWorkChallanLink = link)
+    }
+
+    fun setIssueDate(
+        draft: InvoiceDraftUiState,
+        date: LocalDate
+    ): InvoiceDraftUiState {
+        return draft.copy(issueDate = date)
     }
 
     /**

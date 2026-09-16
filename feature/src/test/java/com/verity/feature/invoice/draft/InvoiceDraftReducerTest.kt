@@ -222,10 +222,26 @@ class InvoiceDraftReducerTest {
 
         val result = InvoiceDraftReducer.reset()
 
-        assertEquals(InvoiceDraftUiState(), result)
+        assertEquals(DraftDocumentType.INVOICE, result.documentType)
         assertEquals(0, result.lineItems.size)
         assertEquals(null, result.billedTo)
         assertEquals(null, result.transportDetails)
+    }
+
+    @Test
+    fun `reset defaults issue date to today`() {
+        val result = InvoiceDraftReducer.reset()
+
+        assertEquals(java.time.LocalDate.now(), result.issueDate)
+    }
+
+    @Test
+    fun `setIssueDate overrides the draft's issue date for backdating`() {
+        val backdated = java.time.LocalDate.of(2026, 1, 5)
+
+        val result = InvoiceDraftReducer.setIssueDate(InvoiceDraftUiState(), backdated)
+
+        assertEquals(backdated, result.issueDate)
     }
 
     @Test

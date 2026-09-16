@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import java.time.Clock
+import java.time.LocalDate
 
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import com.verity.core.ui.molecules.VerityChromeMode
@@ -163,8 +163,7 @@ class InvoiceWorkspaceViewModel(
                             state = "",
                             stateCode = "",
                             pincode = ""
-                        ),
-                        clock = Clock.systemDefaultZone()
+                        )
                     )
                 }
             }
@@ -591,6 +590,11 @@ class InvoiceWorkspaceViewModel(
     /** "Received vide Challan No X dated Y" — available on any Challan, not gated by job work. */
     fun onInboundChallanReferenceChanged(reference: DraftInboundChallanReference?) {
         draftStore.setInboundChallanReference(reference)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    fun onIssueDateChanged(date: LocalDate) {
+        draftStore.setIssueDate(date)
         _uiState.value = draftStore.currentDraft
     }
 

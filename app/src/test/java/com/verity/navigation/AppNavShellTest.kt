@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.isRoot
 import androidx.navigation.compose.rememberNavController
@@ -308,7 +309,7 @@ class AppNavShellTest {
         )
 
         composeTestRule.onNodeWithText("Preview").assertIsEnabled()
-        composeTestRule.onNodeWithText("Preview").performClick()
+        composeTestRule.onNodeWithText("Preview").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").assertIsDisplayed()
     }
 
@@ -345,7 +346,7 @@ class AppNavShellTest {
                 pincode = null
             )
         )
-        composeTestRule.onNodeWithText("Preview").performClick()
+        composeTestRule.onNodeWithText("Preview").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").performClick()
         // "Invoice Finalized" itself is ambiguous here (it's both the chrome title and the screen
         // body's heading) — assert on the document number, which only the body renders.
@@ -381,7 +382,7 @@ class AppNavShellTest {
                 pincode = null
             )
         )
-        composeTestRule.onNodeWithText("Preview").performClick()
+        composeTestRule.onNodeWithText("Preview").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").performClick()
         composeTestRule.onNodeWithText("INV-000043 · ₹7,021").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Back").performClick()

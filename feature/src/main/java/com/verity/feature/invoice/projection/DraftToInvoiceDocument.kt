@@ -6,9 +6,6 @@ import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.DraftTaxBreakdown
 import com.verity.feature.invoice.draft.DraftTaxMode
-import java.time.Clock
-import java.time.LocalDate
-
 /**
  * DraftToInvoiceDocument
  *
@@ -25,8 +22,7 @@ object DraftToInvoiceDocument {
     fun project(
         draft: InvoiceDraftUiState,
         documentNumber: String,
-        seller: SellerDetails,
-        clock: Clock
+        seller: SellerDetails
     ): InvoiceDocumentModel {
 
         val billedTo = requireNotNull(draft.billedTo) {
@@ -39,7 +35,7 @@ object DraftToInvoiceDocument {
             identity = DocumentIdentity(
                 documentType = draft.documentType.toDocumentType(),
                 documentNumber = documentNumber,
-                issueDate = LocalDate.now(clock),
+                issueDate = draft.issueDate,
                 seller = seller,
                 // Place of Supply for goods is the delivery state - i.e. Shipped To, which
                 // already falls back to Billed To above when shipping wasn't specified separately.

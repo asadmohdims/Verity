@@ -139,8 +139,7 @@ class DefaultInvoiceFinalizer(
             var document = DraftToInvoiceDocument.project(
                 draft = draft,
                 documentNumber = documentNumber,
-                seller = HARDCODED_SELLER,
-                clock = clock
+                seller = HARDCODED_SELLER
             )
 
             if (reservedInvoiceNumber != null) {

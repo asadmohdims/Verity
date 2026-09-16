@@ -1,5 +1,7 @@
 package com.verity.feature.invoice.draft
 
+import java.time.LocalDate
+
 /**
  * InvoiceDraftStore
  *
@@ -107,6 +109,17 @@ class InvoiceDraftStore(
     /** Clears the draft back to empty. See InvoiceDraftReducer.reset(). */
     fun reset() {
         _currentDraft = InvoiceDraftReducer.reset()
+    }
+
+    // ------------------------------------------------------------
+    // Issue Date — defaults to today (InvoiceDraftUiState), overridden here to backdate.
+    // ------------------------------------------------------------
+
+    fun setIssueDate(date: LocalDate) {
+        _currentDraft = InvoiceDraftReducer.setIssueDate(
+            draft = _currentDraft,
+            date = date
+        )
     }
 
     // ------------------------------------------------------------
