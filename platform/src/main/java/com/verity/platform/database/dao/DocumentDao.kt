@@ -33,10 +33,6 @@ interface DocumentDao {
     @Query("SELECT COUNT(*) FROM documents WHERE syncedToCloud = 0")
     suspend fun getPendingSyncCount(): Int
 
-    /** Backs the new-device restore trigger — see MainActivity and FirebaseRestoreClient. */
-    @Query("SELECT COUNT(*) FROM documents")
-    suspend fun count(): Int
-
     /**
      * Highest sequence number assigned so far for this org+type, or null if none exist yet.
      * The caller adds 1 to get the next number. Deliberately no distinct "counter" table —

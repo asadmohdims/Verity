@@ -109,7 +109,8 @@ class MainActivity : ComponentActivity() {
                 DefaultFirebaseRestoreClient(
                     remoteSource = FirestoreRestoreSource(FirebaseFirestore.getInstance()),
                     documentDao = database.documentDao(),
-                    ledgerEntryDao = database.ledgerEntryDao()
+                    ledgerEntryDao = database.ledgerEntryDao(),
+                    watermarkStore = syncStatusStore
                 )
             }
 
@@ -121,27 +122,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Sign in with the fixed business account, then - only on a device with no local
-            // documents yet, and only once ever - bulk-restore from the cloud (see
-            // FirebaseRestoreClient's doc comment). A no-op on the existing primary device: its
-            // Room already has data, so restoreAll() is never even attempted there.
-            //
-            // Bug fixed 2026-09-15: this used to check only the isInitialRestoreCompleted() flag,
-            // not actual local document count - so on ANY device's first launch with this feature
-            // (including an existing device with years of real local data), the flag started
-            // false and restore ran anyway, merging in whatever happened to be in the cloud.
-            // Caught by testing on a real device that already had local test data: a document
-            // that only existed on a different device (the emulator) showed up here too. Restore
-            // itself worked exactly as designed - only the trigger condition was wrong.
+            // Sign in with the fixed business account, then pull anything new since this device
+            // last synced (see FirebaseRestoreClient's doc comment) — every launch, not just a
+            // brand-new device's first one. This used to be gated to "only when local Room has
+            // zero documents, only once ever", on the premise that cloud was backup/restore for
+            // a single primary device, not live multi-device sync. That stopped being true once
+            // this app was actually run on two devices for the same business at the same time:
+            // an Invoice finalized on device A never showed up on device B, since B already had
+            // local documents and so never qualified as "new". sync() is safe to call on every
+            // launch regardless of existing local data — it's filtered on a Firestore-assigned
+            // server timestamp, not a client clock, so an established device only ever re-fetches
+            // what's genuinely new since it last checked.
             LaunchedEffect(Unit) {
                 val signedIn = firebaseAuthGate.ensureSignedIn(
                     email = BuildConfig.FIREBASE_AUTH_EMAIL,
                     password = BuildConfig.FIREBASE_AUTH_PASSWORD
                 )
-                val isNewDevice = database.documentDao().count() == 0
-                if (signedIn && isNewDevice && !syncStatusStore.isInitialRestoreCompleted()) {
-                    runCatching { firebaseRestoreClient.restoreAll(DEFAULT_ORG_ID) }
-                        .onSuccess { syncStatusStore.markInitialRestoreCompleted() }
+                if (signedIn) {
+                    runCatching { firebaseRestoreClient.sync(DEFAULT_ORG_ID) }
                 }
             }
 

@@ -2,6 +2,7 @@ package com.verity.platform.sync
 
 import android.net.Uri
 import android.util.Log
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.verity.platform.database.dao.DocumentDao
@@ -113,6 +114,10 @@ private fun documentsCollection(orgId: String) = "orgs/$orgId/documents"
 private fun ledgerEntriesCollection(orgId: String) = "orgs/$orgId/ledgerEntries"
 private fun pdfPath(orgId: String, documentNumber: String) = "orgs/$orgId/pdfs/$documentNumber.pdf"
 
+// serverSyncedAt (FieldValue.serverTimestamp(), assigned by Firestore itself at write commit
+// time, never by this device's own clock) is what FirebaseRestoreClient's incremental sync
+// filters on — see its doc comment for why a client-supplied timestamp like finalizedAt can't be
+// compared safely across two devices with unsynced clocks.
 private fun DocumentEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
     "documentId" to documentId,
     "orgId" to orgId,
@@ -126,7 +131,8 @@ private fun DocumentEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
     "linkedDocumentId" to linkedDocumentId,
     "payloadJson" to payloadJson,
     "finalizedAt" to finalizedAt,
-    "searchIndexText" to searchIndexText
+    "searchIndexText" to searchIndexText,
+    "serverSyncedAt" to FieldValue.serverTimestamp()
 )
 
 private fun LedgerEntryEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
@@ -136,5 +142,6 @@ private fun LedgerEntryEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
     "documentId" to documentId,
     "amountPaise" to amountPaise,
     "occurredAt" to occurredAt,
-    "createdAt" to createdAt
+    "createdAt" to createdAt,
+    "serverSyncedAt" to FieldValue.serverTimestamp()
 )
