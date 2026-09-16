@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.DocumentType
+import com.verity.core.document.model.displayLabel
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.money.Money
 import com.verity.core.theme.VerityTheme
@@ -78,11 +79,10 @@ fun InvoiceFinalizedScreen(
 
             VeritySpacer(size = VeritySpace.Large)
 
-            val documentNoun = when (document.identity.documentType) {
-                DocumentType.INVOICE -> "Invoice"
-                DocumentType.CHALLAN -> "Challan"
-            }
-            VerityText(text = "$documentNoun Finalized", style = VerityTextStyle.Title)
+            VerityText(
+                text = "${document.identity.documentType.displayLabel} Finalized",
+                style = VerityTextStyle.Title
+            )
 
             VeritySpacer(size = VeritySpace.Small)
 

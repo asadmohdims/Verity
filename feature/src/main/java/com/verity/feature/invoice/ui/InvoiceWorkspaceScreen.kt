@@ -90,6 +90,7 @@ import com.verity.feature.invoice.draft.DraftTaxMode
 import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.finalize.DocumentNumberPreviewDataSource
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
@@ -188,6 +189,7 @@ fun InvoiceWorkspaceScreen(
     val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
 
     val transporterNameSuggestions by viewModel.transporterNameSuggestions.collectAsState()
+    val predictedDocumentNumber by viewModel.predictedDocumentNumber.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -327,6 +329,55 @@ fun InvoiceWorkspaceScreen(
                             isDocTypeMenuOpen = false
                         }
                     )
+                }
+
+                // ─────────────────────────────────────────────
+                // Document number — prominent, not buried below Line Items. A job-work
+                // continuation Invoice already has a real, reserved number (jobWorkChallanLink,
+                // set when "Continue to Invoice" opened this draft); every other draft gets a
+                // non-binding "likely" prediction instead (DocumentNumberPreviewDataSource) — a
+                // delight, not a guarantee, since the real number is only assigned at finalize.
+                // ─────────────────────────────────────────────
+                val jobWorkLink = draft.jobWorkChallanLink
+                val numberNoun = when (draft.documentType) {
+                    DraftDocumentType.INVOICE -> "Invoice"
+                    DraftDocumentType.CHALLAN -> "Challan"
+                }
+                if (jobWorkLink != null) {
+                    VeritySpacer(size = VeritySpace.Small)
+                    VeritySurface(type = VeritySurfaceType.Assist) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(VeritySpace.Small.dp)
+                        ) {
+                            VerityText(text = "Reserved Invoice No.", style = VerityTextStyle.Label)
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(text = jobWorkLink.reservedInvoiceNumber, style = VerityTextStyle.Display)
+                            VeritySpacer(size = VeritySpace.ExtraSmall)
+                            VerityText(
+                                text = "Continues Challan ${jobWorkLink.challanDocumentNumber} · " +
+                                    DocumentDate.format(jobWorkLink.challanDate),
+                                style = VerityTextStyle.Caption
+                            )
+                        }
+                    }
+                } else {
+                    val predicted = predictedDocumentNumber
+                    if (predicted != null) {
+                        VeritySpacer(size = VeritySpace.Small)
+                        VeritySurface(type = VeritySurfaceType.Assist) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(VeritySpace.Small.dp)
+                            ) {
+                                VerityText(text = "Likely $numberNoun No.", style = VerityTextStyle.Label)
+                                VeritySpacer(size = VeritySpace.ExtraSmall)
+                                VerityText(text = predicted, style = VerityTextStyle.Display)
+                            }
+                        }
+                    }
                 }
 
                 VeritySpacer(size = VeritySpace.Medium)
@@ -529,6 +580,9 @@ fun InvoiceWorkspaceScreen(
                         }
                     }
 
+                    // The reserved Invoice number itself is now shown prominently at the top of
+                    // the screen (see the banner right below Document Type), not buried here —
+                    // this row keeps just the Challan reference for detail.
                     draft.jobWorkChallanLink?.let { link ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -540,11 +594,6 @@ fun InvoiceWorkspaceScreen(
                                 style = VerityTextStyle.Body
                             )
                         }
-                        VeritySpacer(size = VeritySpace.ExtraSmall)
-                        VerityText(
-                            text = "This Invoice will be numbered ${link.reservedInvoiceNumber}",
-                            style = VerityTextStyle.Caption
-                        )
                     }
                 }
             }
@@ -576,6 +625,7 @@ fun InvoiceWorkspaceScreen(
                             VerityInvoiceLineItemRow(
                                 description = item.description,
                                 quantity = item.quantity,
+                                unit = item.unit,
                                 rate = Money.ofPaise(item.ratePaise),
                                 amount = Money.ofPaise(amountPaise),
                                 hsnCode = item.hsnCode
@@ -995,8 +1045,15 @@ private fun previewInvoiceWorkspaceViewModel(): InvoiceWorkspaceViewModel {
             customerAutocompleteDataSource = previewCustomerAutocompleteDataSource(),
             invoiceFinalizer = previewInvoiceFinalizer(),
             invoicePdfRenderer = previewInvoicePdfRenderer(),
-            referenceListDataSource = previewReferenceListDataSource()
+            referenceListDataSource = previewReferenceListDataSource(),
+            documentNumberPreviewDataSource = previewDocumentNumberPreviewDataSource()
         )
+    }
+}
+
+private fun previewDocumentNumberPreviewDataSource(): DocumentNumberPreviewDataSource {
+    return object : DocumentNumberPreviewDataSource {
+        override suspend fun peekNextNumber(documentType: DraftDocumentType): String = "INV-000001"
     }
 }
 

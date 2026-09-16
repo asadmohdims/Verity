@@ -39,6 +39,7 @@ import com.verity.platform.database.seed.toEntity
 import com.verity.platform.document.DefaultDocumentDetailDataSource
 import com.verity.platform.document.DefaultDocumentSearchDataSource
 import com.verity.platform.finalize.DEFAULT_ORG_ID
+import com.verity.platform.finalize.DefaultDocumentNumberPreviewDataSource
 import com.verity.platform.finalize.DefaultInvoiceFinalizer
 import com.verity.platform.home.DefaultHomeDataSource
 import com.verity.platform.pdf.DefaultInvoicePdfRenderer
@@ -173,7 +174,10 @@ class MainActivity : ComponentActivity() {
                         syncClient = firebaseSyncClient
                     ),
                     referenceListDataSource = referenceListDataSource,
-                    invoicePdfRenderer = invoicePdfRenderer
+                    invoicePdfRenderer = invoicePdfRenderer,
+                    documentNumberPreviewDataSource = DefaultDocumentNumberPreviewDataSource(
+                        documentDao = database.documentDao()
+                    )
                 )
             }
 

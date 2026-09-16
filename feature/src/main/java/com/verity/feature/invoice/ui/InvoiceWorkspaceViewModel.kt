@@ -4,6 +4,7 @@ import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.document.model.SellerDetails
 import com.verity.feature.invoice.projection.DraftToInvoiceDocument
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
@@ -18,6 +19,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.invoice.finalize.DocumentNumberPreviewDataSource
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
@@ -60,7 +62,8 @@ class InvoiceWorkspaceViewModel(
     private val customerAutocompleteDataSource: CustomerAutocompleteDataSource,
     private val invoiceFinalizer: InvoiceFinalizer,
     private val invoicePdfRenderer: InvoicePdfRenderer,
-    private val referenceListDataSource: ReferenceListDataSource
+    private val referenceListDataSource: ReferenceListDataSource,
+    private val documentNumberPreviewDataSource: DocumentNumberPreviewDataSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(draftStore.currentDraft)
@@ -86,10 +89,15 @@ class InvoiceWorkspaceViewModel(
     /**
      * Re-loads all three suggestion lists. Also called from onCreateInvoice() — this ViewModel
      * is tab-persistent (constructed once at the composition root, not per-navigation), so a
-     * value added in Settings after launch would otherwise never show up here until app restart;
-     * a fresh invoice is the natural moment to catch up.
+     * value added in Settings after launch would otherwise never show up here until app restart.
+     * Public so AppNavShell's goToWorkspace()/goToWorkspaceForCustomer() can also call this
+     * unconditionally, on *every* entry into Workspace — not just a genuinely new draft
+     * (onCreateInvoice() only runs there when hasActiveDraft is false). Without that, resuming an
+     * in-progress draft after adding a reference-list value while away (e.g. switching to Settings
+     * mid-draft to add a missing HSN code, then tapping the FAB to return) left these lists stale
+     * for the rest of that draft — found 2026-09-16.
      */
-    private fun refreshReferenceListSuggestions() {
+    fun refreshReferenceListSuggestions() {
         viewModelScope.launch {
             _transporterNameSuggestions.value =
                 referenceListDataSource.getAll(ReferenceListKind.TRANSPORTER_NAME).map { it.value }
@@ -114,18 +122,40 @@ class InvoiceWorkspaceViewModel(
     val finalizedDocument: StateFlow<InvoiceDocumentModel?> = _finalizedDocument.asStateFlow()
 
     // ------------------------------------------------------------
+    // Predicted document number — see DocumentNumberPreviewDataSource. A non-binding "this will
+    // likely be numbered X" hint, refreshed whenever the draft's own document type changes
+    // (onCreateInvoice/onDocumentTypeChanged). Superseded by draft.jobWorkChallanLink's real
+    // reserved number when one exists (see previewDocument below and InvoiceWorkspaceScreen).
+    // ------------------------------------------------------------
+
+    private val _predictedDocumentNumber = MutableStateFlow<String?>(null)
+    val predictedDocumentNumber: StateFlow<String?> = _predictedDocumentNumber.asStateFlow()
+
+    private fun refreshPredictedDocumentNumber(documentType: DraftDocumentType) {
+        viewModelScope.launch {
+            _predictedDocumentNumber.value =
+                documentNumberPreviewDataSource.peekNextNumber(documentType)
+        }
+    }
+
+    // ------------------------------------------------------------
     // Preview (D2) — Draft → Document projection
     // ------------------------------------------------------------
 
     val previewDocument: StateFlow<InvoiceDocumentModel?> =
-        uiState
-            .map { draft ->
+        combine(uiState, predictedDocumentNumber) { draft, predicted ->
                 if (draft.billedTo == null) {
                     null
                 } else {
                     DraftToInvoiceDocument.project(
                         draft = draft,
-                        documentNumber = "PREVIEW",
+                        // A job-work continuation Invoice already has a real, reserved number —
+                        // prefer it over the mere prediction. Otherwise fall back to the
+                        // non-binding peek, or an honest placeholder while that peek is still
+                        // loading (it's a suspend Room read, not available synchronously).
+                        documentNumber = draft.jobWorkChallanLink?.reservedInvoiceNumber
+                            ?: predicted
+                            ?: "Assigned at finalize",
                         seller = SellerDetails(
                             name = "Preview Seller",
                             gstin = null,
@@ -188,6 +218,38 @@ class InvoiceWorkspaceViewModel(
 
     val chromeSpec: StateFlow<WorkspaceChromeSpec> = _chromeSpec.asStateFlow()
 
+    /**
+     * Title tracks the actual selected Document Type ("Invoice"/"Challan") rather than a fixed
+     * "Invoice" — previously hardcoded, so switching the dropdown to Challan left the top bar
+     * saying "Invoice" the whole time. Subtitle stays "Draft" except in the two job-work cases
+     * (a Challan drafted with "Challan + Invoice", or the continuation Invoice opened from one),
+     * both of which read "Job Work" — matching the "Job Work" section shown on the draft itself.
+     */
+    private fun buildDraftChromeSpec(draft: InvoiceDraftUiState): WorkspaceChromeSpec {
+        val title = when (draft.documentType) {
+            DraftDocumentType.INVOICE -> "Invoice"
+            DraftDocumentType.CHALLAN -> "Challan"
+        }
+        val isJobWork = draft.jobWorkChallanLink != null ||
+            (draft.documentType == DraftDocumentType.CHALLAN && draft.isJobWorkFlow)
+
+        return WorkspaceChromeSpec(
+            title = title,
+            subtitle = if (isJobWork) "Job Work" else "Draft",
+            navigationIcon = VerityNavIcon.Back(
+                onClick = { /* handled at root */ },
+                contentDescription = "Back"
+            ),
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Preview,
+                    contentDescription = "Preview invoice",
+                    onClick = { /* handled at root */ }
+                )
+            )
+        )
+    }
+
     fun onCreateInvoice(prefillBilledTo: DraftAddress? = null) {
         // Clear whatever the previous invoice left behind: its draft data (deferred here from
         // finalize, not reset there - see onFinalizeInvoice) and its finalize result, so this
@@ -206,21 +268,8 @@ class InvoiceWorkspaceViewModel(
         _uiState.value = draftStore.currentDraft
         refreshReferenceListSuggestions()
 
-        _chromeSpec.value = WorkspaceChromeSpec(
-            title = "Invoice",
-            subtitle = "Draft",
-            navigationIcon = VerityNavIcon.Back(
-                onClick = { /* handled at root */ },
-                contentDescription = "Back"
-            ),
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Preview,
-                    contentDescription = "Preview invoice",
-                    onClick = { /* handled at root */ }
-                )
-            )
-        )
+        _chromeSpec.value = buildDraftChromeSpec(draftStore.currentDraft)
+        refreshPredictedDocumentNumber(draftStore.currentDraft.documentType)
     }
 
     fun onDiscardDraft() {
@@ -230,6 +279,7 @@ class InvoiceWorkspaceViewModel(
         _hasActiveDraft.value = false
         _uiState.value = draftStore.currentDraft
         _chromeSpec.value = emptyWorkspaceChromeSpec()
+        _predictedDocumentNumber.value = null
     }
 
     private fun emptyWorkspaceChromeSpec(): WorkspaceChromeSpec =
@@ -532,6 +582,11 @@ class InvoiceWorkspaceViewModel(
     fun onDocumentTypeChanged(documentType: DraftDocumentType) {
         draftStore.setDocumentType(documentType)
         _uiState.value = draftStore.currentDraft
+        // Chrome title ("Invoice"/"Challan") and the predicted number both depend on which type
+        // is selected — previously left stale here, so switching the dropdown kept showing the
+        // old type's title and number until the next screen visit.
+        _chromeSpec.value = buildDraftChromeSpec(draftStore.currentDraft)
+        refreshPredictedDocumentNumber(documentType)
     }
 
     // ------------------------------------------------------------
@@ -543,6 +598,8 @@ class InvoiceWorkspaceViewModel(
     fun onJobWorkFlowChanged(enabled: Boolean) {
         draftStore.setJobWorkFlow(enabled)
         _uiState.value = draftStore.currentDraft
+        // Subtitle ("Draft" vs "Job Work") depends on this flag too.
+        _chromeSpec.value = buildDraftChromeSpec(draftStore.currentDraft)
     }
 
     /** "Received vide Challan No X dated Y" — available on any Challan, not gated by job work. */
@@ -599,20 +656,9 @@ class InvoiceWorkspaceViewModel(
         _uiState.value = draftStore.currentDraft
         refreshReferenceListSuggestions()
 
-        _chromeSpec.value = WorkspaceChromeSpec(
-            title = "Invoice",
-            subtitle = "Job Work",
-            navigationIcon = VerityNavIcon.Back(
-                onClick = { /* handled at root */ },
-                contentDescription = "Back"
-            ),
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Preview,
-                    contentDescription = "Preview invoice",
-                    onClick = { /* handled at root */ }
-                )
-            )
-        )
+        _chromeSpec.value = buildDraftChromeSpec(draftStore.currentDraft)
+        // This draft already has a real reserved number (draftStore.jobWorkChallanLink, set
+        // above) — previewDocument prefers that over a prediction, so there's nothing to peek.
+        _predictedDocumentNumber.value = null
     }
 }

@@ -13,8 +13,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -24,6 +26,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import com.verity.core.document.model.displayLabel
 import com.verity.core.theme.VerityTheme
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import com.verity.core.ui.icons.VerityIconGlyph
@@ -56,6 +59,8 @@ import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.pdf.PdfViewerScreen
+import com.verity.feature.invoice.pdf.printPdf
+import com.verity.feature.invoice.pdf.sharePdf
 import com.verity.feature.invoice.ui.LineItemEntryRoute
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
@@ -68,6 +73,7 @@ import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.settings.SettingsRoute
 import com.verity.feature.settings.SettingsViewModel
 import java.io.File
+import kotlinx.coroutines.launch
 
 /**
  * Route constants for the whole app's single NavHost. The four tab roots (Home/Documents/
@@ -144,6 +150,9 @@ fun AppNavShell(
     val currentRoute = navBackStackEntry?.destination?.route
     val isTabRoute = bottomNavItems.any { it.route == currentRoute }
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     fun goToTab(route: String) {
         navController.navigate(route) {
             popUpTo(AppRoutes.HOME) { inclusive = false }
@@ -158,9 +167,35 @@ fun AppNavShell(
         // InvoiceWorkspaceRoute.
         if (!invoiceWorkspaceViewModel.hasActiveDraft.value) {
             invoiceWorkspaceViewModel.onCreateInvoice()
+        } else {
+            // onCreateInvoice() already refreshes reference-list suggestions for a genuinely new
+            // draft; resuming an existing one skips that call entirely, so do it here instead —
+            // covers switching to Settings to add an HSN/Unit/Transporter value mid-draft, then
+            // returning via the FAB (see refreshReferenceListSuggestions()'s own doc comment).
+            invoiceWorkspaceViewModel.refreshReferenceListSuggestions()
         }
         navController.navigate(AppRoutes.WORKSPACE)
     }
+
+    /**
+     * Share/Print top-bar actions for a PDF-viewing route. [resolveFile] resolves (and, if
+     * needed, generates — see ensurePdf()/ensureFinalizedPdf()'s own doc comments) the exact File
+     * to hand off, run in its own coroutine per tap rather than relying on a screen-local
+     * produceState — this lives in the shared chrome computed above every route's own
+     * composable() body, so it has no access to that local state.
+     */
+    fun pdfShareAndPrintActions(resolveFile: suspend () -> File): List<VerityTopBarAction> = listOf(
+        VerityTopBarAction.Icon(
+            icon = VerityIcons.Share,
+            contentDescription = "Share PDF",
+            onClick = { coroutineScope.launch { sharePdf(context, resolveFile()) } }
+        ),
+        VerityTopBarAction.Icon(
+            icon = VerityIcons.Print,
+            contentDescription = "Print PDF",
+            onClick = { coroutineScope.launch { printPdf(context, resolveFile()) } }
+        )
+    )
 
     fun goToWorkspaceForCustomer(customer: CustomerDetail) {
         // Same "don't clobber an in-progress draft" rule as goToWorkspace() above — a customer
@@ -179,6 +214,10 @@ fun AppNavShell(
                     customerId = customer.customerId
                 )
             )
+        } else {
+            // Same reasoning as goToWorkspace() above — resuming an existing draft otherwise
+            // skips onCreateInvoice()'s refresh entirely.
+            invoiceWorkspaceViewModel.refreshReferenceListSuggestions()
         }
         navController.navigate(AppRoutes.WORKSPACE)
     }
@@ -258,18 +297,50 @@ fun AppNavShell(
                 }
             ) { navController.popBackStack() }
         }
-        AppRoutes.PREVIEW -> supportChrome(title = "Invoice Preview") { navController.popBackStack() }
-        AppRoutes.FINALIZED -> supportChrome(title = "Invoice Finalized") { navController.popBackStack() }
+        AppRoutes.PREVIEW -> supportChrome(
+            title = "${previewDocument?.identity?.documentType?.displayLabel ?: "Invoice"} Preview"
+        ) { navController.popBackStack() }
+        AppRoutes.FINALIZED -> supportChrome(
+            title = "${finalizedDocument?.identity?.documentType?.displayLabel ?: "Invoice"} Finalized"
+        ) { navController.popBackStack() }
         AppRoutes.FINALIZED_DOCUMENT ->
             supportChrome(
                 title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
             ) { navController.popBackStack() }
         AppRoutes.PDF_VIEWER ->
             supportChrome(
-                title = finalizedDocument?.identity?.documentNumber ?: "Invoice"
+                title = finalizedDocument?.identity?.documentNumber ?: "Invoice",
+                // ensureFinalizedPdf() is idempotent (see its own doc comment) — safe to call
+                // again here even though PdfViewerScreen's own produceState already resolved it
+                // once; this action lives in the shared top-bar chrome, one level above that
+                // per-route composable, so it can't just read that local state.
+                actions = pdfShareAndPrintActions { invoiceWorkspaceViewModel.ensureFinalizedPdf() }
             ) { navController.popBackStack() }
-        AppRoutes.DOCUMENT_DETAIL, AppRoutes.DOCUMENT_PDF ->
+        AppRoutes.DOCUMENT_DETAIL ->
             supportChrome(title = "Document") { navController.popBackStack() }
+        AppRoutes.DOCUMENT_PDF -> {
+            val documentId = navBackStackEntry?.arguments?.getString("documentId")
+            supportChrome(
+                title = "Document",
+                actions = if (documentId != null) {
+                    // Same idempotent-reuse reasoning as PDF_VIEWER above, but there's no shared,
+                    // root-level ViewModel to reuse here — DocumentDetailViewModel is scoped per
+                    // nav back-stack entry, created inside DOCUMENT_PDF's own composable() block
+                    // below, not reachable from this shared chrome code. documentDetailDataSource/
+                    // invoicePdfRenderer are the same plain dependencies that ViewModel is built
+                    // from, so this is a small, obviously-correct re-derivation, not a second
+                    // source of truth.
+                    pdfShareAndPrintActions {
+                        val document = requireNotNull(documentDetailDataSource.loadDocument(documentId)) {
+                            "No document found for id $documentId"
+                        }
+                        invoicePdfRenderer.ensurePdf(document)
+                    }
+                } else {
+                    emptyList()
+                }
+            ) { navController.popBackStack() }
+        }
         AppRoutes.DOCUMENT_SEARCH ->
             supportChrome(title = "Search") { navController.popBackStack() }
         AppRoutes.CUSTOMER_DETAIL -> {

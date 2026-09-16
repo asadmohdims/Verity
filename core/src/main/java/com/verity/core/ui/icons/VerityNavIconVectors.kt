@@ -335,6 +335,64 @@ val VerityEyeOutlineIcon: ImageVector by lazy {
 }
 
 /**
+ * "Print" icon — a plain three-rectangle printer pictogram (paper feeding in, printer body,
+ * output tray). `Icons.Filled.Print` isn't in material-icons-core either (only `Share` is) —
+ * hand-authored here for the same reason the Preview eye was: not worth pulling in
+ * material-icons-extended for one glyph. Unlike the icons above, this isn't transcribed from an
+ * approved mockup — no Design Blueprint screen covers Share/Print yet (added 2026-09-16 for the
+ * new PDF Share/Print feature) — so it's a plain, universally recognizable printer silhouette,
+ * not a pixel-exact design deliverable.
+ */
+val VerityPrintOutlineIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Print",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        // Paper feeding into the printer from above.
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(6f, 7f)
+            lineTo(6f, 2f)
+            lineTo(18f, 2f)
+            lineTo(18f, 7f)
+        }
+        // Printer body.
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(2f, 7f)
+            lineTo(22f, 7f)
+            lineTo(22f, 17f)
+            lineTo(2f, 17f)
+            close()
+        }
+        // Output tray with the printed page.
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(6f, 13f)
+            lineTo(18f, 13f)
+            lineTo(18f, 22f)
+            lineTo(6f, 22f)
+            close()
+        }
+    }.build()
+}
+
+/**
  * Success checkmark — circle, center (12,12) r=9 (4-cubic Bezier approximation, kappa =
  * 0.5522847498), plus the checkmark polyline — matches Finalized.dc.html's `.checkwrap` icon.
  */

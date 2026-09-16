@@ -10,9 +10,11 @@ import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
+import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.finalize.DocumentNumberPreviewDataSource
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
@@ -72,13 +74,18 @@ class InvoiceWorkspaceScreenUndoTest {
         override suspend fun delete(kind: ReferenceListKind, id: String) {}
     }
 
+    private class NoopDocumentNumberPreviewDataSource : DocumentNumberPreviewDataSource {
+        override suspend fun peekNextNumber(documentType: DraftDocumentType): String = "INV-000001"
+    }
+
     private fun buildViewModel(): InvoiceWorkspaceViewModel {
         val viewModel = InvoiceWorkspaceViewModel(
             draftStore = InvoiceDraftStore(),
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = NoopInvoiceFinalizer(),
             invoicePdfRenderer = NoopInvoicePdfRenderer(),
-            referenceListDataSource = NoopReferenceListDataSource()
+            referenceListDataSource = NoopReferenceListDataSource(),
+            documentNumberPreviewDataSource = NoopDocumentNumberPreviewDataSource()
         )
         viewModel.onCreateInvoice()
         return viewModel

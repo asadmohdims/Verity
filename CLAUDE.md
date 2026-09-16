@@ -120,6 +120,60 @@ exercised), and the two-device concurrent-numbering scenario `InvoiceNumberAlloc
 for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`,
 `FirebaseRestoreClientTest`, `Migration2To3Test`, the extended `DefaultInvoiceFinalizerTest`).
 
+**PDF Share/Print — built 2026-09-16.** The Share/Print gap below is closed: the PDF viewer's top
+bar now has Share and Print actions (`AppNavShell`'s `pdfShareAndPrintActions()`, wired on both the
+`PDF_VIEWER` and `DOCUMENT_PDF` routes). Share goes through a new `FileProvider`
+(`app/src/main/AndroidManifest.xml` + `res/xml/file_paths.xml`, scoped to exactly the `documents/`
+folder PDFs live in — nothing else in app-private storage is exposed) and `Intent.ACTION_SEND`;
+Print goes through `android.print.PrintManager` with a small `PrintDocumentAdapter`
+(`feature/invoice/pdf/PdfSharing.kt`) that streams the already-generated PDF's bytes directly
+rather than re-rendering. Manually verified on-device: both the share sheet and the system print
+dialog open correctly for a real finalized document.
+
+**Real app icon — wired 2026-09-16.** New Verity-branded adaptive icon assets landed in the repo
+(added outside this session), but `AndroidManifest.xml` was still pointing at the stock Android
+Studio default `ic_launcher`/`ic_launcher_round` — the new icon was never actually reachable.
+Fixed to reference `ic_verity`/`ic_verity_round`; confirmed on-device and via `aapt2 dump badging`
+against the built APK.
+
+**Toolchain — AGP 8.13.2 → 9.4.0, Kotlin 2.0.21 → 2.2.10, Room 2.6.1 → 2.8.5 (2026-09-16).**
+Android Studio bumped AGP/Kotlin/the Gradle wrapper outside this session but left `ksp` in
+`gradle/libs.versions.toml` at a bare, mismatched `"2.3.6"` (KSP versions must be
+`<kotlinVersion>-<kspBuild>`) — fixed to `"2.2.10-2.0.2"`. That alone didn't fully resolve it:
+KSP2 (the Analysis-API `symbol-processing-aa-embeddable` backend) still crashed processing Room
+2.6.1's suspend-fun DAO methods with `IllegalStateException: unexpected jvm signature V`, a
+documented KSP2/Room compatibility bug — fixed by bumping Room to 2.8.5 (latest stable 2.x; Room
+3.0 is a breaking KMP rewrite under a new package, not adopted here). All modules compile clean,
+full JVM/Robolectric suite green, confirmed installed and running on two real devices.
+
+**UI fixes — job-work number visibility, dynamic chrome titles, Preview correctness (2026-09-16).**
+The job-work continuation Invoice screen now shows its reserved Invoice number (and linked Challan
+number) as a prominent banner right under Document Type, not a caption buried below Line Items —
+every other draft gets a non-binding "Likely INV-000043" prediction instead, from a new
+local-only `DocumentNumberPreviewDataSource` (reads the same "max sequence + 1" query
+`InvoiceNumberAllocator`'s offline fallback already uses; never mutates the real counter, so it
+can't cause a collision). Top-bar titles ("Invoice"/"Challan" in the workspace, "Invoice
+Preview"/"Challan Preview", "Invoice Finalized"/"Challan Finalized") now track the actual document
+type instead of being hardcoded to "Invoice" — added a shared `DocumentType.displayLabel`
+extension used in all three places that had separately duplicated this mapping. The Preview
+screen's headline document number was a literal `"PREVIEW"` placeholder string rendered as if it
+were the real number — fixed. Preview's line items now reuse `VerityInvoiceLineItemRow` (the same
+component the Workspace draft list already used) instead of a stripped-down custom row that
+dropped HSN entirely.
+
+**Two more real bugs found and fixed while reviewing the above (2026-09-16):**
+- HSN Code/Unit/Transporter Name suggestion lists (Settings-managed reference lists) only ever
+  refreshed at app launch or when a genuinely new draft started (`onCreateInvoice()`) — resuming
+  an in-progress draft after adding a value in Settings left those suggestions stale for the rest
+  of that draft (the real-world trigger: mid-draft, realize an HSN code is missing, switch to
+  Settings to add it, come back via the FAB — the suggestion list never picks it up).
+  `InvoiceWorkspaceViewModel.refreshReferenceListSuggestions()` is now public and called
+  unconditionally from `AppNavShell.goToWorkspace()`/`goToWorkspaceForCustomer()`'s
+  "resuming an existing draft" branch, not just the "starting a new one" branch.
+- `VerityInvoiceLineItemRow` never rendered a line item's `unit` field at all, on any screen —
+  captured since day one (`DraftLineItem.unit`/`DocumentLineItem.unit`) but with nowhere to
+  display it. Now combined into the QTY value ("10 pcs") rather than a separate column.
+
 **Known placeholders / gaps to close before this is production-ready**:
 - `HardcodedSeller.kt`'s `pincode` field is still `PLACEHOLDER_PINCODE` — every other seller field
   is real (Unitech Machineries).
@@ -132,9 +186,9 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
   screen's Business Profile row ships visible-but-inert until it exists, deliberately, since no
   design exists for that screen yet (see "Next up" below). Customer CRUD and the Settings theme
   picker, by contrast, are now built — see "Next up".
-- Share/Print/Export (and the `FileProvider` it needs) isn't built — now top priority, see
-  "Next up" above.
-- No real app icon — still the stock Android Studio default. See "Next up" above.
+- ~~Share/Print/Export (and the `FileProvider` it needs) isn't built~~ — **built 2026-09-16**, see
+  Status above.
+- ~~No real app icon~~ — **wired 2026-09-16**, see Status above.
 - `LineItemEntryScreen` (2026-09-15, replacing inline Line Item add/edit — see "UI conventions"
   above) is green on the full Robolectric suite but has **not** had the on-device pixel/behavior
   look this project's own testing standard requires before calling mockup-matching work done
@@ -167,18 +221,14 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
   rather than forced into an awkward shape — worth returning to if/when `platform` grows a
   Robolectric setup for something else.
 
-## Next up (prioritized 2026-09-15)
+## Next up
 
-Decided in this session's review, reflecting actual priority now rather than the phase order
-implied by "UX direction" below:
+Last reprioritized 2026-09-15; items 1 and 3 below are now done (2026-09-16, see Status) —
+this list needs a fresh pass to reflect what's actually next now (Business Profile screen? the
+still-unrun `connectedDebugAndroidTest` suite? the remaining cloud-sync verification items below?
+LineItemEntryScreen's on-device pixel pass?) rather than assuming the old order still holds.
 
-1. **PDF open/share/print — crucial.** Nothing lets a finalized invoice leave the app today (see
-   the Share/Print/Export gap below). Needs, at minimum: open the generated PDF in the device's
-   own PDF viewer, share it via any installed app (WhatsApp explicitly named as the real-world
-   delivery channel), and print directly via Android's native print framework
-   (`android.print.PrintManager`), not a share-to-a-printing-app workaround. Needs a
-   `FileProvider` — the PDF lives in app-private external files storage today (see "Documents:
-   search, PDF, and schema evolution"), not shareable as a raw `file://` URI as-is.
+1. ~~PDF open/share/print — crucial.~~ **Built 2026-09-16** — see Status above.
 2. ~~Customers screen and Settings screen~~ — **built and merged to `main` (2026-09-15)**.
    Customers List/Detail/Add-Edit (including the soft-deactivate `CustomerDao` always documented
    but never implemented), and Settings (System/Light/Dark theme picker via a new
@@ -190,8 +240,7 @@ implied by "UX direction" below:
    `compileDebugAndroidTestKotlin` clean. Installed on a real device (`installDebug`) and reviewed
    by the user — some issues found during that pass, not yet itemized here; expect a near-term
    follow-up commit fixing them once scoped.
-3. **App icon** — real Verity branding before any store listing or install; currently the stock
-   Android Studio default. Backlog, not urgent, but must land before going live.
+3. ~~App icon~~ — **wired 2026-09-16** — see Status above.
 
 **Explicitly deferred to Day 2** (confirmed 2026-09-15, not before this ships to the single
 current business): real per-device/per-user authentication so a *new* business could download the

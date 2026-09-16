@@ -48,11 +48,22 @@ import com.verity.core.formatting.money.Money
 fun VerityInvoiceLineItemRow(
     description: String,
     quantity: Long?,
+    unit: String?,
     rate: Money,
     amount: Money,
     hsnCode: String?,
     modifier: Modifier = Modifier
 ) {
+    // Combined with quantity into one QTY value ("10 pcs"), not a separate column — the DESIGN
+    // CONTRACT above already pairs "quantity × rate" as one concept, and unit is meaningless
+    // without a quantity to attach to. Captured on every line item since day one
+    // (DraftLineItem.unit / DocumentLineItem.unit) but never actually rendered anywhere until
+    // now (found 2026-09-16).
+    val quantityText = when {
+        quantity == null -> "—"
+        unit.isNullOrBlank() -> quantity.toString()
+        else -> "$quantity $unit"
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -122,7 +133,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity?.toString() ?: "—",
+                                text = quantityText,
                                 style = VerityTextStyle.Label
                             )
                         }
@@ -151,7 +162,7 @@ fun VerityInvoiceLineItemRow(
                             )
                             VeritySpacer(size = VeritySpace.ExtraSmall)
                             VerityText(
-                                text = quantity?.toString() ?: "—",
+                                text = quantityText,
                                 style = VerityTextStyle.Label
                             )
                         }

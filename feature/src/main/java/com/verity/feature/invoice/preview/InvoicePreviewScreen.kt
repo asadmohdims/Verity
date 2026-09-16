@@ -14,9 +14,11 @@ import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.DocumentTaxMode
 import com.verity.core.document.model.DocumentType
+import com.verity.core.document.model.displayLabel
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.formatting.date.DocumentDate
 import com.verity.core.formatting.money.Money
+import com.verity.core.ui.molecules.VerityInvoiceLineItemRow
 import com.verity.core.ui.molecules.VeritySection
 import com.verity.core.ui.primitives.VerityButton
 import com.verity.core.ui.primitives.VerityButtonRole
@@ -30,8 +32,6 @@ import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextStyle
 import com.verity.core.ui.primitives.VeritySpace
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 
 /**
  * Renders an InvoiceDocumentModel for either a draft preview or an already-finalized document —
@@ -146,7 +146,9 @@ fun InvoicePreviewScreen(
         )
 
         // ─────────────────────────────────────────────
-        // Line Items — each its own Raised card, matching `.lineitem`.
+        // Line Items — reuses VerityInvoiceLineItemRow (same component Workspace's draft list
+        // uses) rather than a bespoke row, so a GST-required field like HSN doesn't silently drop
+        // out of the pre-finalize review just because this screen built its own simplified card.
         // ─────────────────────────────────────────────
         Column(modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)) {
             document.lineItems.forEachIndexed { index, item ->
@@ -154,25 +156,14 @@ fun InvoicePreviewScreen(
                     VeritySpacer(size = VeritySpace.Small)
                 }
 
-                VeritySurface(type = VeritySurfaceType.Raised) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(VeritySpace.Small.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        VerityText(
-                            text = item.description,
-                            style = VerityTextStyle.Body,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        VerityText(
-                            text = Money.ofPaise(item.amountPaise).format(),
-                            style = VerityTextStyle.Title
-                        )
-                    }
-                }
+                VerityInvoiceLineItemRow(
+                    description = item.description,
+                    quantity = item.quantity,
+                    unit = item.unit,
+                    rate = Money.ofPaise(item.ratePaise),
+                    amount = Money.ofPaise(item.amountPaise),
+                    hsnCode = item.hsnCode
+                )
             }
         }
 
@@ -235,12 +226,8 @@ fun InvoicePreviewScreen(
         if (onFinalize != null) {
             VeritySpacer(size = VeritySpace.Medium)
 
-            val documentNoun = when (document.identity.documentType) {
-                DocumentType.INVOICE -> "Invoice"
-                DocumentType.CHALLAN -> "Challan"
-            }
             VerityButton(
-                label = if (isFinalizing) "Finalizing…" else "Finalize $documentNoun",
+                label = if (isFinalizing) "Finalizing…" else "Finalize ${document.identity.documentType.displayLabel}",
                 onClick = onFinalize,
                 role = VerityButtonRole.Primary,
                 state = if (isFinalizing) VerityButtonState.Disabled else VerityButtonState.Enabled,

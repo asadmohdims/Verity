@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -70,6 +71,12 @@ object VerityIcons {
 
     val Search: VerityIcon =
         VerityIcon.Material(Icons.Filled.Search)
+
+    val Share: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Share)
+
+    val Print: VerityIcon =
+        VerityIcon.Material(VerityPrintOutlineIcon)
 
     /**
      * Explicit draft actions

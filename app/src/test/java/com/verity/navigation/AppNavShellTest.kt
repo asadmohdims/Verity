@@ -43,8 +43,10 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.referencelist.ReferenceListDataSource
 import com.verity.feature.referencelist.ReferenceListItem
 import com.verity.feature.referencelist.ReferenceListKind
+import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.finalize.DocumentNumberPreviewDataSource
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
 import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
@@ -106,6 +108,10 @@ class AppNavShellTest {
         override suspend fun ensurePdf(document: InvoiceDocumentModel): File {
             error("not used in this test")
         }
+    }
+
+    private class NoopDocumentNumberPreviewDataSource : DocumentNumberPreviewDataSource {
+        override suspend fun peekNextNumber(documentType: DraftDocumentType): String = "INV-000001"
     }
 
     private class NoopDocumentDetailDataSource : DocumentDetailDataSource {
@@ -197,7 +203,8 @@ class AppNavShellTest {
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = invoiceFinalizer,
             invoicePdfRenderer = invoicePdfRenderer,
-            referenceListDataSource = NoopReferenceListDataSource()
+            referenceListDataSource = NoopReferenceListDataSource(),
+            documentNumberPreviewDataSource = NoopDocumentNumberPreviewDataSource()
         )
         val documentSearchViewModel = DocumentSearchViewModel(
             homeDataSource = homeDataSource,
@@ -409,7 +416,8 @@ class AppNavShellTest {
             customerAutocompleteDataSource = NoopCustomerAutocompleteDataSource(),
             invoiceFinalizer = NoopInvoiceFinalizer(),
             invoicePdfRenderer = NoopInvoicePdfRenderer(),
-            referenceListDataSource = NoopReferenceListDataSource()
+            referenceListDataSource = NoopReferenceListDataSource(),
+            documentNumberPreviewDataSource = NoopDocumentNumberPreviewDataSource()
         )
         val documentDetailDataSource = object : DocumentDetailDataSource {
             override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =

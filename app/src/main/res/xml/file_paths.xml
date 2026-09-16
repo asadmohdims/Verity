@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Exposes only getExternalFilesDir(null)/documents/ — the exact folder DefaultInvoicePdfRenderer
+     writes generated PDFs to. Deliberately narrow: FileProvider grants access to whatever paths
+     are declared here, so this must never widen beyond the one folder PDFs actually live in.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-files-path name="documents" path="documents/" />
+</paths>

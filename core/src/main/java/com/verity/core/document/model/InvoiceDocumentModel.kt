@@ -106,6 +106,15 @@ enum class DocumentType {
     CHALLAN
 }
 
+/** "Invoice" / "Challan" — the shared noun used anywhere a screen title or label needs to name
+ *  the document type in front of the user (top app bar, Preview's Finalize button, the Finalized
+ *  confirmation screen). */
+val DocumentType.displayLabel: String
+    get() = when (this) {
+        DocumentType.INVOICE -> "Invoice"
+        DocumentType.CHALLAN -> "Challan"
+    }
+
 /**
  * SellerDetails
  *
