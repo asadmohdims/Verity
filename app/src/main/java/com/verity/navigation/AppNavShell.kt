@@ -531,13 +531,26 @@ fun AppNavShell(
                         .isFinalizing
                         .collectAsState()
 
-                    // Finalize completes asynchronously in the ViewModel; once it publishes a
+                    // Snapshot of finalizedDocument as it stood when this Preview was entered.
+                    // Needed because the job-work "Continue to Invoice" flow deliberately leaves
+                    // finalizedDocument holding the just-finalized Challan rather than nulling it
+                    // eagerly (see onContinueToJobWorkInvoice()'s comment - nulling it there raced
+                    // the still-composed "finalized" route's requireNotNull and crashed). That
+                    // means finalizedDocument can already be non-null the moment this Preview is
+                    // entered for the follow-up Invoice draft - a naive "!= null" check below
+                    // would immediately bounce straight back to that stale Challan's Finalized
+                    // screen before this Invoice is ever finalized, without ever showing Preview.
+                    // Only a document that's actually different from what was here on entry means
+                    // *this* draft's finalize genuinely just completed.
+                    val finalizedDocumentOnEntry = remember { finalizedDocument }
+
+                    // Finalize completes asynchronously in the ViewModel; once it publishes a new
                     // result, move forward to the finalized screen and drop both "preview" AND
                     // "workspace" from the back stack — the draft they showed no longer exists
                     // (onFinalizeInvoice() clears hasActiveDraft), so back from "finalized" must
                     // land on the tab underneath, not on a stale workspace entry.
                     LaunchedEffect(finalizedDocument) {
-                        if (finalizedDocument != null) {
+                        if (finalizedDocument != null && finalizedDocument != finalizedDocumentOnEntry) {
                             navController.navigate(AppRoutes.FINALIZED) {
                                 popUpTo(AppRoutes.WORKSPACE) { inclusive = true }
                             }

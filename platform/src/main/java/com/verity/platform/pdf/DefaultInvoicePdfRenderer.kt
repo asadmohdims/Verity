@@ -55,12 +55,25 @@ class DefaultInvoicePdfRenderer(
         val downloaded = syncClient.downloadPdf(orgId, document.identity.documentNumber, file)
         if (downloaded) return file
 
+        return renderAndUpload(document, file)
+    }
+
+    // Called right after finalize - the document didn't exist a moment ago, so it's guaranteed
+    // not to be on disk or in Storage yet. Skips straight to rendering instead of paying for the
+    // Storage download check ensurePdf() does first, which would be a real network round trip
+    // guaranteed to fail (see this class's own header comment on ensurePdf()'s fallback order).
+    override suspend fun generateFreshPdf(document: InvoiceDocumentModel): File {
+        val file = pdfFile(document.identity.documentNumber)
+        return renderAndUpload(document, file)
+    }
+
+    private fun renderAndUpload(document: InvoiceDocumentModel, file: File): File {
         val pdfDocument = InvoicePdfPageDrawer(document).draw()
         file.parentFile?.mkdirs()
         FileOutputStream(file).use { pdfDocument.writeTo(it) }
         pdfDocument.close()
         // Fire-and-forget, mirroring FirebaseSyncClient's push pattern elsewhere - never blocks
-        // the PDF viewer on the upload.
+        // the caller on the upload.
         syncClient.pushPdf(orgId, document.identity.documentNumber, file)
         return file
     }

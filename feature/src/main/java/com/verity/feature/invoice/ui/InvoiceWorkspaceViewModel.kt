@@ -293,7 +293,12 @@ class InvoiceWorkspaceViewModel(
             // finalize still succeeds and navigation still proceeds - ensurePdf() is idempotent
             // and gets called again defensively when the user opens the PDF viewer, so a failed
             // attempt here self-heals on next view without any dedicated retry UI.
-            runCatching { invoicePdfRenderer.ensurePdf(document) }
+            //
+            // generateFreshPdf(), not ensurePdf(): this document was just created by the finalize
+            // call above, so it's guaranteed not to exist on disk or in Storage yet - ensurePdf()'s
+            // Storage-download check would be a real network round trip guaranteed to fail here,
+            // adding latency to every finalize for no benefit (confirmed live on-device).
+            runCatching { invoicePdfRenderer.generateFreshPdf(document) }
 
             _finalizedDocument.value = document
 
@@ -556,6 +561,15 @@ class InvoiceWorkspaceViewModel(
      * button, so draftStore still holds that Challan's draft state (onFinalizeInvoice()
      * deliberately doesn't reset it - see its comment) - this is where that reset finally
      * happens instead.
+     *
+     * Deliberately NOT nulling _finalizedDocument here, for the same reason onFinalizeInvoice()
+     * doesn't reset the draft eagerly (see its comment): the "finalized" route this was called
+     * from is still composed when this runs (navigation to WORKSPACE hasn't happened yet), and
+     * its requireNotNull(finalizedDocument) races the null against that recomposition - crashed
+     * with "Finalized route entered without a finalized document" when the null landed first.
+     * onCreateInvoice() already nulls it unconditionally on the next new-document flow, and
+     * finalizing this Invoice overwrites it with the new document anyway, so nothing here is
+     * left stale in practice.
      */
     fun onContinueToJobWorkInvoice() {
         val challan = requireNotNull(_finalizedDocument.value) {
@@ -581,7 +595,6 @@ class InvoiceWorkspaceViewModel(
             )
         )
 
-        _finalizedDocument.value = null
         _hasActiveDraft.value = true
         _uiState.value = draftStore.currentDraft
         refreshReferenceListSuggestions()
