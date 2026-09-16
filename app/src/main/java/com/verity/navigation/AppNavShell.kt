@@ -226,38 +226,15 @@ fun AppNavShell(
     val previewDocument by invoiceWorkspaceViewModel.previewDocument.collectAsState()
     val finalizedDocument by invoiceWorkspaceViewModel.finalizedDocument.collectAsState()
 
-    val chromeSpecWithNavigation = remember(workspaceChromeSpec, previewDocument) {
-        val canPreview = previewDocument != null
-
+    val chromeSpecWithNavigation = remember(workspaceChromeSpec) {
         workspaceChromeSpec.copy(
             navigationIcon = when (val icon = workspaceChromeSpec.navigationIcon) {
                 // The ViewModel builds this with a placeholder onClick ("handled at root") since
-                // it doesn't own navigation — root must actually wire it, same as the Preview
-                // action below. Previously left unwired, so the Workspace screen's back arrow was
-                // a silent no-op and never returned to Home.
+                // it doesn't own navigation — root must actually wire it. Previously left
+                // unwired, so the Workspace screen's back arrow was a silent no-op and never
+                // returned to Home.
                 is VerityNavIcon.Back -> icon.copy(onClick = { navController.popBackStack() })
                 VerityNavIcon.None -> icon
-            },
-            actions = workspaceChromeSpec.actions.map { action ->
-                if (
-                    action is VerityTopBarAction.Icon &&
-                    action.contentDescription == "Preview invoice"
-                ) {
-                    // Disabled (not just a silent no-op) until Billed To is set — that's what
-                    // previewDocument being null actually means (see DraftToInvoiceDocument,
-                    // which needs the buyer's state to determine GST mode). Found by the user
-                    // tapping Preview on a blank draft and seeing nothing happen at all.
-                    action.copy(
-                        enabled = canPreview,
-                        onClick = {
-                            if (canPreview) {
-                                navController.navigate(AppRoutes.PREVIEW)
-                            }
-                        }
-                    )
-                } else {
-                    action
-                }
             }
         )
     }
@@ -567,6 +544,16 @@ fun AppNavShell(
                         onAddLineItem = { navController.navigate(AppRoutes.LINE_ITEM_ADD) },
                         onEditLineItem = { index ->
                             navController.navigate(AppRoutes.lineItemEdit(index))
+                        },
+                        // Disabled (not just a silent no-op) until Billed To is set — that's what
+                        // previewDocument being null actually means (see DraftToInvoiceDocument,
+                        // which needs the buyer's state to determine GST mode). Found by the user
+                        // tapping Preview on a blank draft and seeing nothing happen at all.
+                        canPreview = previewDocument != null,
+                        onPreview = { navController.navigate(AppRoutes.PREVIEW) },
+                        onDiscard = {
+                            invoiceWorkspaceViewModel.onDiscardDraft()
+                            navController.popBackStack()
                         }
                     )
                 }

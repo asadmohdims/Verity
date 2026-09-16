@@ -57,9 +57,6 @@ object VerityIcons {
     /**
      * Chrome / Global actions
      */
-    val Preview: VerityIcon =
-        VerityIcon.Material(VerityEyeOutlineIcon)
-
     val ChevronDown: VerityIcon =
         VerityIcon.Material(Icons.Filled.KeyboardArrowDown)
 

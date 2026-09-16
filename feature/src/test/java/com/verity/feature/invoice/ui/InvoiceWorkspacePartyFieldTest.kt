@@ -109,7 +109,10 @@ class InvoiceWorkspacePartyFieldTest {
                 InvoiceWorkspaceRoute(
                     viewModel = viewModel,
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }
@@ -140,7 +143,10 @@ class InvoiceWorkspacePartyFieldTest {
                 InvoiceWorkspaceRoute(
                     viewModel = viewModel,
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }
@@ -166,7 +172,10 @@ class InvoiceWorkspacePartyFieldTest {
                 InvoiceWorkspaceRoute(
                     viewModel = viewModel,
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }

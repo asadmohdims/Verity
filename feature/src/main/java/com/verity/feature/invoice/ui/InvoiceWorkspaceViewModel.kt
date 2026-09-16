@@ -12,8 +12,6 @@ import java.time.Clock
 import com.verity.core.ui.chrome.WorkspaceChromeSpec
 import com.verity.core.ui.molecules.VerityChromeMode
 import com.verity.core.ui.molecules.VerityNavIcon
-import com.verity.core.ui.molecules.VerityTopBarAction
-import com.verity.core.ui.icons.VerityIcons
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -205,13 +203,7 @@ class InvoiceWorkspaceViewModel(
             title = "Verity",
             subtitle = null,
             navigationIcon = VerityNavIcon.None,
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Preview,
-                    contentDescription = "Preview invoice",
-                    onClick = { /* handled at root */ }
-                )
-            ),
+            actions = emptyList(),
             chromeMode = VerityChromeMode.Workspace
         )
     )
@@ -240,13 +232,7 @@ class InvoiceWorkspaceViewModel(
                 onClick = { /* handled at root */ },
                 contentDescription = "Back"
             ),
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Preview,
-                    contentDescription = "Preview invoice",
-                    onClick = { /* handled at root */ }
-                )
-            )
+            actions = emptyList()
         )
     }
 

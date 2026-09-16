@@ -109,7 +109,10 @@ class InvoiceWorkspaceScreenUndoTest {
                 InvoiceWorkspaceRoute(
                     viewModel = viewModel,
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }
@@ -141,7 +144,10 @@ class InvoiceWorkspaceScreenUndoTest {
                 InvoiceWorkspaceRoute(
                     viewModel = viewModel,
                     onAddLineItem = { addRequested = true },
-                    onEditLineItem = { index -> editRequestedIndex = index }
+                    onEditLineItem = { index -> editRequestedIndex = index },
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }

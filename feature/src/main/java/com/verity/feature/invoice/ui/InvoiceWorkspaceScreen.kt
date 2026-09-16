@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.SnackbarDuration
@@ -68,6 +69,9 @@ import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySuggestion
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
+import com.verity.core.ui.primitives.VerityButton
+import com.verity.core.ui.primitives.VerityButtonRole
+import com.verity.core.ui.primitives.VerityButtonState
 import com.verity.core.ui.primitives.VerityText
 import com.verity.core.ui.primitives.VerityTextField
 import com.verity.core.ui.primitives.VerityTextFieldRole
@@ -158,7 +162,10 @@ internal fun rememberFocusScrollModifier(
 fun InvoiceWorkspaceRoute(
     viewModel: InvoiceWorkspaceViewModel,
     onAddLineItem: () -> Unit,
-    onEditLineItem: (Int) -> Unit
+    onEditLineItem: (Int) -> Unit,
+    canPreview: Boolean,
+    onPreview: () -> Unit,
+    onDiscard: () -> Unit
 ) {
     // The route is only ever entered via AppNavShell.goToWorkspace(), which guarantees a draft
     // exists (onCreateInvoice() runs first if none is active) before navigating here, and the
@@ -171,7 +178,10 @@ fun InvoiceWorkspaceRoute(
         draft = draft,
         viewModel = viewModel,
         onAddLineItem = onAddLineItem,
-        onEditLineItem = onEditLineItem
+        onEditLineItem = onEditLineItem,
+        canPreview = canPreview,
+        onPreview = onPreview,
+        onDiscard = onDiscard
     )
 }
 
@@ -180,7 +190,10 @@ fun InvoiceWorkspaceScreen(
     draft: InvoiceDraftUiState,
     viewModel: InvoiceWorkspaceViewModel,
     onAddLineItem: () -> Unit,
-    onEditLineItem: (Int) -> Unit
+    onEditLineItem: (Int) -> Unit,
+    canPreview: Boolean,
+    onPreview: () -> Unit,
+    onDiscard: () -> Unit
 ) {
     val billedToQuery by viewModel.billedToQuery.collectAsState()
     val billedToSuggestions by viewModel.billedToSuggestions.collectAsState()
@@ -193,6 +206,7 @@ fun InvoiceWorkspaceScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    var showDiscardConfirmDialog by remember { mutableStateOf(false) }
 
     // Line item deletion now happens on a separate full-screen surface (LineItemEntryScreen),
     // which pops back here immediately — so the "Undo" snackbar it used to show inline has to be
@@ -915,6 +929,39 @@ fun InvoiceWorkspaceScreen(
                 totalAfterTax = Money.ofPaise(draft.summary.grandTotalPaise)
             )
         }
+
+        VeritySpacer(size = VeritySpace.Medium)
+
+        // ─────────────────────────────────────────────
+        // Discard / Preview — the draft's primary actions, placed as the final row of the
+        // scrollable content rather than a persistent Scaffold-level bottom bar. Discussed and
+        // decided with the user: Summary (immediately above) is always the last section
+        // regardless of document type or job-work flow, so this row is never more than a short
+        // scroll away from wherever the user was last editing — a pinned bar would permanently
+        // cost screen space and sit somewhere a thumb could tap it by accident.
+        // ─────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = VeritySpace.Small.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            VerityButton(
+                label = "Discard",
+                role = VerityButtonRole.Destructive,
+                onClick = { showDiscardConfirmDialog = true },
+                modifier = Modifier.weight(1f)
+            )
+            VerityButton(
+                label = "Preview",
+                role = VerityButtonRole.Primary,
+                state = if (canPreview) VerityButtonState.Enabled else VerityButtonState.Disabled,
+                onClick = onPreview,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        VeritySpacer(size = VeritySpace.Large)
         } // closes Column
 
         // Declared after (on top of) the scrollable Column, matching Scaffold's own convention
@@ -932,6 +979,38 @@ fun InvoiceWorkspaceScreen(
             VeritySnackbar(snackbarData = data)
         }
     } // closes Box
+
+    // First AlertDialog in the app — a one-off confirmation, not worth a reusable VerityDialog
+    // wrapper for a single call site. onDiscardDraft() has no undo path (unlike line-item
+    // delete's snackbar above), so a multi-section draft representing real work isn't lost to a
+    // stray tap.
+    if (showDiscardConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirmDialog = false },
+            containerColor = VerityTheme.colors.surface.base,
+            titleContentColor = VerityTheme.colors.text.primary,
+            textContentColor = VerityTheme.colors.text.muted,
+            title = { VerityText(text = "Discard this draft?", style = VerityTextStyle.Title) },
+            text = { VerityText(text = "This can't be undone.", style = VerityTextStyle.Body) },
+            confirmButton = {
+                VerityButton(
+                    label = "Discard",
+                    role = VerityButtonRole.Destructive,
+                    onClick = {
+                        showDiscardConfirmDialog = false
+                        onDiscard()
+                    }
+                )
+            },
+            dismissButton = {
+                VerityButton(
+                    label = "Cancel",
+                    role = VerityButtonRole.Secondary,
+                    onClick = { showDiscardConfirmDialog = false }
+                )
+            }
+        )
+    }
 } // closes InvoiceWorkspaceScreen
 
 /**
@@ -997,7 +1076,10 @@ private fun InvoiceWorkspacePreviewLight() {
                     draft = previewInvoiceDraft(),
                     viewModel = previewInvoiceWorkspaceViewModel(),
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }
@@ -1026,7 +1108,10 @@ private fun InvoiceWorkspacePreviewDark() {
                     draft = previewInvoiceDraft(),
                     viewModel = previewInvoiceWorkspaceViewModel(),
                     onAddLineItem = {},
-                    onEditLineItem = {}
+                    onEditLineItem = {},
+                    canPreview = true,
+                    onPreview = {},
+                    onDiscard = {}
                 )
             }
         }

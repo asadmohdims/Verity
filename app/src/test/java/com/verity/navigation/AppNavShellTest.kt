@@ -290,8 +290,8 @@ class AppNavShellTest {
         val workspaceViewModel = setContentWithShell()
         composeTestRule.onNodeWithContentDescription("Create").performClick()
 
-        composeTestRule.onNodeWithContentDescription("Preview invoice").assertIsNotEnabled()
-        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Preview").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Preview").performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").assertDoesNotExist()
 
         workspaceViewModel.onBilledToSelected(
@@ -307,8 +307,8 @@ class AppNavShellTest {
             )
         )
 
-        composeTestRule.onNodeWithContentDescription("Preview invoice").assertIsEnabled()
-        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Preview").assertIsEnabled()
+        composeTestRule.onNodeWithText("Preview").performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").assertIsDisplayed()
     }
 
@@ -345,7 +345,7 @@ class AppNavShellTest {
                 pincode = null
             )
         )
-        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Preview").performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").performClick()
         // "Invoice Finalized" itself is ambiguous here (it's both the chrome title and the screen
         // body's heading) — assert on the document number, which only the body renders.
@@ -381,7 +381,7 @@ class AppNavShellTest {
                 pincode = null
             )
         )
-        composeTestRule.onNodeWithContentDescription("Preview invoice").performClick()
+        composeTestRule.onNodeWithText("Preview").performClick()
         composeTestRule.onNodeWithText("Finalize Invoice").performClick()
         composeTestRule.onNodeWithText("INV-000043 · ₹7,021").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Back").performClick()

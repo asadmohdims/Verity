@@ -98,7 +98,7 @@ class InvoiceWorkspaceJobWorkFlowTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {}, canPreview = true, onPreview = {}, onDiscard = {})
             }
         }
 
@@ -119,7 +119,7 @@ class InvoiceWorkspaceJobWorkFlowTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {}, canPreview = true, onPreview = {}, onDiscard = {})
             }
         }
 
@@ -136,7 +136,7 @@ class InvoiceWorkspaceJobWorkFlowTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {}, canPreview = true, onPreview = {}, onDiscard = {})
             }
         }
 
