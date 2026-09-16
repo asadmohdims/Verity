@@ -19,8 +19,11 @@ import androidx.lifecycle.viewModelScope
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftInboundChallanReference
+import com.verity.feature.invoice.draft.DraftJobWorkChallanLink
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.DraftDocumentType
@@ -260,19 +263,42 @@ class InvoiceWorkspaceViewModel(
     fun onFinalizeInvoice() {
         if (_isFinalizing.value) return
 
-        val customerId = draftStore.currentDraft.billedTo?.customerId
+        val draft = draftStore.currentDraft
+        val customerId = draft.billedTo?.customerId
         requireNotNull(customerId) { "Cannot finalize without a selected billed-to customer" }
+
+        // Which half of a "Challan + Invoice" pair (if either) this finalize is — see
+        // InvoiceFinalizer.JobWorkLinkage. Both cases were declared upfront, never guessed here:
+        // isJobWorkFlow was set by the Document Type dropdown's "Challan + Invoice" item, and
+        // jobWorkChallanLink was set by onContinueToJobWorkInvoice() when this Invoice draft was
+        // opened.
+        val jobWorkLinkage = when {
+            draft.documentType == DraftDocumentType.CHALLAN && draft.isJobWorkFlow ->
+                JobWorkLinkage.ReserveLinkedInvoiceNumber
+            draft.documentType == DraftDocumentType.INVOICE && draft.jobWorkChallanLink != null ->
+                JobWorkLinkage.UseReservedNumber(
+                    documentNumber = draft.jobWorkChallanLink.reservedInvoiceNumber,
+                    linkedChallanDocumentNumber = draft.jobWorkChallanLink.challanDocumentNumber,
+                    linkedChallanDate = draft.jobWorkChallanLink.challanDate
+                )
+            else -> JobWorkLinkage.None
+        }
 
         viewModelScope.launch {
             _isFinalizing.value = true
-            val document = invoiceFinalizer.finalize(draftStore.currentDraft, customerId)
+            val document = invoiceFinalizer.finalize(draft, customerId, jobWorkLinkage)
 
             // Best-effort: the document number is already committed at this point, which is the
             // truly irreversible part of finalize. If PDF generation fails here (e.g. disk full),
             // finalize still succeeds and navigation still proceeds - ensurePdf() is idempotent
             // and gets called again defensively when the user opens the PDF viewer, so a failed
             // attempt here self-heals on next view without any dedicated retry UI.
-            runCatching { invoicePdfRenderer.ensurePdf(document) }
+            //
+            // generateFreshPdf(), not ensurePdf(): this document was just created by the finalize
+            // call above, so it's guaranteed not to exist on disk or in Storage yet - ensurePdf()'s
+            // Storage-download check would be a real network round trip guaranteed to fail here,
+            // adding latency to every finalize for no benefit (confirmed live on-device).
+            runCatching { invoicePdfRenderer.generateFreshPdf(document) }
 
             _finalizedDocument.value = document
 
@@ -450,9 +476,27 @@ class InvoiceWorkspaceViewModel(
     // Atom 4 — Line Items (Remove)
     // ------------------------------------------------------------
 
+    /**
+     * Deletion happens on the full-screen line-item entry surface, which pops back to Workspace
+     * immediately after — so the "Undo" snackbar can't be shown from there. This is a one-shot
+     * event (StateFlow, not SharedFlow: Workspace's recomposition after the pop-back is guaranteed
+     * to observe whatever value is current, so nothing is missed) that Workspace consumes via
+     * onLineItemDeletedEventConsumed() once its snackbar has been shown.
+     */
+    data class DeletedLineItem(val index: Int, val item: DraftLineItem)
+
+    private val _lineItemDeleted = MutableStateFlow<DeletedLineItem?>(null)
+    val lineItemDeleted: StateFlow<DeletedLineItem?> = _lineItemDeleted.asStateFlow()
+
     fun onRemoveLineItem(index: Int) {
+        val removed = draftStore.currentDraft.lineItems[index]
         draftStore.removeLineItem(index)
         _uiState.value = draftStore.currentDraft
+        _lineItemDeleted.value = DeletedLineItem(index, removed)
+    }
+
+    fun onLineItemDeletedEventConsumed() {
+        _lineItemDeleted.value = null
     }
 
     fun onInsertLineItemAt(index: Int, item: DraftLineItem) {
@@ -488,5 +532,87 @@ class InvoiceWorkspaceViewModel(
     fun onDocumentTypeChanged(documentType: DraftDocumentType) {
         draftStore.setDocumentType(documentType)
         _uiState.value = draftStore.currentDraft
+    }
+
+    // ------------------------------------------------------------
+    // Atom 7 — Job Work (Challan + Invoice)
+    // ------------------------------------------------------------
+
+    /** Set by the Document Type dropdown's "Challan + Invoice" item, right after it sets the
+     *  type itself to CHALLAN — see InvoiceWorkspaceScreen. */
+    fun onJobWorkFlowChanged(enabled: Boolean) {
+        draftStore.setJobWorkFlow(enabled)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    /** "Received vide Challan No X dated Y" — available on any Challan, not gated by job work. */
+    fun onInboundChallanReferenceChanged(reference: DraftInboundChallanReference?) {
+        draftStore.setInboundChallanReference(reference)
+        _uiState.value = draftStore.currentDraft
+    }
+
+    /**
+     * Opens a fresh Invoice draft continuing the job-work Challan that was just finalized,
+     * carrying over the same customer and a reference back to that Challan — but deliberately
+     * NOT its line items/goods value, since only the job-work service gets billed on the
+     * Invoice (see CLAUDE.md's "Challan → Invoice (job work)" domain model section).
+     *
+     * Called from the Challan's "Challan Finalized" confirmation screen's "Continue to Invoice"
+     * button, so draftStore still holds that Challan's draft state (onFinalizeInvoice()
+     * deliberately doesn't reset it - see its comment) - this is where that reset finally
+     * happens instead.
+     *
+     * Deliberately NOT nulling _finalizedDocument here, for the same reason onFinalizeInvoice()
+     * doesn't reset the draft eagerly (see its comment): the "finalized" route this was called
+     * from is still composed when this runs (navigation to WORKSPACE hasn't happened yet), and
+     * its requireNotNull(finalizedDocument) races the null against that recomposition - crashed
+     * with "Finalized route entered without a finalized document" when the null landed first.
+     * onCreateInvoice() already nulls it unconditionally on the next new-document flow, and
+     * finalizing this Invoice overwrites it with the new document anyway, so nothing here is
+     * left stale in practice.
+     */
+    fun onContinueToJobWorkInvoice() {
+        val challan = requireNotNull(_finalizedDocument.value) {
+            "No finalized Challan to continue from"
+        }
+        val jobWorkLink = requireNotNull(challan.jobWorkLink) {
+            "Challan has no reserved Invoice link"
+        }
+        val carriedBilledTo = requireNotNull(draftStore.currentDraft.billedTo) {
+            "Finalized Challan draft has no billedTo to carry forward"
+        }
+        val carriedShippedTo = draftStore.currentDraft.shippedTo
+
+        draftStore.reset()
+        draftStore.setDocumentType(DraftDocumentType.INVOICE)
+        draftStore.setBilledTo(carriedBilledTo)
+        carriedShippedTo?.let { draftStore.setShippedToOverride(it) }
+        draftStore.setJobWorkChallanLink(
+            DraftJobWorkChallanLink(
+                reservedInvoiceNumber = jobWorkLink.linkedDocumentNumber,
+                challanDocumentNumber = challan.identity.documentNumber,
+                challanDate = challan.identity.issueDate
+            )
+        )
+
+        _hasActiveDraft.value = true
+        _uiState.value = draftStore.currentDraft
+        refreshReferenceListSuggestions()
+
+        _chromeSpec.value = WorkspaceChromeSpec(
+            title = "Invoice",
+            subtitle = "Job Work",
+            navigationIcon = VerityNavIcon.Back(
+                onClick = { /* handled at root */ },
+                contentDescription = "Back"
+            ),
+            actions = listOf(
+                VerityTopBarAction.Icon(
+                    icon = VerityIcons.Preview,
+                    contentDescription = "Preview invoice",
+                    onClick = { /* handled at root */ }
+                )
+            )
+        )
     }
 }

@@ -53,6 +53,23 @@ object DraftToInvoiceDocument {
             ),
             lineItems = draft.lineItems.map { it.toDocumentLineItem() },
             logistics = draft.transportDetails?.toDocumentLogistics(),
+            inboundChallanReference = draft.inboundChallanReference?.let {
+                DocumentInboundChallanReference(
+                    challanNumber = it.challanNumber,
+                    challanDate = it.challanDate
+                )
+            },
+            // A Challan draft's own forward-pointing jobWorkLink (the reserved Invoice number)
+            // isn't produced here — that number doesn't exist until finalize time, and this
+            // projection has no draft field to source it from. DefaultInvoiceFinalizer attaches
+            // it post-hoc via .copy(...) after reserving the number (see JobWorkLinkage).
+            jobWorkLink = draft.jobWorkChallanLink?.let {
+                DocumentJobWorkLink(
+                    linkedDocumentNumber = it.challanDocumentNumber,
+                    linkedDocumentDate = it.challanDate,
+                    linkedDocumentId = null // resolved by DefaultInvoiceFinalizer at finalize time
+                )
+            },
             taxation = draft.summary.tax?.toDocumentTaxation(),
             totals = DocumentTotals(
                 itemsSubtotalPaise = draft.summary.subtotalPaise,

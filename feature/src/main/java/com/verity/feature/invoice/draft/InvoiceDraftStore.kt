@@ -108,4 +108,29 @@ class InvoiceDraftStore(
     fun reset() {
         _currentDraft = InvoiceDraftReducer.reset()
     }
+
+    // ------------------------------------------------------------
+    // Atom 7 — Job Work (Challan + Invoice)
+    // ------------------------------------------------------------
+
+    fun setJobWorkFlow(enabled: Boolean) {
+        _currentDraft = InvoiceDraftReducer.setJobWorkFlow(
+            draft = _currentDraft,
+            enabled = enabled
+        )
+    }
+
+    fun setInboundChallanReference(reference: DraftInboundChallanReference?) {
+        _currentDraft = InvoiceDraftReducer.setInboundChallanReference(
+            draft = _currentDraft,
+            reference = reference
+        )
+    }
+
+    fun setJobWorkChallanLink(link: DraftJobWorkChallanLink?) {
+        _currentDraft = InvoiceDraftReducer.setJobWorkChallanLink(
+            draft = _currentDraft,
+            link = link
+        )
+    }
 }

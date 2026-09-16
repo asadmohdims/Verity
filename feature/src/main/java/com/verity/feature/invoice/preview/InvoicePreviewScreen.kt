@@ -1,5 +1,6 @@
 package com.verity.feature.invoice.preview
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,7 +49,11 @@ fun InvoicePreviewScreen(
     onBack: () -> Unit,
     onFinalize: (() -> Unit)? = null,
     isFinalizing: Boolean = false,
-    onViewPdf: (() -> Unit)? = null
+    onViewPdf: (() -> Unit)? = null,
+    /** Non-null only once the linked document actually resolves to a real row — see
+     *  DocumentDetailViewModel.linkedDocumentId. Null shows the reference as plain text instead
+     *  of a tappable row (e.g. a job-work Challan whose reserved Invoice was never finalized). */
+    onViewLinkedDocument: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -77,6 +82,33 @@ fun InvoicePreviewScreen(
                     text = "Issue date · ${DocumentDate.format(document.identity.issueDate)}",
                     style = VerityTextStyle.Caption
                 )
+
+                document.inboundChallanReference?.let { reference ->
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    VerityText(
+                        text = "Received vide Challan No. ${reference.challanNumber}" +
+                            (reference.challanDate?.let { " dated ${DocumentDate.format(it)}" } ?: ""),
+                        style = VerityTextStyle.Caption
+                    )
+                }
+
+                document.jobWorkLink?.let { link ->
+                    val label = when (document.identity.documentType) {
+                        DocumentType.CHALLAN -> "Ref: Invoice No."
+                        DocumentType.INVOICE -> "Ref: Challan No."
+                    }
+                    val referenceText = "$label ${link.linkedDocumentNumber} dated ${DocumentDate.format(link.linkedDocumentDate)}"
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    if (onViewLinkedDocument != null) {
+                        VerityText(
+                            text = "$referenceText ›",
+                            style = VerityTextStyle.Caption,
+                            modifier = Modifier.clickable(onClick = onViewLinkedDocument)
+                        )
+                    } else {
+                        VerityText(text = referenceText, style = VerityTextStyle.Caption)
+                    }
+                }
 
                 VeritySpacer(size = VeritySpace.Medium)
 

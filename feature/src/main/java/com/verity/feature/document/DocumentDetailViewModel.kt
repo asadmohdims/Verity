@@ -2,6 +2,7 @@ package com.verity.feature.document
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verity.core.document.model.DocumentType
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,9 +31,28 @@ class DocumentDetailViewModel(
     private val _document = MutableStateFlow<InvoiceDocumentModel?>(null)
     val document: StateFlow<InvoiceDocumentModel?> = _document.asStateFlow()
 
+    /**
+     * The job-work-linked document's id, if this document has a jobWorkLink AND that link
+     * resolves to a real row — null otherwise (no link, or a job-work Challan whose reserved
+     * Invoice was never finalized). Resolved differently per side of the link: an Invoice
+     * already carries its Challan's real id directly on jobWorkLink (see DefaultInvoiceFinalizer);
+     * a Challan doesn't (that id didn't exist yet at its own finalize time), so it needs the
+     * reverse lookup instead.
+     */
+    private val _linkedDocumentId = MutableStateFlow<String?>(null)
+    val linkedDocumentId: StateFlow<String?> = _linkedDocumentId.asStateFlow()
+
     init {
         viewModelScope.launch {
-            _document.value = dataSource.loadDocument(documentId)
+            val loaded = dataSource.loadDocument(documentId)
+            _document.value = loaded
+
+            val jobWorkLink = loaded?.jobWorkLink
+            _linkedDocumentId.value = when {
+                jobWorkLink == null -> null
+                loaded.identity.documentType == DocumentType.INVOICE -> jobWorkLink.linkedDocumentId
+                else -> dataSource.findLinkedDocumentId(documentId)
+            }
         }
     }
 

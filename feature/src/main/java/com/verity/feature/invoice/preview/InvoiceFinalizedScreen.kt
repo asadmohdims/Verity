@@ -45,8 +45,14 @@ import com.verity.core.ui.primitives.dp
 fun InvoiceFinalizedScreen(
     document: InvoiceDocumentModel,
     onViewDocument: () -> Unit,
-    onViewPdf: () -> Unit
+    onViewPdf: () -> Unit,
+    onContinueToJobWorkInvoice: (() -> Unit)? = null
 ) {
+    // A job-work Challan (jobWorkLink present, on the Challan side of the pair) gets a
+    // prominent way to continue straight into its pre-filled Invoice — but "View PDF" stays
+    // available too, since the Challan's own PDF must physically travel with the goods and
+    // Share/Print/Export isn't built yet (see CLAUDE.md's "Next up").
+    val isJobWorkChallan = document.jobWorkLink != null && document.identity.documentType == DocumentType.CHALLAN
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -87,10 +93,19 @@ fun InvoiceFinalizedScreen(
 
             VeritySpacer(size = VeritySpace.ExtraLarge)
 
+            if (isJobWorkChallan && onContinueToJobWorkInvoice != null) {
+                VerityButton(
+                    label = "Continue to Invoice",
+                    onClick = onContinueToJobWorkInvoice,
+                    role = VerityButtonRole.Primary
+                )
+                VeritySpacer(size = VeritySpace.Small)
+            }
+
             VerityButton(
                 label = "View Document",
                 onClick = onViewDocument,
-                role = VerityButtonRole.Primary
+                role = if (isJobWorkChallan) VerityButtonRole.Secondary else VerityButtonRole.Primary
             )
 
             VeritySpacer(size = VeritySpace.Small)

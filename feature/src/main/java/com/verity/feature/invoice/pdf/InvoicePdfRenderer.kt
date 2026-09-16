@@ -20,6 +20,20 @@ interface InvoicePdfRenderer {
 
     /**
      * Returns the local PDF file for [document], generating it first if it doesn't already exist.
+     * Checks local disk, then Firebase Storage, before falling back to on-device rendering - the
+     * right order for a document that might already have a PDF from an earlier session or another
+     * device (e.g. the PDF viewer opening it defensively).
      */
     suspend fun ensurePdf(document: InvoiceDocumentModel): File
+
+    /**
+     * Renders and returns a fresh PDF for [document], skipping ensurePdf()'s local-file and
+     * Storage-download checks. For a document that was JUST finalized in this same call: it
+     * cannot already exist on disk or in Storage (nothing's been generated or uploaded for it
+     * yet), so those checks are two guaranteed-to-fail round trips, not real ones - confirmed live
+     * on-device to add ~1-2s of real network latency (a Storage 404) to every single finalize for
+     * no benefit. Default delegates to ensurePdf() so existing fakes/tests don't need updating;
+     * the real renderer overrides it to actually skip the checks.
+     */
+    suspend fun generateFreshPdf(document: InvoiceDocumentModel): File = ensurePdf(document)
 }

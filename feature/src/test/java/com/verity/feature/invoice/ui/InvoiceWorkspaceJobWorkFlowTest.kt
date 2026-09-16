@@ -2,15 +2,17 @@ package com.verity.feature.invoice.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.theme.VerityBaseTypography
 import com.verity.core.theme.VerityTheme
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteDataSource
 import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
-import com.verity.feature.invoice.draft.DraftLineItem
+import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
@@ -19,7 +21,6 @@ import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.referencelist.ReferenceListDataSource
 import com.verity.feature.referencelist.ReferenceListItem
 import com.verity.feature.referencelist.ReferenceListKind
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -29,18 +30,19 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Regression coverage for the delete/Undo flow, updated for the full-screen line-item entry
- * surface (LineItemEntryScreen) that replaced the old inline VerityEditBlock — see
- * LineItemEntryScreen's header comment for why that moved. Add/Edit/Delete field interactions now
- * live in LineItemEntryScreenTest, since that logic moved to its own pure composable; this file
- * covers what's still Workspace's job: delegating "add"/"tap a row" to navigation instead of
- * opening inline UI, and showing the Undo snackbar for a deletion that happened on a screen that's
- * since popped back (InvoiceWorkspaceViewModel.lineItemDeleted).
+ * Covers the new "Challan + Invoice" Document Type option: selecting it reveals the Job Work
+ * section (the always-available "Received Vide Challan" reference block, plus a placeholder for
+ * the auto-assigned Invoice number), and saving that block updates its read-only summary. The
+ * cross-document finalize/continue flow itself (reserving a real Invoice number, opening the
+ * pre-filled continuation draft, locking Document Type on it) is covered by
+ * DefaultInvoiceFinalizerTest's real-Room job-work tests and needs an on-device pass per this
+ * project's testing standards - it isn't re-derived here with a fake async finalize, since that
+ * would mostly be testing coroutine plumbing this file doesn't otherwise need.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w360dp-h800dp")
-class InvoiceWorkspaceScreenUndoTest {
+class InvoiceWorkspaceJobWorkFlowTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -84,65 +86,61 @@ class InvoiceWorkspaceScreenUndoTest {
         return viewModel
     }
 
-    private val testItem = DraftLineItem(
-        description = "Test Item",
-        hsnCode = "1234",
-        quantity = 10,
-        unit = "pcs",
-        ratePaise = 10000
-    )
-
     @Test
-    fun `deleting a line item shows an Undo snackbar, and Undo restores it`() {
+    fun `selecting Challan plus Invoice reveals the Job Work section`() {
         val viewModel = buildViewModel()
-        viewModel.onAddLineItem(testItem)
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(
-                    viewModel = viewModel,
-                    onAddLineItem = {},
-                    onEditLineItem = {}
-                )
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
             }
         }
 
-        composeTestRule.onNodeWithText("Test Item").assertIsDisplayed()
+        // Opens the Document Type dropdown (the closed field currently reads "Invoice").
+        composeTestRule.onNodeWithText("Invoice").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Challan + Invoice").performClick()
 
-        // Deletion itself now happens on LineItemEntryScreen (see LineItemEntryScreenTest), which
-        // pops back to Workspace right after — this simulates exactly that: the ViewModel call
-        // without the entry screen's UI, since Workspace's job is only to react to the event.
-        viewModel.onRemoveLineItem(0)
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithText("Test Item").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Undo").performClick()
-
-        composeTestRule.onNodeWithText("Test Item").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Challan + Invoice").assertIsDisplayed()
+        // VerityEditBlock's collapsed action label is always rendered as "+ <label>".
+        composeTestRule.onNodeWithText("+ Add received-vide-challan reference").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("(assigned automatically at finalize)").performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `tapping Add line item and an existing row delegates to navigation instead of opening inline UI`() {
+    fun `saving the Received Vide Challan block shows a read-only summary row`() {
         val viewModel = buildViewModel()
-        viewModel.onAddLineItem(testItem)
-
-        var addRequested = false
-        var editRequestedIndex: Int? = null
+        viewModel.onDocumentTypeChanged(DraftDocumentType.CHALLAN)
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(
-                    viewModel = viewModel,
-                    onAddLineItem = { addRequested = true },
-                    onEditLineItem = { index -> editRequestedIndex = index }
-                )
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
             }
         }
 
-        composeTestRule.onNodeWithText("Test Item").performScrollTo().performClick()
-        assertEquals(0, editRequestedIndex)
+        composeTestRule.onNodeWithText("+ Add received-vide-challan reference").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Received Vide Challan No.").performScrollTo().performTextInput("CUST-CH-0042")
+        composeTestRule.onNodeWithText("Add").performScrollTo().performClick()
 
-        composeTestRule.onNodeWithText("+ Add line item").performScrollTo().performClick()
-        assertTrue(addRequested)
+        composeTestRule.onNodeWithText("CUST-CH-0042", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `plain Challan selection does not show the job work placeholder row`() {
+        val viewModel = buildViewModel()
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                InvoiceWorkspaceRoute(viewModel = viewModel, onAddLineItem = {}, onEditLineItem = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Invoice").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Challan").performClick()
+
+        composeTestRule.onNodeWithText("(assigned automatically at finalize)").assertDoesNotExist()
+        // The always-available inbound-reference block should still be there for a plain Challan.
+        assertTrue(
+            composeTestRule.onAllNodesWithText("+ Add received-vide-challan reference").fetchSemanticsNodes().isNotEmpty()
+        )
     }
 }

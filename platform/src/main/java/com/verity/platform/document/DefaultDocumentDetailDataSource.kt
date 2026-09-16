@@ -26,4 +26,7 @@ class DefaultDocumentDetailDataSource(
         val entity = database.documentDao().getById(documentId) ?: return null
         return json.decodeFromString(InvoiceDocumentModel.serializer(), entity.payloadJson)
     }
+
+    override suspend fun findLinkedDocumentId(documentId: String): String? =
+        database.documentDao().findByLinkedDocumentId(documentId)?.documentId
 }

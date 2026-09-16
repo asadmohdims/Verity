@@ -2,6 +2,8 @@ package com.verity.feature.invoice.projection
 
 import com.verity.core.document.model.SellerDetails
 import com.verity.feature.invoice.draft.DraftAddress
+import com.verity.feature.invoice.draft.DraftInboundChallanReference
+import com.verity.feature.invoice.draft.DraftJobWorkChallanLink
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
@@ -11,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 class DraftToInvoiceDocumentTest {
@@ -131,6 +134,64 @@ class DraftToInvoiceDocumentTest {
         )
 
         assertTrue(document.identity.reverseChargeApplicable)
+    }
+
+    @Test
+    fun `inbound challan reference maps through when present`() {
+        val draft = baseDraft().copy(
+            inboundChallanReference = DraftInboundChallanReference(
+                challanNumber = "CUST-CH-0042",
+                challanDate = LocalDate.of(2026, 9, 10)
+            )
+        )
+
+        val document = DraftToInvoiceDocument.project(
+            draft = draft,
+            documentNumber = "CH-000001",
+            seller = testSeller(),
+            clock = fixedClock()
+        )
+
+        assertEquals("CUST-CH-0042", document.inboundChallanReference?.challanNumber)
+        assertEquals(LocalDate.of(2026, 9, 10), document.inboundChallanReference?.challanDate)
+    }
+
+    @Test
+    fun `job work challan link maps through with a null linkedDocumentId`() {
+        // linkedDocumentId is deliberately never sourced from the draft - the draft never
+        // carries a real documentId (see DraftJobWorkChallanLink's doc comment); only
+        // DefaultInvoiceFinalizer resolves and attaches the real id, at finalize time.
+        val draft = baseDraft().copy(
+            jobWorkChallanLink = DraftJobWorkChallanLink(
+                reservedInvoiceNumber = "INV-000043",
+                challanDocumentNumber = "CH-000012",
+                challanDate = LocalDate.of(2026, 9, 16)
+            )
+        )
+
+        val document = DraftToInvoiceDocument.project(
+            draft = draft,
+            documentNumber = "INV-000043",
+            seller = testSeller(),
+            clock = fixedClock()
+        )
+
+        assertEquals("CH-000012", document.jobWorkLink?.linkedDocumentNumber)
+        assertEquals(LocalDate.of(2026, 9, 16), document.jobWorkLink?.linkedDocumentDate)
+        assertNull(document.jobWorkLink?.linkedDocumentId)
+    }
+
+    @Test
+    fun `both job work fields are null when neither is set on the draft`() {
+        val document = DraftToInvoiceDocument.project(
+            draft = baseDraft(),
+            documentNumber = "INV-000008",
+            seller = testSeller(),
+            clock = fixedClock()
+        )
+
+        assertNull(document.inboundChallanReference)
+        assertNull(document.jobWorkLink)
     }
 
     private fun baseDraft(): InvoiceDraftUiState =

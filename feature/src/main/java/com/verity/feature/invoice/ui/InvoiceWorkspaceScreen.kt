@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -21,14 +24,23 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.InvoiceDocumentModel
@@ -69,6 +81,7 @@ import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.invoice.draft.DraftCustomer
 import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.DraftInboundChallanReference
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.DraftSummary
 import com.verity.feature.invoice.draft.DraftTaxBreakdown
@@ -78,8 +91,10 @@ import com.verity.feature.invoice.draft.DraftTransportDetails
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
@@ -99,9 +114,34 @@ private fun CustomerAutocompleteItem.toVeritySuggestion(): VeritySuggestion {
  * that this doesn't need a query round trip the way Customer autocomplete's does. A blank query
  * shows the whole list, same as tapping into an empty field to browse what's available.
  */
-private fun List<String>.toMatchingSuggestions(query: String): List<VeritySuggestion> =
+internal fun List<String>.toMatchingSuggestions(query: String): List<VeritySuggestion> =
     filter { query.isBlank() || it.contains(query, ignoreCase = true) }
         .map { VeritySuggestion(id = it, primary = it) }
+
+/**
+ * Wires focus + an explicit scroll-into-view for one field in a keyboard Next/Done chain.
+ * `VerityTextField`/`OutlinedTextField` is supposed to auto-scroll itself into view on focus
+ * change even without this, but that didn't hold up on-device once focus moved between fields
+ * with the keyboard already open (found 2026-09-15, Transportation Mode: the field a `Next` tap
+ * landed on wasn't guaranteed visible) — so this makes the scroll explicit instead of trusting
+ * that implicit behavior, consistent with this app's "Focus/IME ownership: explicit... never
+ * inferred" rule. Shared with LineItemEntryScreen, which chains fields the same way.
+ */
+@Composable
+internal fun rememberFocusScrollModifier(
+    focusRequester: FocusRequester,
+    coroutineScope: CoroutineScope
+): Modifier {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    return Modifier
+        .focusRequester(focusRequester)
+        .bringIntoViewRequester(bringIntoViewRequester)
+        .onFocusChanged { focusState ->
+            if (focusState.isFocused) {
+                coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+            }
+        }
+}
 
 /**
  * InvoiceWorkspaceScreen
@@ -115,7 +155,9 @@ private fun List<String>.toMatchingSuggestions(query: String): List<VeritySugges
  */
 @Composable
 fun InvoiceWorkspaceRoute(
-    viewModel: InvoiceWorkspaceViewModel
+    viewModel: InvoiceWorkspaceViewModel,
+    onAddLineItem: () -> Unit,
+    onEditLineItem: (Int) -> Unit
 ) {
     // The route is only ever entered via AppNavShell.goToWorkspace(), which guarantees a draft
     // exists (onCreateInvoice() runs first if none is active) before navigating here, and the
@@ -126,14 +168,18 @@ fun InvoiceWorkspaceRoute(
 
     InvoiceWorkspaceScreen(
         draft = draft,
-        viewModel = viewModel
+        viewModel = viewModel,
+        onAddLineItem = onAddLineItem,
+        onEditLineItem = onEditLineItem
     )
 }
 
 @Composable
 fun InvoiceWorkspaceScreen(
     draft: InvoiceDraftUiState,
-    viewModel: InvoiceWorkspaceViewModel
+    viewModel: InvoiceWorkspaceViewModel,
+    onAddLineItem: () -> Unit,
+    onEditLineItem: (Int) -> Unit
 ) {
     val billedToQuery by viewModel.billedToQuery.collectAsState()
     val billedToSuggestions by viewModel.billedToSuggestions.collectAsState()
@@ -142,11 +188,29 @@ fun InvoiceWorkspaceScreen(
     val shippedToSuggestions by viewModel.shippedToSuggestions.collectAsState()
 
     val transporterNameSuggestions by viewModel.transporterNameSuggestions.collectAsState()
-    val hsnCodeSuggestions by viewModel.hsnCodeSuggestions.collectAsState()
-    val unitSuggestions by viewModel.unitSuggestions.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    // Line item deletion now happens on a separate full-screen surface (LineItemEntryScreen),
+    // which pops back here immediately — so the "Undo" snackbar it used to show inline has to be
+    // shown from here instead, once the deletion event arrives. See
+    // InvoiceWorkspaceViewModel.lineItemDeleted for why this is a StateFlow, not a one-shot event.
+    val lineItemDeleted by viewModel.lineItemDeleted.collectAsState()
+    LaunchedEffect(lineItemDeleted) {
+        val deleted = lineItemDeleted ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = "Line item deleted",
+            actionLabel = "Undo",
+            duration = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            viewModel.onInsertLineItemAt(deleted.index, deleted.item)
+        }
+        viewModel.onLineItemDeletedEventConsumed()
+    }
+
+    val workspaceScrollState = rememberScrollState()
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -155,7 +219,8 @@ fun InvoiceWorkspaceScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .verticalScroll(workspaceScrollState)
         ) {
 
         VeritySpacer(size = VeritySpace.Large)
@@ -181,6 +246,16 @@ fun InvoiceWorkspaceScreen(
 
                 VeritySpacer(size = VeritySpace.ExtraSmall)
 
+                // A continuation Invoice draft (opened via onContinueToJobWorkInvoice()) has
+                // already burned its reserved number against a specific Challan — switching its
+                // type away would orphan that reservation, so the control is locked.
+                val isDocumentTypeLocked = draft.jobWorkChallanLink != null
+                val documentTypeLabel = if (draft.documentType == DraftDocumentType.CHALLAN && draft.isJobWorkFlow) {
+                    "Challan + Invoice"
+                } else {
+                    draft.documentType.name.lowercase().replaceFirstChar { it.uppercase() }
+                }
+
                 // Bordered select field, matching `.selectfield` — a plain clickable Text (no
                 // border/chevron) gave no visual affordance this was a selector.
                 Row(
@@ -192,19 +267,31 @@ fun InvoiceWorkspaceScreen(
                             color = VerityTheme.colors.borders.subtle,
                             shape = RoundedCornerShape(4.dp)
                         )
-                        .clickable { isDocTypeMenuOpen = true }
+                        .let { rowModifier ->
+                            if (isDocumentTypeLocked) rowModifier
+                            else rowModifier.clickable { isDocTypeMenuOpen = true }
+                        }
                         .padding(horizontal = 14.dp, vertical = 13.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     VerityText(
-                        text = draft.documentType.name.lowercase()
-                            .replaceFirstChar { it.uppercase() },
+                        text = documentTypeLabel,
                         style = VerityTextStyle.Body
                     )
-                    VerityIconGlyph(
-                        icon = VerityIcons.ChevronDown,
-                        contentDescription = null
+                    if (!isDocumentTypeLocked) {
+                        VerityIconGlyph(
+                            icon = VerityIcons.ChevronDown,
+                            contentDescription = null
+                        )
+                    }
+                }
+
+                if (isDocumentTypeLocked) {
+                    VeritySpacer(size = VeritySpace.ExtraSmall)
+                    VerityText(
+                        text = "Locked — continues Challan ${draft.jobWorkChallanLink?.challanDocumentNumber}",
+                        style = VerityTextStyle.Caption
                     )
                 }
 
@@ -227,6 +314,16 @@ fun InvoiceWorkspaceScreen(
                             viewModel.onDocumentTypeChanged(
                                 DraftDocumentType.CHALLAN
                             )
+                            isDocTypeMenuOpen = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { VerityText("Challan + Invoice", VerityTextStyle.Body) },
+                        onClick = {
+                            viewModel.onDocumentTypeChanged(
+                                DraftDocumentType.CHALLAN
+                            )
+                            viewModel.onJobWorkFlowChanged(true)
                             isDocTypeMenuOpen = false
                         }
                     )
@@ -323,6 +420,139 @@ fun InvoiceWorkspaceScreen(
         )
 
         // ─────────────────────────────────────────────
+        // Job Work — "Received Vide Challan" (any Challan) + auto reference rows
+        // ─────────────────────────────────────────────
+        if (draft.documentType == DraftDocumentType.CHALLAN || draft.jobWorkChallanLink != null) {
+            VeritySurface(
+                type = VeritySurfaceType.Base,
+                modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            ) {
+                VeritySection(title = "Job Work") {
+
+                    if (draft.documentType == DraftDocumentType.CHALLAN) {
+                        var isEditingInboundReference by remember { mutableStateOf(false) }
+                        var inboundChallanNumber by remember { mutableStateOf("") }
+                        var inboundChallanDate by remember { mutableStateOf<LocalDate?>(null) }
+
+                        if (draft.inboundChallanReference != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        isEditingInboundReference = true
+                                        inboundChallanNumber = draft.inboundChallanReference.challanNumber
+                                        inboundChallanDate = draft.inboundChallanReference.challanDate
+                                    },
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                VerityText(text = "Received Vide Challan No.", style = VerityTextStyle.Label)
+                                VerityText(
+                                    text = draft.inboundChallanReference.challanDate?.let {
+                                        "${draft.inboundChallanReference.challanNumber} · ${DocumentDate.format(it)}"
+                                    } ?: draft.inboundChallanReference.challanNumber,
+                                    style = VerityTextStyle.Body
+                                )
+                            }
+
+                            VeritySpacer(size = VeritySpace.Small)
+                        }
+
+                        VerityEditBlock(
+                            title = null,
+                            mode = if (draft.inboundChallanReference == null) VerityEditMode.Add else VerityEditMode.Edit,
+                            expanded = isEditingInboundReference,
+                            collapsedActionLabel = if (draft.inboundChallanReference == null) "Add received-vide-challan reference" else null,
+                            onCollapsedAction = { isEditingInboundReference = true },
+                            onAdd = {
+                                viewModel.onInboundChallanReferenceChanged(
+                                    DraftInboundChallanReference(
+                                        challanNumber = inboundChallanNumber,
+                                        challanDate = inboundChallanDate
+                                    )
+                                )
+                                isEditingInboundReference = false
+                                inboundChallanNumber = ""
+                                inboundChallanDate = null
+                            },
+                            onSave = {
+                                viewModel.onInboundChallanReferenceChanged(
+                                    DraftInboundChallanReference(
+                                        challanNumber = inboundChallanNumber,
+                                        challanDate = inboundChallanDate
+                                    )
+                                )
+                                isEditingInboundReference = false
+                                inboundChallanNumber = ""
+                                inboundChallanDate = null
+                            },
+                            onCancel = {
+                                isEditingInboundReference = false
+                                inboundChallanNumber = ""
+                                inboundChallanDate = null
+                            }
+                        ) {
+                            VerityTextField(
+                                role = VerityTextFieldRole.Basic,
+                                label = "Received Vide Challan No.",
+                                value = inboundChallanNumber,
+                                onValueChange = { inboundChallanNumber = it },
+                                editing = true,
+                                onEnterEdit = null,
+                                onExitEdit = null,
+                                suggestions = emptyList(),
+                                onSelectSuggestion = null,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                            )
+
+                            VeritySpacer(size = VeritySpace.Small)
+
+                            VerityDateField(
+                                label = "Dated",
+                                value = inboundChallanDate,
+                                onValueChange = { inboundChallanDate = it },
+                                formatter = { DocumentDate.format(it) }
+                            )
+                        }
+
+                        if (draft.isJobWorkFlow) {
+                            VeritySpacer(size = VeritySpace.Small)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                VerityText(text = "Ref: Invoice No.", style = VerityTextStyle.Label)
+                                VerityText(
+                                    text = "(assigned automatically at finalize)",
+                                    style = VerityTextStyle.Caption
+                                )
+                            }
+                        }
+                    }
+
+                    draft.jobWorkChallanLink?.let { link ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            VerityText(text = "Ref: Challan No.", style = VerityTextStyle.Label)
+                            VerityText(
+                                text = "${link.challanDocumentNumber} · ${DocumentDate.format(link.challanDate)}",
+                                style = VerityTextStyle.Body
+                            )
+                        }
+                        VeritySpacer(size = VeritySpace.ExtraSmall)
+                        VerityText(
+                            text = "This Invoice will be numbered ${link.reservedInvoiceNumber}",
+                            style = VerityTextStyle.Caption
+                        )
+                    }
+                }
+            }
+
+            VeritySpacer(size = VeritySpace.Medium)
+        }
+
+        // ─────────────────────────────────────────────
         // Line Items Section
         // ─────────────────────────────────────────────
         VeritySurface(
@@ -330,37 +560,17 @@ fun InvoiceWorkspaceScreen(
             modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
         ) {
             VeritySection(title = "Line Items") {
-                var isAddingLineItem by remember { mutableStateOf(false) }
-                var editingLineItemIndex by remember { mutableStateOf<Int?>(null) }
-
-                var itemDescription by remember { mutableStateOf("") }
-                var itemHsn by remember { mutableStateOf("") }
-                var itemQuantity by remember { mutableStateOf("") }
-                var itemUnit by remember { mutableStateOf("") }
-                var itemRate by remember { mutableStateOf("") }
-
-                val lineItemValidation = validateLineItemInput(
-                    description = itemDescription,
-                    quantityInput = itemQuantity,
-                    rateInput = itemRate
-                )
-
+                // Add/Edit now happens on a dedicated full-screen surface (LineItemEntryScreen),
+                // not inline here — a growing stack of add/edit fields sharing this screen's one
+                // long scroll region is exactly what let the keyboard cover fields on a long
+                // invoice with no way to bring them back into view. See LineItemEntryScreen's
+                // header comment for the full reasoning.
                 if (!draft.lineItems.isEmpty()) {
                     draft.lineItems.forEachIndexed { index, item ->
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    editingLineItemIndex = index
-                                    isAddingLineItem = true
-
-                                    itemDescription = item.description
-                                    itemHsn = item.hsnCode
-                                    itemQuantity = item.quantity?.toString() ?: ""
-                                    itemUnit = item.unit
-                                    // Set itemRate as rupees string from paise
-                                    itemRate = formatPaiseAsRupeesInput(item.ratePaise)
-                                }
+                                .clickable { onEditLineItem(index) }
                         ) {
                             val amountPaise = (item.quantity ?: 1L) * item.ratePaise
                             VerityInvoiceLineItemRow(
@@ -378,176 +588,12 @@ fun InvoiceWorkspaceScreen(
 
                 VerityEditBlock(
                     title = null,
-                    mode =
-                        if (editingLineItemIndex == null)
-                            VerityEditMode.Add
-                        else
-                            VerityEditMode.Edit,
-                    expanded = isAddingLineItem,
+                    mode = VerityEditMode.Add,
+                    expanded = false,
                     collapsedActionLabel = "Add line item",
-                    onCollapsedAction = {
-                        editingLineItemIndex = null
-                        isAddingLineItem = true
-                    },
-                    onAdd = {
-                        val parsedQuantity = itemQuantity.toLongOrNull()
-                        val ratePaise = parseRupeesInputToPaise(itemRate)
-                        viewModel.onAddLineItem(
-                            DraftLineItem(
-                                description = itemDescription,
-                                hsnCode = itemHsn,
-                                quantity = parsedQuantity,
-                                unit = itemUnit,
-                                ratePaise = ratePaise
-                            )
-                        )
-
-                        editingLineItemIndex = null
-                        isAddingLineItem = false
-                        itemDescription = ""
-                        itemHsn = ""
-                        itemQuantity = ""
-                        itemUnit = ""
-                        itemRate = ""
-                    },
-                    onSave = {
-                        val parsedQuantity = itemQuantity.toLongOrNull()
-                        val ratePaise = parseRupeesInputToPaise(itemRate)
-                        viewModel.onUpdateLineItem(
-                            index = editingLineItemIndex!!,
-                            item = DraftLineItem(
-                                description = itemDescription,
-                                hsnCode = itemHsn,
-                                quantity = parsedQuantity,
-                                unit = itemUnit,
-                                ratePaise = ratePaise
-                            )
-                        )
-
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "Line item updated",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-
-                        editingLineItemIndex = null
-                        isAddingLineItem = false
-                        itemDescription = ""
-                        itemHsn = ""
-                        itemQuantity = ""
-                        itemUnit = ""
-                        itemRate = ""
-                    },
-                    onDelete = {
-                        val index = editingLineItemIndex
-                        if (index != null) {
-                            val removedItem = draft.lineItems[index]
-                            viewModel.onRemoveLineItem(index)
-
-                            coroutineScope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "Line item deleted",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.onInsertLineItemAt(index, removedItem)
-                                }
-                            }
-                        }
-
-                        editingLineItemIndex = null
-                        isAddingLineItem = false
-                        itemDescription = ""
-                        itemHsn = ""
-                        itemQuantity = ""
-                        itemUnit = ""
-                        itemRate = ""
-                    },
-                    onCancel = {
-                        editingLineItemIndex = null
-                        isAddingLineItem = false
-                        itemDescription = ""
-                        itemHsn = ""
-                        itemQuantity = ""
-                        itemUnit = ""
-                        itemRate = ""
-                    },
-                    submitEnabled = lineItemValidation.canSubmit
-                ) {
-                    VerityTextField(
-                        role = VerityTextFieldRole.Basic,
-                        label = "Description",
-                        value = itemDescription,
-                        onValueChange = { itemDescription = it },
-                        editing = true,
-                        onEnterEdit = null,
-                        onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null
-                    )
-
-                    VeritySpacer(size = VeritySpace.Small)
-
-                    VerityTextField(
-                        role = VerityTextFieldRole.SelectionSearch,
-                        label = "HSN Code",
-                        value = itemHsn,
-                        onValueChange = { itemHsn = it },
-                        editing = true,
-                        onEnterEdit = null,
-                        onExitEdit = null,
-                        suggestions = hsnCodeSuggestions.toMatchingSuggestions(itemHsn),
-                        onSelectSuggestion = { itemHsn = it.primary },
-                        expandSuggestionsOnFocus = true
-                    )
-
-                    VeritySpacer(size = VeritySpace.Small)
-
-                    VerityTextField(
-                        role = VerityTextFieldRole.Basic,
-                        label = "Quantity (optional)",
-                        value = itemQuantity,
-                        onValueChange = { itemQuantity = it },
-                        editing = true,
-                        onEnterEdit = null,
-                        onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null,
-                        errorText = if (lineItemValidation.showQuantityError) "Enter a quantity greater than 0" else null
-                    )
-
-                    VeritySpacer(size = VeritySpace.Small)
-
-                    VerityTextField(
-                        role = VerityTextFieldRole.SelectionSearch,
-                        label = "Unit",
-                        value = itemUnit,
-                        onValueChange = { itemUnit = it },
-                        editing = true,
-                        onEnterEdit = null,
-                        onExitEdit = null,
-                        suggestions = unitSuggestions.toMatchingSuggestions(itemUnit),
-                        onSelectSuggestion = { itemUnit = it.primary },
-                        expandSuggestionsOnFocus = true
-                    )
-
-                    VeritySpacer(size = VeritySpace.Small)
-
-                    VerityTextField(
-                        role = VerityTextFieldRole.Basic,
-                        label = "Rate",
-                        value = itemRate,
-                        onValueChange = { itemRate = it },
-                        editing = true,
-                        onEnterEdit = null,
-                        onExitEdit = null,
-                        suggestions = emptyList(),
-                        onSelectSuggestion = null,
-                        errorText = if (lineItemValidation.showRateError) "Enter a rate greater than 0" else null
-                    )
-                }
+                    onCollapsedAction = onAddLineItem,
+                    content = {}
+                )
             }
         }
 
@@ -559,9 +605,24 @@ fun InvoiceWorkspaceScreen(
         // ─────────────────────────────────────────────
         // Transportation Section
         // ─────────────────────────────────────────────
+        // onGloballyPositioned + the LaunchedEffect below scroll this section's heading to the
+        // top of the screen the moment it expands — reported on-device: with imePadding() alone,
+        // the block still opened wherever it happened to sit on the page, so only the first field
+        // was ever guaranteed visible and everything past it needed a manual scroll. Field-to-field
+        // movement uses ImeAction.Next + FocusRequesters (below) too, but NOT Compose's own
+        // built-in scroll-to-focused-field — that turned out not to fire reliably once focus moved
+        // between fields with the keyboard already open (found on-device, this exact chain), so
+        // each field explicitly requests its own scroll via rememberFocusScrollModifier instead of
+        // trusting the implicit behavior.
+        var transportSectionTop by remember { mutableStateOf(0f) }
+
         VeritySurface(
             type = VeritySurfaceType.Base,
-            modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+            modifier = Modifier
+                .padding(horizontal = VeritySpace.Small.dp)
+                .onGloballyPositioned { coordinates ->
+                    transportSectionTop = coordinates.positionInParent().y
+                }
         ) {
             VeritySection(title = "Transportation Mode") {
 
@@ -572,6 +633,18 @@ fun InvoiceWorkspaceScreen(
                 var supplyDate by remember { mutableStateOf<LocalDate?>(null) }
                 var freightPaise by remember { mutableStateOf("") }
                 var ewayBillNumber by remember { mutableStateOf("") }
+
+                val transporterNameFocus = remember { FocusRequester() }
+                val vehicleNumberFocus = remember { FocusRequester() }
+                val grOrLrNumberFocus = remember { FocusRequester() }
+                val freightFocus = remember { FocusRequester() }
+                val ewayBillFocus = remember { FocusRequester() }
+
+                LaunchedEffect(isEditingTransport) {
+                    if (isEditingTransport) {
+                        workspaceScrollState.animateScrollTo(transportSectionTop.toInt())
+                    }
+                }
 
                 if (draft.transportDetails != null) {
                     VerityTransportSummaryRow(
@@ -673,7 +746,10 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = transporterNameSuggestions.toMatchingSuggestions(transporterName),
-                        onSelectSuggestion = { transporterName = it.primary }
+                        onSelectSuggestion = { transporterName = it.primary },
+                        fieldModifier = rememberFocusScrollModifier(transporterNameFocus, coroutineScope),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { vehicleNumberFocus.requestFocus() })
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -687,7 +763,10 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        fieldModifier = rememberFocusScrollModifier(vehicleNumberFocus, coroutineScope),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { grOrLrNumberFocus.requestFocus() })
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -701,7 +780,12 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        fieldModifier = rememberFocusScrollModifier(grOrLrNumberFocus, coroutineScope),
+                        // Supply Date is a tap-to-open picker (VerityDateField), not a keyboard
+                        // field, so it can't take part in the Next chain — skip straight to Freight.
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { freightFocus.requestFocus() })
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -724,7 +808,10 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        fieldModifier = rememberFocusScrollModifier(freightFocus, coroutineScope),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { ewayBillFocus.requestFocus() })
                     )
 
                     VeritySpacer(size = VeritySpace.Small)
@@ -738,7 +825,9 @@ fun InvoiceWorkspaceScreen(
                         onEnterEdit = null,
                         onExitEdit = null,
                         suggestions = emptyList(),
-                        onSelectSuggestion = null
+                        onSelectSuggestion = null,
+                        fieldModifier = rememberFocusScrollModifier(ewayBillFocus, coroutineScope),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
                     )
                 }
             }
@@ -856,7 +945,9 @@ private fun InvoiceWorkspacePreviewLight() {
             ) {
                 InvoiceWorkspaceScreen(
                     draft = previewInvoiceDraft(),
-                    viewModel = previewInvoiceWorkspaceViewModel()
+                    viewModel = previewInvoiceWorkspaceViewModel(),
+                    onAddLineItem = {},
+                    onEditLineItem = {}
                 )
             }
         }
@@ -883,7 +974,9 @@ private fun InvoiceWorkspacePreviewDark() {
             ) {
                 InvoiceWorkspaceScreen(
                     draft = previewInvoiceDraft(),
-                    viewModel = previewInvoiceWorkspaceViewModel()
+                    viewModel = previewInvoiceWorkspaceViewModel(),
+                    onAddLineItem = {},
+                    onEditLineItem = {}
                 )
             }
         }
@@ -911,7 +1004,8 @@ private fun previewInvoiceFinalizer(): InvoiceFinalizer {
     return object : InvoiceFinalizer {
         override suspend fun finalize(
             draft: InvoiceDraftUiState,
-            customerId: String
+            customerId: String,
+            jobWorkLinkage: JobWorkLinkage
         ): InvoiceDocumentModel {
             error("Finalize is not available in @Preview")
         }

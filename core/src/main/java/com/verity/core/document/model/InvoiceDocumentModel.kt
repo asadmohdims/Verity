@@ -34,9 +34,44 @@ data class InvoiceDocumentModel(
     val parties: DocumentParties,
     val lineItems: List<DocumentLineItem>,
     val logistics: DocumentLogistics?,
+    /** Available on any Challan — documents the customer's own inbound delivery challan that
+     *  arrived with the goods. Not gated behind job work; general goods-provenance reference. */
+    val inboundChallanReference: DocumentInboundChallanReference? = null,
+    /** Present on a job-work Challan and its continuation Invoice — see [DocumentJobWorkLink]. */
+    val jobWorkLink: DocumentJobWorkLink? = null,
     val taxation: DocumentTaxation?,
     val totals: DocumentTotals,
     val footer: DocumentFooter
+)
+
+/**
+ * "Received vide Challan No X dated Y" — the customer's own delivery challan that accompanied
+ * goods sent in for job work. This document is external to Verity and is never itself a Verity
+ * row; this is purely a printed reference on our own Challan.
+ */
+@Serializable
+data class DocumentInboundChallanReference(
+    val challanNumber: String,
+    @Serializable(with = LocalDateIsoSerializer::class)
+    val challanDate: LocalDate? = null
+)
+
+/**
+ * Job-work cross-reference between a Challan and its continuation Invoice. Meaning depends on
+ * which document it's attached to (inferable from that document's own identity.documentType,
+ * so no separate "which type does this point at" field is needed):
+ * - On the Challan: "this will be billed on Invoice X dated Y" — linkedDocumentId is always null,
+ *   since that Invoice has no real row yet at Challan-finalize time (its number is reserved, not
+ *   yet issued).
+ * - On the Invoice: "this continues Challan X dated Y" — linkedDocumentId is the real Challan
+ *   documentId, mirroring DocumentEntity.linkedDocumentId on this same row.
+ */
+@Serializable
+data class DocumentJobWorkLink(
+    val linkedDocumentNumber: String,
+    @Serializable(with = LocalDateIsoSerializer::class)
+    val linkedDocumentDate: LocalDate,
+    val linkedDocumentId: String? = null
 )
 
 /* ---------- Identity ---------- */

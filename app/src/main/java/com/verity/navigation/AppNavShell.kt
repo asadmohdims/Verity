@@ -56,6 +56,7 @@ import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.pdf.PdfViewerScreen
+import com.verity.feature.invoice.ui.LineItemEntryRoute
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
@@ -97,12 +98,15 @@ internal object AppRoutes {
     const val CUSTOMER_ADD = "customer/add"
     const val CUSTOMER_EDIT = "customer/{customerId}/edit"
     const val REFERENCE_LIST = "settings/reference-list/{kind}"
+    const val LINE_ITEM_ADD = "workspace/line-item/add"
+    const val LINE_ITEM_EDIT = "workspace/line-item/{index}/edit"
 
     fun documentDetail(documentId: String) = "document/$documentId"
     fun documentPdf(documentId: String) = "document/$documentId/pdf"
     fun customerDetail(customerId: String) = "customer/$customerId"
     fun customerEdit(customerId: String) = "customer/$customerId/edit"
     fun referenceList(kind: ReferenceListKind) = "settings/reference-list/${kind.name}"
+    fun lineItemEdit(index: Int) = "workspace/line-item/$index/edit"
 }
 
 private val bottomNavItems = listOf(
@@ -290,6 +294,10 @@ fun AppNavShell(
             supportChrome(title = "Add Customer") { navController.popBackStack() }
         AppRoutes.CUSTOMER_EDIT ->
             supportChrome(title = "Edit Customer") { navController.popBackStack() }
+        AppRoutes.LINE_ITEM_ADD ->
+            supportChrome(title = "Add Line Item") { navController.popBackStack() }
+        AppRoutes.LINE_ITEM_EDIT ->
+            supportChrome(title = "Edit Line Item") { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -484,7 +492,31 @@ fun AppNavShell(
 
                 composable(AppRoutes.WORKSPACE) {
                     InvoiceWorkspaceRoute(
-                        viewModel = invoiceWorkspaceViewModel
+                        viewModel = invoiceWorkspaceViewModel,
+                        onAddLineItem = { navController.navigate(AppRoutes.LINE_ITEM_ADD) },
+                        onEditLineItem = { index ->
+                            navController.navigate(AppRoutes.lineItemEdit(index))
+                        }
+                    )
+                }
+
+                composable(AppRoutes.LINE_ITEM_ADD) {
+                    LineItemEntryRoute(
+                        viewModel = invoiceWorkspaceViewModel,
+                        editingIndex = null,
+                        onDone = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = AppRoutes.LINE_ITEM_EDIT,
+                    arguments = listOf(navArgument("index") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val index = backStackEntry.arguments?.getInt("index") ?: 0
+                    LineItemEntryRoute(
+                        viewModel = invoiceWorkspaceViewModel,
+                        editingIndex = index,
+                        onDone = { navController.popBackStack() }
                     )
                 }
 
@@ -499,13 +531,26 @@ fun AppNavShell(
                         .isFinalizing
                         .collectAsState()
 
-                    // Finalize completes asynchronously in the ViewModel; once it publishes a
+                    // Snapshot of finalizedDocument as it stood when this Preview was entered.
+                    // Needed because the job-work "Continue to Invoice" flow deliberately leaves
+                    // finalizedDocument holding the just-finalized Challan rather than nulling it
+                    // eagerly (see onContinueToJobWorkInvoice()'s comment - nulling it there raced
+                    // the still-composed "finalized" route's requireNotNull and crashed). That
+                    // means finalizedDocument can already be non-null the moment this Preview is
+                    // entered for the follow-up Invoice draft - a naive "!= null" check below
+                    // would immediately bounce straight back to that stale Challan's Finalized
+                    // screen before this Invoice is ever finalized, without ever showing Preview.
+                    // Only a document that's actually different from what was here on entry means
+                    // *this* draft's finalize genuinely just completed.
+                    val finalizedDocumentOnEntry = remember { finalizedDocument }
+
+                    // Finalize completes asynchronously in the ViewModel; once it publishes a new
                     // result, move forward to the finalized screen and drop both "preview" AND
                     // "workspace" from the back stack — the draft they showed no longer exists
                     // (onFinalizeInvoice() clears hasActiveDraft), so back from "finalized" must
                     // land on the tab underneath, not on a stale workspace entry.
                     LaunchedEffect(finalizedDocument) {
-                        if (finalizedDocument != null) {
+                        if (finalizedDocument != null && finalizedDocument != finalizedDocumentOnEntry) {
                             navController.navigate(AppRoutes.FINALIZED) {
                                 popUpTo(AppRoutes.WORKSPACE) { inclusive = true }
                             }
@@ -536,7 +581,13 @@ fun AppNavShell(
                     InvoiceFinalizedScreen(
                         document = finalizedDocument!!,
                         onViewDocument = { navController.navigate(AppRoutes.FINALIZED_DOCUMENT) },
-                        onViewPdf = { navController.navigate(AppRoutes.PDF_VIEWER) }
+                        onViewPdf = { navController.navigate(AppRoutes.PDF_VIEWER) },
+                        onContinueToJobWorkInvoice = {
+                            invoiceWorkspaceViewModel.onContinueToJobWorkInvoice()
+                            navController.navigate(AppRoutes.WORKSPACE) {
+                                popUpTo(AppRoutes.FINALIZED) { inclusive = true }
+                            }
+                        }
                     )
                 }
 
@@ -551,7 +602,16 @@ fun AppNavShell(
 
                     InvoicePreviewScreen(
                         document = finalizedDocument!!,
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        // Only ever resolvable here for the Invoice side of a job-work pair —
+                        // its jobWorkLink.linkedDocumentId is written at that Invoice's own
+                        // finalize time (see DefaultInvoiceFinalizer). The Challan side's link
+                        // never resolves this way (that id doesn't exist at Challan-finalize
+                        // time) — see DocumentDetailViewModel.linkedDocumentId for the reverse
+                        // lookup used once a Challan is reopened from Documents/Home instead.
+                        onViewLinkedDocument = finalizedDocument!!.jobWorkLink?.linkedDocumentId?.let { linkedId ->
+                            { navController.navigate(AppRoutes.documentDetail(linkedId)) }
+                        }
                     )
                 }
 
@@ -591,6 +651,7 @@ fun AppNavShell(
                         }
                     )
                     val document by documentDetailViewModel.document.collectAsState()
+                    val linkedDocumentId by documentDetailViewModel.linkedDocumentId.collectAsState()
 
                     val loadedDocument = document
                     if (loadedDocument == null) {
@@ -601,6 +662,9 @@ fun AppNavShell(
                             onBack = { navController.popBackStack() },
                             onViewPdf = {
                                 navController.navigate(AppRoutes.documentPdf(documentId))
+                            },
+                            onViewLinkedDocument = linkedDocumentId?.let { linkedId ->
+                                { navController.navigate(AppRoutes.documentDetail(linkedId)) }
                             }
                         )
                     }

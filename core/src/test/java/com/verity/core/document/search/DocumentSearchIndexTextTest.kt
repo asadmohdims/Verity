@@ -2,6 +2,8 @@ package com.verity.core.document.search
 
 import com.verity.core.document.model.DocumentFooter
 import com.verity.core.document.model.DocumentIdentity
+import com.verity.core.document.model.DocumentInboundChallanReference
+import com.verity.core.document.model.DocumentJobWorkLink
 import com.verity.core.document.model.DocumentLineItem
 import com.verity.core.document.model.DocumentLogistics
 import com.verity.core.document.model.DocumentParties
@@ -53,6 +55,42 @@ class DocumentSearchIndexTextTest {
         val text = buildSearchIndexText(document)
 
         assertTrue(text.contains("acme traders"))
+    }
+
+    @Test
+    fun `folds inbound challan reference number into the index when present`() {
+        val document = testDocument().copy(
+            inboundChallanReference = DocumentInboundChallanReference(
+                challanNumber = "CUST-CH-0042",
+                challanDate = LocalDate.of(2026, 9, 10)
+            )
+        )
+
+        val text = buildSearchIndexText(document)
+
+        assertTrue(text.contains("cust-ch-0042"))
+    }
+
+    @Test
+    fun `folds job work link number into the index when present`() {
+        val document = testDocument().copy(
+            jobWorkLink = DocumentJobWorkLink(
+                linkedDocumentNumber = "INV-000043",
+                linkedDocumentDate = LocalDate.of(2026, 9, 16)
+            )
+        )
+
+        val text = buildSearchIndexText(document)
+
+        assertTrue(text.contains("inv-000043"))
+    }
+
+    @Test
+    fun `omits job work and inbound reference text when absent`() {
+        val text = buildSearchIndexText(testDocument())
+
+        // Neither field is set on the base fixture - nothing job-work-specific should leak in.
+        assertTrue(!text.contains("cust-ch"))
     }
 
     private fun testDocument(): InvoiceDocumentModel = InvoiceDocumentModel(

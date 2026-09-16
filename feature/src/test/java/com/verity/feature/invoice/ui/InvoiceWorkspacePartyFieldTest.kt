@@ -15,6 +15,7 @@ import com.verity.feature.invoice.autocomplete.CustomerAutocompleteItem
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.referencelist.ReferenceListDataSource
 import com.verity.feature.referencelist.ReferenceListItem
@@ -59,7 +60,11 @@ class InvoiceWorkspacePartyFieldTest {
     }
 
     private class NoopInvoiceFinalizer : InvoiceFinalizer {
-        override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel {
+        override suspend fun finalize(
+            draft: InvoiceDraftUiState,
+            customerId: String,
+            jobWorkLinkage: JobWorkLinkage
+        ): InvoiceDocumentModel {
             error("not used in this test")
         }
     }
@@ -94,7 +99,11 @@ class InvoiceWorkspacePartyFieldTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel)
+                InvoiceWorkspaceRoute(
+                    viewModel = viewModel,
+                    onAddLineItem = {},
+                    onEditLineItem = {}
+                )
             }
         }
 
@@ -121,7 +130,11 @@ class InvoiceWorkspacePartyFieldTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel)
+                InvoiceWorkspaceRoute(
+                    viewModel = viewModel,
+                    onAddLineItem = {},
+                    onEditLineItem = {}
+                )
             }
         }
 
@@ -143,7 +156,11 @@ class InvoiceWorkspacePartyFieldTest {
 
         composeTestRule.setContent {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
-                InvoiceWorkspaceRoute(viewModel = viewModel)
+                InvoiceWorkspaceRoute(
+                    viewModel = viewModel,
+                    onAddLineItem = {},
+                    onEditLineItem = {}
+                )
             }
         }
 

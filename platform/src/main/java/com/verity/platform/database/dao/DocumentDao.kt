@@ -76,4 +76,24 @@ interface DocumentDao {
     /** Every document for one customer, newest first — backs the customer document rollup. */
     @Query("SELECT * FROM documents WHERE customerId = :customerId ORDER BY finalizedAt DESC")
     suspend fun getByCustomerId(customerId: String): List<DocumentEntity>
+
+    /**
+     * The Invoice (if any) whose linkedDocumentId points at this Challan — backs the Challan
+     * Detail screen's "Linked Invoice" section. Null if that Invoice was never finalized (a
+     * job-work Challan's reserved Invoice number can be burned with no Invoice ever created —
+     * see InvoiceFinalizer.JobWorkLinkage). Deliberately a reverse query rather than a stored
+     * forward pointer on the Challan's own row: finalized documents are insert-only/immutable,
+     * so the Challan's row is never updated once the Invoice exists.
+     */
+    @Query("SELECT * FROM documents WHERE linkedDocumentId = :challanDocumentId LIMIT 1")
+    suspend fun findByLinkedDocumentId(challanDocumentId: String): DocumentEntity?
+
+    /**
+     * Looks up a document by its printed number rather than its id. Used only by
+     * DefaultInvoiceFinalizer to resolve a job-work Invoice's linked Challan (identified by
+     * number on the draft, since the draft never carries a real documentId) into a real
+     * documentId for DocumentEntity.linkedDocumentId.
+     */
+    @Query("SELECT * FROM documents WHERE orgId = :orgId AND documentNumber = :documentNumber LIMIT 1")
+    suspend fun findByDocumentNumber(orgId: String, documentNumber: String): DocumentEntity?
 }

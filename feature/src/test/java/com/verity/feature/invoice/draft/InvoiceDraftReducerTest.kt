@@ -287,6 +287,102 @@ class InvoiceDraftReducerTest {
         assertEquals(900, tax.sgst!!.amountPaise)
     }
 
+    @Test
+    fun `setJobWorkFlow toggles independently of other draft fields`() {
+        val draft = InvoiceDraftUiState(
+            documentType = DraftDocumentType.CHALLAN,
+            billedTo = testBilledTo(),
+            lineItems = listOf(
+                DraftLineItem(description = "Item A", hsnCode = "1001", quantity = 10, unit = "PCS", ratePaise = 1_000)
+            )
+        )
+
+        val enabled = InvoiceDraftReducer.setJobWorkFlow(draft, true)
+        assertEquals(true, enabled.isJobWorkFlow)
+        assertEquals(draft.lineItems, enabled.lineItems)
+        assertEquals(draft.billedTo, enabled.billedTo)
+
+        val disabled = InvoiceDraftReducer.setJobWorkFlow(enabled, false)
+        assertEquals(false, disabled.isJobWorkFlow)
+    }
+
+    @Test
+    fun `setDocumentType clears isJobWorkFlow and inboundChallanReference when leaving Challan`() {
+        val draft = InvoiceDraftReducer.setInboundChallanReference(
+            InvoiceDraftReducer.setJobWorkFlow(
+                InvoiceDraftUiState(documentType = DraftDocumentType.CHALLAN, billedTo = testBilledTo()),
+                true
+            ),
+            DraftInboundChallanReference(challanNumber = "CUST-CH-0042")
+        )
+        assertEquals(true, draft.isJobWorkFlow)
+
+        val result = InvoiceDraftReducer.setDocumentType(draft, DraftDocumentType.INVOICE)
+
+        assertEquals(false, result.isJobWorkFlow)
+        assertEquals(null, result.inboundChallanReference)
+    }
+
+    @Test
+    fun `setDocumentType always resets isJobWorkFlow even when staying on Challan`() {
+        // The "Challan + Invoice" dropdown item calls setDocumentType(CHALLAN) then a follow-up
+        // setJobWorkFlow(true) - plain "Challan" only calls the first, so switching from
+        // "Challan + Invoice" to plain "Challan" must not leave isJobWorkFlow stuck true.
+        val draft = InvoiceDraftReducer.setJobWorkFlow(
+            InvoiceDraftUiState(documentType = DraftDocumentType.CHALLAN, billedTo = testBilledTo()),
+            true
+        )
+
+        val result = InvoiceDraftReducer.setDocumentType(draft, DraftDocumentType.CHALLAN)
+
+        assertEquals(false, result.isJobWorkFlow)
+    }
+
+    @Test
+    fun `setDocumentType preserves inboundChallanReference when staying on Challan`() {
+        val draft = InvoiceDraftReducer.setInboundChallanReference(
+            InvoiceDraftUiState(documentType = DraftDocumentType.CHALLAN, billedTo = testBilledTo()),
+            DraftInboundChallanReference(challanNumber = "CUST-CH-0042")
+        )
+
+        val result = InvoiceDraftReducer.setDocumentType(draft, DraftDocumentType.CHALLAN)
+
+        assertEquals("CUST-CH-0042", result.inboundChallanReference?.challanNumber)
+    }
+
+    @Test
+    fun `a job-work Challan draft still has tax nulled out`() {
+        val draft = InvoiceDraftReducer.setJobWorkFlow(
+            InvoiceDraftUiState(
+                documentType = DraftDocumentType.CHALLAN,
+                billedTo = testBilledTo(),
+                lineItems = listOf(
+                    DraftLineItem(description = "Item A", hsnCode = "1001", quantity = 10, unit = "PCS", ratePaise = 1_000)
+                )
+            ),
+            true
+        )
+
+        val result = InvoiceDraftReducer.updateLineItem(draft, index = 0, item = draft.lineItems.first())
+
+        assertEquals(null, result.summary.tax)
+        assertEquals(0L, result.summary.taxTotalPaise)
+    }
+
+    @Test
+    fun `setJobWorkChallanLink attaches the carried-forward Challan reference`() {
+        val draft = InvoiceDraftUiState(documentType = DraftDocumentType.INVOICE, billedTo = testBilledTo())
+        val link = DraftJobWorkChallanLink(
+            reservedInvoiceNumber = "INV-000043",
+            challanDocumentNumber = "CH-000012",
+            challanDate = java.time.LocalDate.of(2026, 9, 16)
+        )
+
+        val result = InvoiceDraftReducer.setJobWorkChallanLink(draft, link)
+
+        assertEquals(link, result.jobWorkChallanLink)
+    }
+
     private fun testBilledTo(
         stateCode: String = "09",
         gstin: String = "09AAACB1234Z1Z"
