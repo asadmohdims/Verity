@@ -130,7 +130,18 @@ internal fun List<String>.toMatchingSuggestions(query: String): List<VeritySugge
  * with the keyboard already open (found 2026-09-15, Transportation Mode: the field a `Next` tap
  * landed on wasn't guaranteed visible) — so this makes the scroll explicit instead of trusting
  * that implicit behavior, consistent with this app's "Focus/IME ownership: explicit... never
- * inferred" rule. Shared with LineItemEntryScreen, which chains fields the same way.
+ * inferred" rule. Shared with LineItemEntryScreen, which chains fields the same way, and (2026-09-16)
+ * InvoicePreviewScreen's Notes to Self field.
+ *
+ * This relies on the screen's root scrollable applying `Modifier.imePadding()` *before*
+ * `Modifier.verticalScroll(...)` in its chain (imePadding shrinking the space the scroll container
+ * itself is measured against, not just padding added inside an already-full-height scroll region)
+ * — see LineItemEntryScreen's root Column for the working order. Get that order backwards and
+ * `bringIntoView()` silently becomes a no-op: the scrollable's own viewport bounds never shrink, so
+ * it always computes the focused field as "already visible," even though the keyboard is genuinely
+ * covering it on screen (found on-device 2026-09-16, InvoicePreviewScreen: manual scroll worked
+ * fine — content did grow taller — but the automatic scroll-into-view never fired, because the
+ * order there was `verticalScroll().imePadding()`, the reverse of this).
  */
 @Composable
 internal fun rememberFocusScrollModifier(

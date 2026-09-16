@@ -11,9 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,7 +25,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.verity.core.formatting.money.formatPaiseAsRupeesInput
 import com.verity.core.formatting.money.parseRupeesInputToPaise
-import com.verity.core.ui.molecules.VeritySnackbar
 import com.verity.core.ui.primitives.VerityButton
 import com.verity.core.ui.primitives.VerityButtonRole
 import com.verity.core.ui.primitives.VerityButtonState
@@ -40,7 +36,6 @@ import com.verity.core.ui.primitives.VerityTextField
 import com.verity.core.ui.primitives.VerityTextFieldRole
 import com.verity.core.ui.primitives.dp
 import com.verity.feature.invoice.draft.DraftLineItem
-import kotlinx.coroutines.launch
 
 /**
  * LineItemEntryScreen
@@ -128,7 +123,6 @@ fun LineItemEntryScreen(
     val unitFocus = remember { FocusRequester() }
     val rateFocus = remember { FocusRequester() }
 
-    val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
     fun buildItem() = DraftLineItem(
@@ -259,12 +253,6 @@ fun LineItemEntryScreen(
                                 onDone()
                             } else {
                                 onAdd(buildItem())
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "Line item added",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
                                 clearFieldsForNextItem()
                                 descriptionFocus.requestFocus()
                             }
@@ -303,12 +291,6 @@ fun LineItemEntryScreen(
                         role = VerityButtonRole.Secondary,
                         onClick = {
                             onAdd(buildItem())
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "Line item added",
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
                             clearFieldsForNextItem()
                             descriptionFocus.requestFocus()
                         },
@@ -328,13 +310,6 @@ fun LineItemEntryScreen(
                     )
                 }
             }
-        }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.padding(VeritySpace.Medium.dp)
-        ) { data ->
-            VeritySnackbar(snackbarData = data)
         }
     }
 }

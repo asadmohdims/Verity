@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,10 +14,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
+import com.verity.feature.invoice.ui.rememberFocusScrollModifier
 import com.verity.core.document.model.DocumentTaxMode
 import com.verity.core.document.model.DocumentType
 import com.verity.core.document.model.displayLabel
@@ -74,6 +78,7 @@ fun InvoicePreviewScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(rememberScrollState())
     ) {
         VeritySpacer(size = VeritySpace.Large)
@@ -284,6 +289,9 @@ private fun SelfNotesSection(selfNotes: String, onSave: (String) -> Unit) {
     var text by remember { mutableStateOf(selfNotes) }
     LaunchedEffect(selfNotes) { text = selfNotes }
 
+    val notesFocus = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     VeritySection(
         title = "Notes to Self (private — not printed)",
         modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
@@ -299,6 +307,7 @@ private fun SelfNotesSection(selfNotes: String, onSave: (String) -> Unit) {
             onExitEdit = null,
             suggestions = emptyList(),
             onSelectSuggestion = null,
+            fieldModifier = rememberFocusScrollModifier(notesFocus, coroutineScope),
             singleLine = false
         )
 
