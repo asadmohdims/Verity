@@ -15,6 +15,8 @@ import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
 import com.verity.platform.sync.FirebaseSyncClient
 import com.verity.platform.sync.InvoiceNumberAllocator
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.Clock
@@ -47,9 +49,12 @@ const val DEFAULT_ORG_ID = "default-org"
  * local-only version already accepted, not a new one.
  *
  * Job work ("Challan + Invoice", see [JobWorkLinkage]): a Challan finalize that reserves a linked
- * Invoice number allocates *two* numbers before the transaction opens instead of one. If the
- * transaction then fails, both are burned rather than just one — the same accepted risk category
- * as above, just occasionally two-wide instead of one-wide.
+ * Invoice number allocates *two* numbers before the transaction opens instead of one. They're
+ * independent counters (this Challan's own sequence, and the Invoice's), so the two allocate()
+ * calls run concurrently rather than one after another - no reason to pay for two network round
+ * trips back to back when neither depends on the other's result. If the transaction then fails,
+ * both are burned rather than just one — the same accepted risk category as above, just
+ * occasionally two-wide instead of one-wide.
  */
 class DefaultInvoiceFinalizer(
     private val database: PlatformDatabase,
@@ -90,24 +95,30 @@ class DefaultInvoiceFinalizer(
 
         val nextSequence: Long
         val documentNumber: String
-        if (jobWorkLinkage is JobWorkLinkage.UseReservedNumber) {
-            documentNumber = jobWorkLinkage.documentNumber
-            nextSequence = documentNumber.substringAfterLast('-').toLong()
-        } else {
-            nextSequence = numberAllocator.allocate(DEFAULT_ORG_ID, documentTypeColumn)
-            documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
-        }
-
         // Reserved BEFORE opening the transaction, same reasoning as the allocate() call above —
         // it can hit the network (up to its own timeout via numberAllocator), and this is a
         // second real number being consumed on top of this document's own.
-        val reservedInvoiceNumber: String? =
-            if (jobWorkLinkage is JobWorkLinkage.ReserveLinkedInvoiceNumber) {
-                val invoiceSequence = numberAllocator.allocate(DEFAULT_ORG_ID, "INVOICE")
-                "INV-" + invoiceSequence.toString().padStart(6, '0')
-            } else {
-                null
+        val reservedInvoiceNumber: String?
+        if (jobWorkLinkage is JobWorkLinkage.UseReservedNumber) {
+            documentNumber = jobWorkLinkage.documentNumber
+            nextSequence = documentNumber.substringAfterLast('-').toLong()
+            reservedInvoiceNumber = null
+        } else if (jobWorkLinkage is JobWorkLinkage.ReserveLinkedInvoiceNumber) {
+            // Two independent counters, neither depending on the other's result - run both
+            // allocate() calls concurrently instead of back to back (see class doc comment).
+            val (ownSequence, invoiceSequence) = coroutineScope {
+                val ownSequenceDeferred = async { numberAllocator.allocate(DEFAULT_ORG_ID, documentTypeColumn) }
+                val invoiceSequenceDeferred = async { numberAllocator.allocate(DEFAULT_ORG_ID, "INVOICE") }
+                ownSequenceDeferred.await() to invoiceSequenceDeferred.await()
             }
+            nextSequence = ownSequence
+            documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
+            reservedInvoiceNumber = "INV-" + invoiceSequence.toString().padStart(6, '0')
+        } else {
+            nextSequence = numberAllocator.allocate(DEFAULT_ORG_ID, documentTypeColumn)
+            documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
+            reservedInvoiceNumber = null
+        }
 
         // Cheap local read, also done before opening the transaction: resolves the job-work
         // Invoice's linked Challan (known only by number on the draft) to its real documentId.
