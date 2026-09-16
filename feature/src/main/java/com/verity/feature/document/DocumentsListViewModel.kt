@@ -2,6 +2,7 @@ package com.verity.feature.document
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.verity.core.document.model.DocumentType
 import com.verity.feature.home.DocumentSummary
 import com.verity.feature.home.HomeDataSource
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,10 +10,33 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** All/Invoices/Challans — the Documents tab's type filter, applied in memory (see visibleDocuments). */
+enum class DocumentTypeFilter {
+    ALL,
+    INVOICES,
+    CHALLANS
+}
+
 data class DocumentsListUiState(
     val isLoading: Boolean = true,
-    val documents: List<DocumentSummary> = emptyList()
-)
+    val documents: List<DocumentSummary> = emptyList(),
+    val filter: DocumentTypeFilter = DocumentTypeFilter.ALL,
+    /**
+     * The set of documentIds pointed at by some other document's linkedDocumentId — i.e. Challans
+     * with a resolved linked Invoice. Derived once in refresh() from the same documents list
+     * (every DocumentSummary already carries linkedDocumentId), not a second query — see
+     * DocumentsListViewModel.refresh().
+     */
+    val linkedToDocumentIds: Set<String> = emptySet()
+) {
+    /** The list DocumentsListScreen actually renders — [documents] filtered by [filter]. */
+    val visibleDocuments: List<DocumentSummary>
+        get() = when (filter) {
+            DocumentTypeFilter.ALL -> documents
+            DocumentTypeFilter.INVOICES -> documents.filter { it.documentType == DocumentType.INVOICE }
+            DocumentTypeFilter.CHALLANS -> documents.filter { it.documentType == DocumentType.CHALLAN }
+        }
+}
 
 /**
  * DocumentsListViewModel
@@ -44,10 +68,17 @@ class DocumentsListViewModel(
             val documents = homeDataSource.loadAllDocuments()
                 .sortedByDescending { it.finalizedAtEpochMillis }
 
-            _uiState.value = DocumentsListUiState(
+            // Preserves the current filter across a refresh (e.g. re-entering this tab with
+            // "Invoices" still selected) rather than resetting to ALL every time.
+            _uiState.value = _uiState.value.copy(
                 isLoading = false,
-                documents = documents
+                documents = documents,
+                linkedToDocumentIds = documents.mapNotNull { it.linkedDocumentId }.toSet()
             )
         }
+    }
+
+    fun onFilterChanged(filter: DocumentTypeFilter) {
+        _uiState.value = _uiState.value.copy(filter = filter)
     }
 }

@@ -2,6 +2,7 @@ package com.verity.feature.document
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
 import com.verity.core.document.model.DocumentType
 import com.verity.core.formatting.money.Money
@@ -39,6 +40,16 @@ class DocumentsListScreenTest {
         finalizedAtEpochMillis = 0L
     )
 
+    private val challan = DocumentSummary(
+        documentId = "doc-2",
+        documentNumber = "CH-000001",
+        customerName = "Test Buyer",
+        documentType = DocumentType.CHALLAN,
+        issueDate = LocalDate.of(2026, 9, 13),
+        grandTotal = Money.ofPaise(5_000),
+        finalizedAtEpochMillis = 0L
+    )
+
     @Test
     fun `tapping a document row fires onDocumentClick with its documentId`() {
         var clickedDocumentId: String? = null
@@ -47,6 +58,7 @@ class DocumentsListScreenTest {
             VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
                 DocumentsListScreen(
                     state = DocumentsListUiState(isLoading = false, documents = listOf(document)),
+                    onFilterChanged = {},
                     onDocumentClick = { clickedDocumentId = it }
                 )
             }
@@ -55,5 +67,60 @@ class DocumentsListScreenTest {
         composeTestRule.onNodeWithText("INV-000001 · Test Buyer").performClick()
 
         assertEquals("doc-1", clickedDocumentId)
+    }
+
+    @Test
+    fun `tapping the Invoices filter hides challan rows`() {
+        var filter = DocumentTypeFilter.ALL
+
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                DocumentsListScreen(
+                    state = DocumentsListUiState(isLoading = false, documents = listOf(document, challan), filter = filter),
+                    onFilterChanged = { filter = it },
+                    onDocumentClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("CH-000001 · Test Buyer").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Invoices").performClick()
+
+        assertEquals(DocumentTypeFilter.INVOICES, filter)
+    }
+
+    @Test
+    fun `a Challan with a resolved linked Invoice shows the Linked badge`() {
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                DocumentsListScreen(
+                    state = DocumentsListUiState(
+                        isLoading = false,
+                        documents = listOf(challan),
+                        linkedToDocumentIds = setOf("doc-2")
+                    ),
+                    onFilterChanged = {},
+                    onDocumentClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("LINKED").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a standalone Challan shows no Linked badge`() {
+        composeTestRule.setContent {
+            VerityTheme(darkTheme = false, typography = VerityBaseTypography) {
+                DocumentsListScreen(
+                    state = DocumentsListUiState(isLoading = false, documents = listOf(challan)),
+                    onFilterChanged = {},
+                    onDocumentClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("LINKED").assertDoesNotExist()
     }
 }

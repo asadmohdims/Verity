@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.verity.core.ui.molecules.VeritySegmentedControl
 import com.verity.core.ui.primitives.VeritySpace
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySurface
@@ -42,6 +43,7 @@ fun DocumentsListRoute(
 
     DocumentsListScreen(
         state = state,
+        onFilterChanged = viewModel::onFilterChanged,
         onDocumentClick = onDocumentClick
     )
 }
@@ -50,12 +52,15 @@ fun DocumentsListRoute(
  * DocumentsListScreen
  *
  * Pure renderer — never obtains a ViewModel, never collects a Flow directly (see CLAUDE.md's
- * Route/Screen/ViewModel ownership rule). Every finalized document, newest first — no filtering
- * or search yet (out of scope for this pass).
+ * Route/Screen/ViewModel ownership rule). All/Invoices/Challans filtering reuses
+ * VeritySegmentedControl (the same "small fixed option set" primitive Settings' theme picker
+ * already uses) rather than a new chip-row component — no new interactive primitive needed for
+ * an N-way picker that already exists.
  */
 @Composable
 fun DocumentsListScreen(
     state: DocumentsListUiState,
+    onFilterChanged: (DocumentTypeFilter) -> Unit,
     onDocumentClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -69,19 +74,32 @@ fun DocumentsListScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(VeritySpace.Medium.dp)
         ) {
+            if (state.documents.isNotEmpty()) {
+                VeritySegmentedControl(
+                    options = DocumentTypeFilter.entries,
+                    selected = state.filter,
+                    labelFor = ::filterLabel,
+                    onSelect = onFilterChanged
+                )
+                VeritySpacer(size = VeritySpace.Medium)
+            }
+
             when {
                 state.documents.isEmpty() && !state.isLoading -> EmptyDocuments()
 
-                state.documents.isNotEmpty() -> {
+                state.visibleDocuments.isEmpty() -> EmptyFilterResult(state.filter)
+
+                else -> {
                     VeritySurface(type = VeritySurfaceType.Card) {
                         Column {
-                            state.documents.forEachIndexed { index, document ->
+                            state.visibleDocuments.forEachIndexed { index, document ->
                                 DocumentSummaryRow(
                                     document = document,
+                                    isLinked = document.documentId in state.linkedToDocumentIds,
                                     onClick = { onDocumentClick(document.documentId) }
                                 )
 
-                                if (index != state.documents.lastIndex) {
+                                if (index != state.visibleDocuments.lastIndex) {
                                     VerityDivider(strength = VerityDividerStrength.Divider)
                                 }
                             }
@@ -91,6 +109,12 @@ fun DocumentsListScreen(
             }
         }
     }
+}
+
+private fun filterLabel(filter: DocumentTypeFilter): String = when (filter) {
+    DocumentTypeFilter.ALL -> "All"
+    DocumentTypeFilter.INVOICES -> "Invoices"
+    DocumentTypeFilter.CHALLANS -> "Challans"
 }
 
 @Composable
@@ -111,6 +135,25 @@ private fun EmptyDocuments() {
                 text = "Invoices and challans you finalize will show up here.",
                 style = VerityTextStyle.Caption
             )
+        }
+    }
+}
+
+@Composable
+private fun EmptyFilterResult(filter: DocumentTypeFilter) {
+    val message = when (filter) {
+        DocumentTypeFilter.ALL -> "No documents yet"
+        DocumentTypeFilter.INVOICES -> "No invoices yet"
+        DocumentTypeFilter.CHALLANS -> "No challans yet"
+    }
+    VeritySurface(type = VeritySurfaceType.Card) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(VeritySpace.Large.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            VerityText(text = message, style = VerityTextStyle.Title)
         }
     }
 }

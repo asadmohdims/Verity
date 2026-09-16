@@ -44,5 +44,6 @@ private fun DocumentEntity.toDocumentSummary(): DocumentSummary =
         documentType = DocumentType.valueOf(documentType),
         issueDate = LocalDate.ofEpochDay(issueDateEpochDay),
         grandTotal = Money.ofPaise(grandTotalPaise),
-        finalizedAtEpochMillis = finalizedAt
+        finalizedAtEpochMillis = finalizedAt,
+        linkedDocumentId = linkedDocumentId
     )

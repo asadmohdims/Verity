@@ -46,5 +46,12 @@ data class DocumentSummary(
     val issueDate: LocalDate,
     val grandTotal: Money,
     /** When this document was actually finalized — the truth for "most recent", since issueDate is a user-editable business date. */
-    val finalizedAtEpochMillis: Long
+    val finalizedAtEpochMillis: Long,
+    /**
+     * Mirrors DocumentEntity.linkedDocumentId — non-null only on an Invoice that continues a
+     * job-work Challan (see InvoiceFinalizer.JobWorkLinkage), always null on a Challan's own row.
+     * The Documents List uses this to derive which Challans have a resolved linked Invoice (the
+     * "Linked" badge) without a second query — see DocumentsListViewModel.
+     */
+    val linkedDocumentId: String? = null
 )
