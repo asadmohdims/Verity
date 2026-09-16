@@ -62,6 +62,7 @@ fun AddEditCustomerRoute(
         onStateChange = viewModel::onStateChange,
         onStateCodeChange = viewModel::onStateCodeChange,
         onPincodeChange = viewModel::onPincodeChange,
+        onNotesChange = viewModel::onNotesChange,
         onSave = viewModel::onSave,
         onDeactivate = viewModel::onDeactivate
     )
@@ -89,6 +90,7 @@ fun AddEditCustomerScreen(
     onStateChange: (String) -> Unit,
     onStateCodeChange: (String) -> Unit,
     onPincodeChange: (String) -> Unit,
+    onNotesChange: (String) -> Unit,
     onSave: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier
@@ -151,6 +153,14 @@ fun AddEditCustomerScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
+            VeritySpacer(size = VeritySpace.Small)
+
+            FormField(
+                label = "Notes (optional)",
+                value = state.notes,
+                onValueChange = onNotesChange,
+                singleLine = false
+            )
 
             if (state.isEditMode) {
                 VeritySpacer(size = VeritySpace.Large)
@@ -176,7 +186,8 @@ private fun FormField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true
 ) {
     VerityTextField(
         role = VerityTextFieldRole.Basic,
@@ -188,6 +199,7 @@ private fun FormField(
         onExitEdit = null,
         suggestions = emptyList(),
         onSelectSuggestion = null,
+        singleLine = singleLine,
         modifier = modifier.fillMaxWidth()
     )
 }

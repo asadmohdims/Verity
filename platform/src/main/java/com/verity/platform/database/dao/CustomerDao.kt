@@ -81,6 +81,28 @@ interface CustomerDao {
     suspend fun deactivate(customerId: String)
 
     /**
+     * Bulk REPLACE from a Firestore restore/sync pull — same rationale as
+     * DocumentDao.upsertAllFromCloud (safe to re-run in full if interrupted, no separate resume
+     * bookkeeping needed). Unlike upsertAll (used for local seeding/imports), this is specifically
+     * the cloud-restore entry point — see FirebaseRestoreClient.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAllFromCloud(customers: List<CustomerEntity>)
+
+    /** Flips once FirebaseSyncClient.pushCustomer's push succeeds — see CustomerEntity.syncedToCloud. */
+    @Query("UPDATE customers SET syncedToCloud = 1 WHERE customerId = :customerId")
+    suspend fun markSyncedToCloud(customerId: String)
+
+    /**
+     * Every customer row never yet pushed to Firestore — every pre-existing row defaults here
+     * after Migration5To6, so this is what pushes a device's already-existing local customers to
+     * the cloud for the first time (see MainActivity's seed/restore/backfill sequencing). Cheap,
+     * idempotent no-op on every later launch once everything is synced.
+     */
+    @Query("SELECT * FROM customers WHERE syncedToCloud = 0")
+    suspend fun getUnsyncedCustomers(): List<CustomerEntity>
+
+    /**
      * Deletes all customer rows.
      *
      * Used only during administrative or bootstrap scenarios such as Excel re-import.

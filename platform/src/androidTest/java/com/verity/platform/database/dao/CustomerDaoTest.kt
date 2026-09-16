@@ -53,7 +53,8 @@ class CustomerDaoTest {
         stateCode = "27",
         pincode = null,
         isActive = true,
-        updatedAt = 0
+        updatedAt = 0,
+        notes = null
     )
 
     @Test
@@ -76,5 +77,49 @@ class CustomerDaoTest {
         val found = customerDao.getById("cust-1")
         assertEquals("cust-1", found?.customerId)
         assertEquals(false, found?.isActive)
+    }
+
+    @Test
+    fun notes_round_trips_through_insert_and_a_later_replace_edit() = runBlocking {
+        customerDao.insert(testCustomer("cust-1"))
+        assertEquals(null, customerDao.getById("cust-1")?.notes)
+
+        // insert() is REPLACE-on-conflict — the same call an edit-by-id save uses (see
+        // DefaultCustomerEditDataSource), so a later edit just re-inserts the full row.
+        customerDao.insert(testCustomer("cust-1").copy(notes = "Sold this part at a discounted rate"))
+
+        assertEquals("Sold this part at a discounted rate", customerDao.getById("cust-1")?.notes)
+    }
+
+    @Test
+    fun new_customer_defaults_to_not_yet_synced() = runBlocking {
+        customerDao.insert(testCustomer("cust-1"))
+
+        assertEquals(false, customerDao.getById("cust-1")?.syncedToCloud)
+        assertEquals(listOf("cust-1"), customerDao.getUnsyncedCustomers().map { it.customerId })
+    }
+
+    @Test
+    fun markSyncedToCloud_removes_the_customer_from_getUnsyncedCustomers() = runBlocking {
+        customerDao.insert(testCustomer("cust-1"))
+
+        customerDao.markSyncedToCloud("cust-1")
+
+        assertEquals(true, customerDao.getById("cust-1")?.syncedToCloud)
+        assertTrue(customerDao.getUnsyncedCustomers().isEmpty())
+    }
+
+    @Test
+    fun upsertAllFromCloud_replaces_an_existing_row_by_id() = runBlocking {
+        customerDao.insert(testCustomer("cust-1"))
+
+        customerDao.upsertAllFromCloud(
+            listOf(testCustomer("cust-1").copy(customerName = "Renamed via cloud", syncedToCloud = true))
+        )
+
+        val found = customerDao.getById("cust-1")
+        assertEquals("Renamed via cloud", found?.customerName)
+        assertEquals(true, found?.syncedToCloud)
+        assertEquals(1, customerDao.count())
     }
 }

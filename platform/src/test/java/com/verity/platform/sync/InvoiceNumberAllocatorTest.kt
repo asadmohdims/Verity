@@ -72,6 +72,7 @@ class InvoiceNumberAllocatorTest {
         override suspend fun insert(document: DocumentEntity) = error("not used by this test")
         override suspend fun upsertAllFromCloud(documents: List<DocumentEntity>) = error("not used by this test")
         override suspend fun markSyncedToCloud(documentId: String) = error("not used by this test")
+        override suspend fun updateSelfNotes(documentId: String, notes: String?) = error("not used by this test")
         override suspend fun getPendingSyncCount(): Int = error("not used by this test")
         override suspend fun getMaxSequenceNumber(orgId: String, documentType: String): Long? = maxSequenceNumber
         override suspend fun getById(documentId: String): DocumentEntity? = error("not used by this test")

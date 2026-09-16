@@ -173,7 +173,11 @@ class DefaultInvoiceFinalizer(
                 linkedDocumentId = linkedChallanEntity?.documentId,
                 payloadJson = json.encodeToString(document),
                 finalizedAt = now,
-                searchIndexText = buildSearchIndexText(document)
+                searchIndexText = buildSearchIndexText(document),
+                // Sourced straight from the draft, never from `document` — selfNotes is
+                // deliberately never part of InvoiceDocumentModel/payloadJson, see
+                // DocumentEntity.selfNotes's doc comment.
+                selfNotes = draft.selfNotes.trim().ifBlank { null }
             )
             database.documentDao().insert(documentEntity)
 

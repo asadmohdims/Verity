@@ -48,12 +48,18 @@ class DocumentDetailViewModelTest {
 
     private class FakeDocumentDetailDataSource(
         private val documents: Map<String, InvoiceDocumentModel>,
-        private val linkedDocumentIds: Map<String, String> = emptyMap()
+        private val linkedDocumentIds: Map<String, String> = emptyMap(),
+        private val selfNotesById: MutableMap<String, String?> = mutableMapOf()
     ) : DocumentDetailDataSource {
         override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
             documents[documentId]
         override suspend fun findLinkedDocumentId(documentId: String): String? =
             linkedDocumentIds[documentId]
+        override suspend fun loadSelfNotes(documentId: String): String? =
+            selfNotesById[documentId]
+        override suspend fun updateSelfNotes(documentId: String, notes: String?) {
+            selfNotesById[documentId] = notes
+        }
     }
 
     private class FakeInvoicePdfRenderer : InvoicePdfRenderer {
@@ -156,5 +162,47 @@ class DocumentDetailViewModelTest {
 
         assertEquals(renderer.file, result)
         assertEquals(document, renderer.lastRenderedDocument)
+    }
+
+    @Test
+    fun saveSelfNotes_persists_trimmed_notes_and_updates_the_exposed_state() = runTest(dispatcher) {
+        val document = testDocument("INV-000001")
+        val dataSource = FakeDocumentDetailDataSource(mapOf("doc-1" to document))
+
+        val viewModel = DocumentDetailViewModel(
+            documentId = "doc-1",
+            dataSource = dataSource,
+            invoicePdfRenderer = FakeInvoicePdfRenderer()
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(viewModel.selfNotes.value)
+
+        viewModel.saveSelfNotes("  Sold at a discounted rate  ")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Sold at a discounted rate", viewModel.selfNotes.value)
+        assertEquals("Sold at a discounted rate", dataSource.loadSelfNotes("doc-1"))
+    }
+
+    @Test
+    fun saveSelfNotes_with_blank_text_clears_the_note() = runTest(dispatcher) {
+        val document = testDocument("INV-000001")
+        val dataSource = FakeDocumentDetailDataSource(
+            mapOf("doc-1" to document),
+            selfNotesById = mutableMapOf("doc-1" to "Existing note")
+        )
+
+        val viewModel = DocumentDetailViewModel(
+            documentId = "doc-1",
+            dataSource = dataSource,
+            invoicePdfRenderer = FakeInvoicePdfRenderer()
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Existing note", viewModel.selfNotes.value)
+
+        viewModel.saveSelfNotes("   ")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(viewModel.selfNotes.value)
     }
 }

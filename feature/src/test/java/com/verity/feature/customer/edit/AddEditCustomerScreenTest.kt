@@ -39,6 +39,7 @@ class AddEditCustomerScreenTest {
                     onStateChange = {},
                     onStateCodeChange = {},
                     onPincodeChange = {},
+                    onNotesChange = {},
                     onSave = {},
                     onDeactivate = {}
                 )
@@ -69,6 +70,7 @@ class AddEditCustomerScreenTest {
                     onStateChange = {},
                     onStateCodeChange = {},
                     onPincodeChange = {},
+                    onNotesChange = {},
                     onSave = {},
                     onDeactivate = {}
                 )
@@ -101,6 +103,7 @@ class AddEditCustomerScreenTest {
                     onStateChange = {},
                     onStateCodeChange = {},
                     onPincodeChange = {},
+                    onNotesChange = {},
                     onSave = { saved = true },
                     onDeactivate = {}
                 )
@@ -126,6 +129,7 @@ class AddEditCustomerScreenTest {
                     onStateChange = {},
                     onStateCodeChange = {},
                     onPincodeChange = {},
+                    onNotesChange = {},
                     onSave = {},
                     onDeactivate = {}
                 )
@@ -151,6 +155,7 @@ class AddEditCustomerScreenTest {
                     onStateChange = {},
                     onStateCodeChange = {},
                     onPincodeChange = {},
+                    onNotesChange = {},
                     onSave = {},
                     onDeactivate = { deactivated = true }
                 )

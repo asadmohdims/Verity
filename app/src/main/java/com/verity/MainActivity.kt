@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
                     storage = FirebaseStorage.getInstance(),
                     documentDao = database.documentDao(),
                     ledgerEntryDao = database.ledgerEntryDao(),
+                    customerDao = database.customerDao(),
                     syncStatusStore = syncStatusStore
                 )
             }
@@ -110,29 +111,23 @@ class MainActivity : ComponentActivity() {
                     remoteSource = FirestoreRestoreSource(FirebaseFirestore.getInstance()),
                     documentDao = database.documentDao(),
                     ledgerEntryDao = database.ledgerEntryDao(),
+                    customerDao = database.customerDao(),
                     watermarkStore = syncStatusStore
                 )
             }
 
-            // One-time seed bootstrap: populate customers from the fixture asset on first run.
-            LaunchedEffect(Unit) {
-                if (database.customerDao().count() == 0) {
-                    val seedCustomers = CustomerSeedLoader.load(context).map { it.toEntity() }
-                    database.customerDao().upsertAll(seedCustomers)
-                }
-            }
-
-            // Sign in with the fixed business account, then pull anything new since this device
-            // last synced (see FirebaseRestoreClient's doc comment) — every launch, not just a
-            // brand-new device's first one. This used to be gated to "only when local Room has
-            // zero documents, only once ever", on the premise that cloud was backup/restore for
-            // a single primary device, not live multi-device sync. That stopped being true once
-            // this app was actually run on two devices for the same business at the same time:
-            // an Invoice finalized on device A never showed up on device B, since B already had
-            // local documents and so never qualified as "new". sync() is safe to call on every
-            // launch regardless of existing local data — it's filtered on a Firestore-assigned
-            // server timestamp, not a client clock, so an established device only ever re-fetches
-            // what's genuinely new since it last checked.
+            // Sign in, pull anything new since this device last synced (documents, ledger
+            // entries, and — as of the customerId-divergence fix — customers too), THEN seed
+            // fixture customers only if the table is still empty, THEN push anything local that's
+            // never been pushed. Order matters: this used to be two independent LaunchedEffects
+            // racing each other, and the local seed (fast: JSON parse + Room insert) always won
+            // against restore (two network round trips) — every fresh device generated its own
+            // random customer ids before any cloud data could possibly arrive, which is exactly
+            // the bug this whole sequence exists to prevent (see CLAUDE.md's Data & sync
+            // architecture). sync() itself is safe to call on every launch regardless of existing
+            // local data (see FirebaseRestoreClient's own doc comment) — filtered on a
+            // Firestore-assigned server timestamp, not a client clock, so an established device
+            // only ever re-fetches what's genuinely new since it last checked.
             LaunchedEffect(Unit) {
                 val signedIn = firebaseAuthGate.ensureSignedIn(
                     email = BuildConfig.FIREBASE_AUTH_EMAIL,
@@ -141,6 +136,22 @@ class MainActivity : ComponentActivity() {
                 if (signedIn) {
                     runCatching { firebaseRestoreClient.sync(DEFAULT_ORG_ID) }
                 }
+
+                // Only a genuinely first-ever launch for this org (nothing local, nothing in the
+                // cloud to restore) — or this exact launch was offline — reaches here with zero
+                // customers.
+                if (database.customerDao().count() == 0) {
+                    val seedCustomers = CustomerSeedLoader.load(context).map { it.toEntity() }
+                    database.customerDao().upsertAll(seedCustomers)
+                    seedCustomers.forEach { firebaseSyncClient.pushCustomer(it) }
+                }
+
+                // Cheap, idempotent no-op once everything is synced — but on the first launch
+                // after this feature shipped, this is what pushes a device's pre-existing local
+                // customers (every row defaults to syncedToCloud=false after Migration5To6) to
+                // the cloud for the first time, establishing them as the canonical set future
+                // devices adopt instead of reseeding their own.
+                database.customerDao().getUnsyncedCustomers().forEach { firebaseSyncClient.pushCustomer(it) }
             }
 
             // Shared across InvoiceWorkspaceViewModel and DocumentDetailViewModel — stateless,
@@ -195,7 +206,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val documentDetailDataSource = remember {
-                DefaultDocumentDetailDataSource(database = database)
+                DefaultDocumentDetailDataSource(database = database, syncClient = firebaseSyncClient)
             }
 
             val documentSearchViewModel = remember {
@@ -210,7 +221,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val customerEditDataSource = remember {
-                DefaultCustomerEditDataSource(database = database)
+                DefaultCustomerEditDataSource(database = database, syncClient = firebaseSyncClient)
             }
 
             val customersListViewModel = remember {

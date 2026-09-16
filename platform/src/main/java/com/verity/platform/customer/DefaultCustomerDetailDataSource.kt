@@ -43,6 +43,7 @@ class DefaultCustomerDetailDataSource(
             state = customer.state,
             stateCode = customer.stateCode,
             pincode = customer.pincode,
+            notes = customer.notes,
             balanceDue = Money.ofPaise(balancePaise),
             documents = documents
         )

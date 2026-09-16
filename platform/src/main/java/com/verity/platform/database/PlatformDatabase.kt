@@ -28,6 +28,11 @@ import com.verity.platform.database.entities.ReferenceListEntity
  *
  * v4 (2026-09-15) adds reference_list_items, backing the manually-curated Transporter Name / HSN
  * Code lists — see Migration3To4 and ReferenceListEntity.
+ *
+ * v5 (2026-09-16) adds customers.notes and documents.selfNotes — see Migration4To5.
+ *
+ * v6 (2026-09-16) adds customers.orgId and customers.syncedToCloud — customers now sync to
+ * Firestore like documents/ledger entries already did. See Migration5To6.
  */
 @Database(
     entities = [
@@ -36,7 +41,7 @@ import com.verity.platform.database.entities.ReferenceListEntity
         LedgerEntryEntity::class,
         ReferenceListEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = true
 )
 abstract class PlatformDatabase : RoomDatabase() {

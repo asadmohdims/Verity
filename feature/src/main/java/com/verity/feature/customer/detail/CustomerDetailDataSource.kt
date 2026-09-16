@@ -26,6 +26,7 @@ data class CustomerDetail(
     val state: String,
     val stateCode: String,
     val pincode: String?,
+    val notes: String?,
     /**
      * SUM(ledger_entries) for this customer — the real outstanding amount, per CLAUDE.md's Data &
      * sync architecture. Deliberately not documents.sumOf { grandTotal } (the old rollup's

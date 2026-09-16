@@ -30,6 +30,14 @@ interface DocumentDao {
     @Query("UPDATE documents SET syncedToCloud = 1 WHERE documentId = :documentId")
     suspend fun markSyncedToCloud(documentId: String)
 
+    /**
+     * The one place a finalized document's own row is ever mutated for something other than
+     * syncedToCloud — see DocumentEntity.selfNotes's doc comment for why notes are exempt from
+     * this table's insert-only rule.
+     */
+    @Query("UPDATE documents SET selfNotes = :notes WHERE documentId = :documentId")
+    suspend fun updateSelfNotes(documentId: String, notes: String?)
+
     @Query("SELECT COUNT(*) FROM documents WHERE syncedToCloud = 0")
     suspend fun getPendingSyncCount(): Int
 

@@ -122,6 +122,13 @@ class InvoiceDraftStore(
         )
     }
 
+    fun setSelfNotes(notes: String) {
+        _currentDraft = InvoiceDraftReducer.setSelfNotes(
+            draft = _currentDraft,
+            notes = notes
+        )
+    }
+
     // ------------------------------------------------------------
     // Atom 7 — Job Work (Challan + Invoice)
     // ------------------------------------------------------------

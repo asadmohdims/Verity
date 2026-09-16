@@ -22,6 +22,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
@@ -102,6 +103,29 @@ class DefaultInvoiceFinalizerTest {
 
         val balance = database.ledgerEntryDao().getBalanceForCustomer(DEFAULT_ORG_ID, customerId)
         assertEquals(document.totals.grandTotalPaise, balance)
+    }
+
+    @Test
+    fun finalize_persists_self_notes_on_the_row_but_never_in_the_payload_or_returned_model() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        val draft = testDraft().copy(selfNotes = "  Sold at a discounted rate for a bulk order  ")
+
+        val document = finalizer.finalize(draft, customerId)
+
+        val row = database.documentDao().getAll().single()
+        assertEquals("Sold at a discounted rate for a bulk order", row.selfNotes)
+        assertFalse(row.payloadJson.contains("discounted rate"))
+        val roundTripped = json.decodeFromString<InvoiceDocumentModel>(row.payloadJson)
+        assertEquals(document, roundTripped)
+    }
+
+    @Test
+    fun finalize_with_blank_self_notes_leaves_the_column_null() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+
+        finalizer.finalize(testDraft().copy(selfNotes = "   "), customerId)
+
+        assertNull(database.documentDao().getAll().single().selfNotes)
     }
 
     @Test
@@ -341,6 +365,8 @@ class DefaultInvoiceFinalizerTest {
         override fun pushLedgerEntry(entry: LedgerEntryEntity) {
             pushedLedgerEntries += entry
         }
+
+        override fun pushCustomer(customer: com.verity.platform.database.entities.CustomerEntity) = Unit
 
         override fun pushPdf(orgId: String, documentNumber: String, file: File) = Unit
 

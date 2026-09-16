@@ -58,6 +58,7 @@ class CustomerDetailScreenTest {
         state = "Maharashtra",
         stateCode = "27",
         pincode = "400001",
+        notes = null,
         balanceDue = Money.ofPaise(balanceDuePaise),
         documents = documents
     )

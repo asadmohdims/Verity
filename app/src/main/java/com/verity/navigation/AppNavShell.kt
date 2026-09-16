@@ -710,6 +710,7 @@ fun AppNavShell(
                     )
                     val document by documentDetailViewModel.document.collectAsState()
                     val linkedDocumentId by documentDetailViewModel.linkedDocumentId.collectAsState()
+                    val selfNotes by documentDetailViewModel.selfNotes.collectAsState()
 
                     val loadedDocument = document
                     if (loadedDocument == null) {
@@ -723,7 +724,9 @@ fun AppNavShell(
                             },
                             onViewLinkedDocument = linkedDocumentId?.let { linkedId ->
                                 { navController.navigate(AppRoutes.documentDetail(linkedId)) }
-                            }
+                            },
+                            selfNotes = selfNotes,
+                            onSelfNotesChange = documentDetailViewModel::saveSelfNotes
                         )
                     }
                 }

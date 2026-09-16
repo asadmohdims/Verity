@@ -2,8 +2,10 @@ package com.verity.platform.sync
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.verity.platform.database.dao.CustomerDao
 import com.verity.platform.database.dao.DocumentDao
 import com.verity.platform.database.dao.LedgerEntryDao
+import com.verity.platform.database.entities.CustomerEntity
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
 import kotlinx.coroutines.tasks.await
@@ -58,14 +60,17 @@ data class RemoteBatch<T>(val items: List<T>, val maxServerSyncedAtMillis: Long?
 interface RemoteRestoreSource {
     suspend fun fetchAllDocuments(orgId: String): RemoteBatch<DocumentEntity>
     suspend fun fetchAllLedgerEntries(orgId: String): RemoteBatch<LedgerEntryEntity>
+    suspend fun fetchAllCustomers(orgId: String): RemoteBatch<CustomerEntity>
     suspend fun fetchDocumentsSince(orgId: String, sinceEpochMillis: Long): RemoteBatch<DocumentEntity>
     suspend fun fetchLedgerEntriesSince(orgId: String, sinceEpochMillis: Long): RemoteBatch<LedgerEntryEntity>
+    suspend fun fetchCustomersSince(orgId: String, sinceEpochMillis: Long): RemoteBatch<CustomerEntity>
 }
 
 class DefaultFirebaseRestoreClient(
     private val remoteSource: RemoteRestoreSource,
     private val documentDao: DocumentDao,
     private val ledgerEntryDao: LedgerEntryDao,
+    private val customerDao: CustomerDao,
     private val watermarkStore: SyncWatermarkStore,
     private val timeoutMillis: Long = 15_000
 ) : FirebaseRestoreClient {
@@ -85,19 +90,22 @@ class DefaultFirebaseRestoreClient(
         if (!watermarkStore.hasCompletedBaselineSync()) {
             val documents = remoteSource.fetchAllDocuments(orgId)
             val ledgerEntries = remoteSource.fetchAllLedgerEntries(orgId)
-            upsertAndAdvanceWatermark(documents, ledgerEntries, currentWatermark = 0L)
+            val customers = remoteSource.fetchAllCustomers(orgId)
+            upsertAndAdvanceWatermark(documents, ledgerEntries, customers, currentWatermark = 0L)
             watermarkStore.markBaselineSyncCompleted()
         } else {
             val since = watermarkStore.lastSyncWatermarkMillis() ?: 0L
             val documents = remoteSource.fetchDocumentsSince(orgId, since)
             val ledgerEntries = remoteSource.fetchLedgerEntriesSince(orgId, since)
-            upsertAndAdvanceWatermark(documents, ledgerEntries, currentWatermark = since)
+            val customers = remoteSource.fetchCustomersSince(orgId, since)
+            upsertAndAdvanceWatermark(documents, ledgerEntries, customers, currentWatermark = since)
         }
     }
 
     private suspend fun upsertAndAdvanceWatermark(
         documents: RemoteBatch<DocumentEntity>,
         ledgerEntries: RemoteBatch<LedgerEntryEntity>,
+        customers: RemoteBatch<CustomerEntity>,
         currentWatermark: Long
     ) {
         // REPLACE-based inserts (not the normal ABORT-on-duplicate insert()) — makes this safe
@@ -105,11 +113,13 @@ class DefaultFirebaseRestoreClient(
         // separate resume/pagination bookkeeping.
         documentDao.upsertAllFromCloud(documents.items)
         ledgerEntryDao.upsertAllFromCloud(ledgerEntries.items)
+        customerDao.upsertAllFromCloud(customers.items)
 
         val newWatermark = listOfNotNull(
             currentWatermark,
             documents.maxServerSyncedAtMillis,
-            ledgerEntries.maxServerSyncedAtMillis
+            ledgerEntries.maxServerSyncedAtMillis,
+            customers.maxServerSyncedAtMillis
         ).max()
         if (newWatermark > currentWatermark) {
             watermarkStore.recordSyncWatermark(newWatermark)
@@ -127,6 +137,11 @@ class FirestoreRestoreSource(private val firestore: FirebaseFirestore) : RemoteR
     override suspend fun fetchAllLedgerEntries(orgId: String): RemoteBatch<LedgerEntryEntity> {
         val snapshot = firestore.collection(ledgerEntriesCollection(orgId)).get().await()
         return snapshot.toLedgerEntryBatch(orgId)
+    }
+
+    override suspend fun fetchAllCustomers(orgId: String): RemoteBatch<CustomerEntity> {
+        val snapshot = firestore.collection(customersCollection(orgId)).get().await()
+        return snapshot.toCustomerBatch(orgId)
     }
 
     override suspend fun fetchDocumentsSince(orgId: String, sinceEpochMillis: Long): RemoteBatch<DocumentEntity> {
@@ -149,10 +164,19 @@ class FirestoreRestoreSource(private val firestore: FirebaseFirestore) : RemoteR
             .await()
         return snapshot.toLedgerEntryBatch(orgId)
     }
+
+    override suspend fun fetchCustomersSince(orgId: String, sinceEpochMillis: Long): RemoteBatch<CustomerEntity> {
+        val snapshot = firestore.collection(customersCollection(orgId))
+            .whereGreaterThanOrEqualTo("serverSyncedAt", timestampFromEpochMilli(sinceEpochMillis))
+            .get()
+            .await()
+        return snapshot.toCustomerBatch(orgId)
+    }
 }
 
 private fun documentsCollection(orgId: String) = "orgs/$orgId/documents"
 private fun ledgerEntriesCollection(orgId: String) = "orgs/$orgId/ledgerEntries"
+private fun customersCollection(orgId: String) = "orgs/$orgId/customers"
 
 private fun Timestamp.toEpochMilli(): Long = seconds * 1_000 + nanoseconds / 1_000_000
 private fun timestampFromEpochMilli(epochMillis: Long): Timestamp =
@@ -166,6 +190,12 @@ private fun com.google.firebase.firestore.QuerySnapshot.toDocumentBatch(orgId: S
 
 private fun com.google.firebase.firestore.QuerySnapshot.toLedgerEntryBatch(orgId: String): RemoteBatch<LedgerEntryEntity> {
     val items = documents.mapNotNull { it.toLedgerEntryEntity(orgId) }
+    val maxTimestamp = documents.mapNotNull { it.getTimestamp("serverSyncedAt")?.toEpochMilli() }.maxOrNull()
+    return RemoteBatch(items, maxTimestamp)
+}
+
+private fun com.google.firebase.firestore.QuerySnapshot.toCustomerBatch(orgId: String): RemoteBatch<CustomerEntity> {
+    val items = documents.mapNotNull { it.toCustomerEntity(orgId) }
     val maxTimestamp = documents.mapNotNull { it.getTimestamp("serverSyncedAt")?.toEpochMilli() }.maxOrNull()
     return RemoteBatch(items, maxTimestamp)
 }
@@ -186,6 +216,7 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toDocumentEntity(orgI
         payloadJson = getString("payloadJson") ?: return null,
         finalizedAt = getLong("finalizedAt") ?: return null,
         searchIndexText = getString("searchIndexText") ?: "",
+        selfNotes = getString("selfNotes"),
         // Restored rows are, by definition, already in the cloud - never re-pushed.
         syncedToCloud = true
     )
@@ -201,6 +232,27 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toLedgerEntryEntity(o
         amountPaise = getLong("amountPaise") ?: return null,
         occurredAt = getLong("occurredAt") ?: return null,
         createdAt = getLong("createdAt") ?: return null,
+        syncedToCloud = true
+    )
+}
+
+private fun com.google.firebase.firestore.DocumentSnapshot.toCustomerEntity(orgId: String): CustomerEntity? {
+    val customerId = getString("customerId") ?: return null
+    return CustomerEntity(
+        customerId = customerId,
+        orgId = orgId,
+        customerName = getString("customerName") ?: return null,
+        phone = getString("phone"),
+        gstin = getString("gstin") ?: return null,
+        addressLine1 = getString("addressLine1") ?: return null,
+        city = getString("city") ?: return null,
+        state = getString("state") ?: return null,
+        stateCode = getString("stateCode") ?: return null,
+        pincode = getString("pincode"),
+        isActive = getBoolean("isActive") ?: true,
+        updatedAt = getLong("updatedAt") ?: return null,
+        notes = getString("notes"),
+        // Restored rows are, by definition, already in the cloud - never re-pushed.
         syncedToCloud = true
     )
 }

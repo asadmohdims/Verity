@@ -62,6 +62,13 @@ object InvoiceDraftReducer {
         return draft.copy(shippedTo = shippedTo)
     }
 
+    fun setSelfNotes(
+        draft: InvoiceDraftUiState,
+        notes: String
+    ): InvoiceDraftUiState {
+        return draft.copy(selfNotes = notes)
+    }
+
 
     fun addLineItem(
         draft: InvoiceDraftUiState,

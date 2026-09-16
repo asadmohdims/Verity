@@ -598,6 +598,11 @@ class InvoiceWorkspaceViewModel(
         _uiState.value = draftStore.currentDraft
     }
 
+    fun onSelfNotesChanged(notes: String) {
+        draftStore.setSelfNotes(notes)
+        _uiState.value = draftStore.currentDraft
+    }
+
     /**
      * Opens a fresh Invoice draft continuing the job-work Challan that was just finalized,
      * carrying over the same customer and a reference back to that Challan — but deliberately

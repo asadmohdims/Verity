@@ -399,6 +399,16 @@ class InvoiceDraftReducerTest {
         assertEquals(link, result.jobWorkChallanLink)
     }
 
+    @Test
+    fun `setSelfNotes updates only the notes field, leaving the rest of the draft untouched`() {
+        val draft = InvoiceDraftUiState(documentType = DraftDocumentType.INVOICE, billedTo = testBilledTo())
+
+        val result = InvoiceDraftReducer.setSelfNotes(draft, "Sold this part at a discounted rate")
+
+        assertEquals("Sold this part at a discounted rate", result.selfNotes)
+        assertEquals(draft.copy(selfNotes = "Sold this part at a discounted rate"), result)
+    }
+
     private fun testBilledTo(
         stateCode: String = "09",
         gstin: String = "09AAACB1234Z1Z"

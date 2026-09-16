@@ -20,6 +20,7 @@ data class AddEditCustomerUiState(
     val state: String = "",
     val stateCode: String = "",
     val pincode: String = "",
+    val notes: String = "",
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val isDeactivated: Boolean = false
@@ -65,7 +66,8 @@ class AddEditCustomerViewModel(
                         city = existing.city,
                         state = existing.state,
                         stateCode = existing.stateCode,
-                        pincode = existing.pincode.orEmpty()
+                        pincode = existing.pincode.orEmpty(),
+                        notes = existing.notes.orEmpty()
                     )
                 } else {
                     _uiState.value.copy(isLoading = false)
@@ -106,6 +108,10 @@ class AddEditCustomerViewModel(
         _uiState.value = _uiState.value.copy(pincode = value)
     }
 
+    fun onNotesChange(value: String) {
+        _uiState.value = _uiState.value.copy(notes = value)
+    }
+
     fun onSave() {
         val state = _uiState.value
         if (!state.canSave || state.isSaving) return
@@ -123,7 +129,8 @@ class AddEditCustomerViewModel(
                     state = state.state.trim(),
                     stateCode = state.stateCode.trim(),
                     pincode = state.pincode.trim().ifBlank { null },
-                    updatedAtEpochMillis = clock.millis()
+                    updatedAtEpochMillis = clock.millis(),
+                    notes = state.notes.trim().ifBlank { null }
                 )
             )
             _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true)

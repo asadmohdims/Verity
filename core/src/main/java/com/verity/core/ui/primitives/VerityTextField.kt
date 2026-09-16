@@ -93,7 +93,13 @@ fun VerityTextField(
     /** Keyboard type/capitalization for this field — e.g. `KeyboardType.Decimal` for a rate. */
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     /** Wires the IME action button (Next/Done) — e.g. advancing focus to the next field. */
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /**
+     * Basic role only. False turns this into a genuine multi-line text area (no fixed line
+     * cap, grows with content) — for free-text fields like Customer/Document notes. Every
+     * existing call site keeps the original single-line field via the default.
+     */
+    singleLine: Boolean = true
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(
@@ -105,7 +111,8 @@ fun VerityTextField(
             modifier = modifier,
             fieldModifier = fieldModifier,
             keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions
+            keyboardActions = keyboardActions,
+            singleLine = singleLine
         )
 
         VerityTextFieldRole.SelectionSearch -> SelectionSearchField(
@@ -300,7 +307,8 @@ private fun BasicTextField(
     errorText: String? = null,
     fieldModifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -313,7 +321,7 @@ private fun BasicTextField(
                 }
             },
             modifier = fieldModifier.fillMaxWidth(),
-            singleLine = true,
+            singleLine = singleLine,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
             isError = errorText != null,

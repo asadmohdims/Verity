@@ -118,6 +118,8 @@ class AppNavShellTest {
     private class NoopDocumentDetailDataSource : DocumentDetailDataSource {
         override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? = null
         override suspend fun findLinkedDocumentId(documentId: String): String? = null
+        override suspend fun loadSelfNotes(documentId: String): String? = null
+        override suspend fun updateSelfNotes(documentId: String, notes: String?) {}
     }
 
     private class NoopDocumentSearchDataSource : DocumentSearchDataSource {
@@ -424,6 +426,8 @@ class AppNavShellTest {
             override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
                 if (documentId == "doc-1") document else null
             override suspend fun findLinkedDocumentId(documentId: String): String? = null
+            override suspend fun loadSelfNotes(documentId: String): String? = null
+            override suspend fun updateSelfNotes(documentId: String, notes: String?) {}
         }
         val documentSearchViewModel = DocumentSearchViewModel(
             homeDataSource = homeDataSource,

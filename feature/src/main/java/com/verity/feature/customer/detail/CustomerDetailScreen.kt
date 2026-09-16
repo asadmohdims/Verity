@@ -86,6 +86,12 @@ fun CustomerDetailScreen(
 
                 detail != null -> {
                     ProfileHeader(detail)
+
+                    if (!detail.notes.isNullOrBlank()) {
+                        VeritySpacer(size = VeritySpace.Small)
+                        NotesSection(detail.notes)
+                    }
+
                     VeritySpacer(size = VeritySpace.Medium)
 
                     BalanceDueHero(detail)
@@ -129,6 +135,17 @@ private fun ProfileHeader(detail: CustomerDetail) {
             text = "${detail.gstin} · ${detail.city}, ${detail.state}",
             style = VerityTextStyle.Caption
         )
+    }
+}
+
+@Composable
+private fun NotesSection(notes: String) {
+    VeritySurface(type = VeritySurfaceType.Card, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(VeritySpace.Medium.dp)) {
+            VerityText(text = "Notes", style = VerityTextStyle.Label)
+            VeritySpacer(size = VeritySpace.ExtraSmall)
+            VerityText(text = notes, style = VerityTextStyle.Body)
+        }
     }
 }
 

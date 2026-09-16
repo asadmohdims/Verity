@@ -962,6 +962,33 @@ fun InvoiceWorkspaceScreen(
         VeritySpacer(size = VeritySpace.Medium)
 
         // ─────────────────────────────────────────────
+        // Notes to self — private, never printed on the PDF (see
+        // DraftToInvoiceDocument.project(), which never reads draft.selfNotes). A single
+        // free-text field, so no VerityEditBlock wrapper: that pattern exists to solve
+        // multi-field keyboard-coverage problems this doesn't have.
+        // ─────────────────────────────────────────────
+        VeritySection(
+            title = "Notes to Self (private — not printed)",
+            modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+        ) {
+            VerityTextField(
+                role = VerityTextFieldRole.Basic,
+                label = "Notes",
+                placeholder = "e.g. sold this part at this rate, follow up next week",
+                value = draft.selfNotes,
+                onValueChange = viewModel::onSelfNotesChanged,
+                editing = true,
+                onEnterEdit = null,
+                onExitEdit = null,
+                suggestions = emptyList(),
+                onSelectSuggestion = null,
+                singleLine = false
+            )
+        }
+
+        VeritySpacer(size = VeritySpace.Medium)
+
+        // ─────────────────────────────────────────────
         // Discard / Preview — the draft's primary actions, placed as the final row of the
         // scrollable content rather than a persistent Scaffold-level bottom bar. Discussed and
         // decided with the user: Summary (immediately above) is always the last section

@@ -1,6 +1,7 @@
 package com.verity.platform.testsupport
 
 import com.verity.platform.database.dao.DocumentDao
+import com.verity.platform.database.entities.CustomerEntity
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
 import com.verity.platform.sync.DefaultInvoiceNumberAllocator
@@ -17,6 +18,7 @@ import java.io.File
 object NoOpFirebaseSyncClient : FirebaseSyncClient {
     override fun pushDocument(document: DocumentEntity) = Unit
     override fun pushLedgerEntry(entry: LedgerEntryEntity) = Unit
+    override fun pushCustomer(customer: CustomerEntity) = Unit
     override fun pushPdf(orgId: String, documentNumber: String, file: File) = Unit
     override suspend fun downloadPdf(orgId: String, documentNumber: String, destination: File) = false
 }

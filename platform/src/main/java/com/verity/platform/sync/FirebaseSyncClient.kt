@@ -5,8 +5,10 @@ import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.verity.platform.database.dao.CustomerDao
 import com.verity.platform.database.dao.DocumentDao
 import com.verity.platform.database.dao.LedgerEntryDao
+import com.verity.platform.database.entities.CustomerEntity
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +32,7 @@ import java.io.File
 interface FirebaseSyncClient {
     fun pushDocument(document: DocumentEntity)
     fun pushLedgerEntry(entry: LedgerEntryEntity)
+    fun pushCustomer(customer: CustomerEntity)
     fun pushPdf(orgId: String, documentNumber: String, file: File)
     suspend fun downloadPdf(orgId: String, documentNumber: String, destination: File): Boolean
 }
@@ -39,6 +42,7 @@ class DefaultFirebaseSyncClient(
     private val storage: FirebaseStorage,
     private val documentDao: DocumentDao,
     private val ledgerEntryDao: LedgerEntryDao,
+    private val customerDao: CustomerDao,
     private val syncStatusStore: SyncStatusStore,
     private val downloadTimeoutMillis: Long = 5_000
 ) : FirebaseSyncClient {
@@ -71,6 +75,19 @@ class DefaultFirebaseSyncClient(
             }
             .addOnFailureListener { e ->
                 Log.w(TAG, "pushLedgerEntry failed for ${entry.entryId} — SDK will retry.", e)
+            }
+    }
+
+    override fun pushCustomer(customer: CustomerEntity) {
+        firestore.collection(customersCollection(customer.orgId))
+            .document(customer.customerId)
+            .set(customer.toFirestoreFields())
+            .addOnSuccessListener {
+                scope.launch { customerDao.markSyncedToCloud(customer.customerId) }
+                syncStatusStore.recordSyncSuccess(System.currentTimeMillis())
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "pushCustomer failed for ${customer.customerId} — SDK will retry.", e)
             }
     }
 
@@ -112,6 +129,7 @@ class DefaultFirebaseSyncClient(
 
 private fun documentsCollection(orgId: String) = "orgs/$orgId/documents"
 private fun ledgerEntriesCollection(orgId: String) = "orgs/$orgId/ledgerEntries"
+private fun customersCollection(orgId: String) = "orgs/$orgId/customers"
 private fun pdfPath(orgId: String, documentNumber: String) = "orgs/$orgId/pdfs/$documentNumber.pdf"
 
 // serverSyncedAt (FieldValue.serverTimestamp(), assigned by Firestore itself at write commit
@@ -132,6 +150,24 @@ private fun DocumentEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
     "payloadJson" to payloadJson,
     "finalizedAt" to finalizedAt,
     "searchIndexText" to searchIndexText,
+    "selfNotes" to selfNotes,
+    "serverSyncedAt" to FieldValue.serverTimestamp()
+)
+
+private fun CustomerEntity.toFirestoreFields(): Map<String, Any?> = mapOf(
+    "customerId" to customerId,
+    "orgId" to orgId,
+    "customerName" to customerName,
+    "phone" to phone,
+    "gstin" to gstin,
+    "addressLine1" to addressLine1,
+    "city" to city,
+    "state" to state,
+    "stateCode" to stateCode,
+    "pincode" to pincode,
+    "isActive" to isActive,
+    "updatedAt" to updatedAt,
+    "notes" to notes,
     "serverSyncedAt" to FieldValue.serverTimestamp()
 )
 

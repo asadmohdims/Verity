@@ -103,6 +103,7 @@ object SampleDataSeeder {
     private object NoOpFirebaseSyncClient : FirebaseSyncClient {
         override fun pushDocument(document: DocumentEntity) = Unit
         override fun pushLedgerEntry(entry: LedgerEntryEntity) = Unit
+        override fun pushCustomer(customer: CustomerEntity) = Unit
         override fun pushPdf(orgId: String, documentNumber: String, file: File) = Unit
         override suspend fun downloadPdf(orgId: String, documentNumber: String, destination: File) = false
     }

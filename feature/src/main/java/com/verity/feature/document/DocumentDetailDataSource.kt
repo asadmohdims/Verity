@@ -24,4 +24,14 @@ interface DocumentDetailDataSource {
      * can be burned with no Invoice ever created — see InvoiceFinalizer.JobWorkLinkage).
      */
     suspend fun findLinkedDocumentId(documentId: String): String?
+
+    /** The document's private self-notes (see DocumentEntity.selfNotes), null if never set. */
+    suspend fun loadSelfNotes(documentId: String): String?
+
+    /**
+     * Updates self-notes in place — the one field on a finalized document that's ever mutated
+     * post-finalize (see DocumentEntity.selfNotes's doc comment). Also re-pushes the updated row
+     * to Firebase so the edit reaches other devices via the existing sync path.
+     */
+    suspend fun updateSelfNotes(documentId: String, notes: String?)
 }

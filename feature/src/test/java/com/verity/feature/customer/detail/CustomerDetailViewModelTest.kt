@@ -48,6 +48,7 @@ class CustomerDetailViewModelTest {
         state = "Maharashtra",
         stateCode = "27",
         pincode = "400001",
+        notes = null,
         balanceDue = Money.ofPaise(1_000_00),
         documents = emptyList()
     )

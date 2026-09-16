@@ -36,6 +36,11 @@ data class InvoiceDraftUiState(
     val inboundChallanReference: DraftInboundChallanReference? = null,
     /** Present only on a continuation Invoice draft opened via onContinueToJobWorkInvoice(). */
     val jobWorkChallanLink: DraftJobWorkChallanLink? = null,
+    /**
+     * Private note for the document owner's own review — never enters InvoiceDocumentModel/
+     * payloadJson, never printed. See DocumentEntity.selfNotes for where it ends up persisted.
+     */
+    val selfNotes: String = "",
     val summary: DraftSummary = DraftSummary()
 ) {
     /**

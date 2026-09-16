@@ -23,5 +23,6 @@ data class CustomerFormData(
     val state: String,
     val stateCode: String,
     val pincode: String?,
-    val updatedAtEpochMillis: Long
+    val updatedAtEpochMillis: Long,
+    val notes: String? = null
 )

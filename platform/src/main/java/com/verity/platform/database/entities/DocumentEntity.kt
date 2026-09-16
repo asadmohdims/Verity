@@ -63,5 +63,15 @@ data class DocumentEntity(
      * retry is real because it's delegated to Firestore's own persistent offline queue rather
      * than reimplemented. Added in schema v3 — see Migration2To3.
      */
-    val syncedToCloud: Boolean = false
+    val syncedToCloud: Boolean = false,
+
+    /**
+     * Private note for the document owner's own review (e.g. "customer paid partly in cash") —
+     * never part of payloadJson, never reaches InvoicePdfRenderer, never printed. The one other
+     * genuinely mutable column on this otherwise insert-only table besides syncedToCloud: unlike
+     * the rest of this row, a note isn't a financial/legal fact, so Principle 5's immutability
+     * rule doesn't apply to it — it stays editable from Document Detail after finalize. Added in
+     * schema v5 — see Migration4To5.
+     */
+    val selfNotes: String? = null
 )

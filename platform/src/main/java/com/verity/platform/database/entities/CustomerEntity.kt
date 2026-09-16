@@ -2,6 +2,7 @@ package com.verity.platform.database.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.verity.platform.finalize.DEFAULT_ORG_ID
 
 /**
  * CustomerEntity
@@ -97,5 +98,30 @@ data class CustomerEntity(
     /**
      * System time when this customer record was last updated.
      */
-    val updatedAt: Long
+    val updatedAt: Long,
+
+    /**
+     * Free-form private notes about this customer (pricing agreed, contact history, etc).
+     * Read and updated freely via CRUD — not structured, not event-sourced. Added schema v5,
+     * see Migration4To5.
+     */
+    val notes: String? = null,
+
+    /**
+     * The one gap among synced entities before schema v6: DocumentEntity/LedgerEntryEntity have
+     * always self-described their org, CustomerEntity never did (single-org app, never needed
+     * for a purely local table). Added alongside cloud sync (Migration5To6) so a customer's
+     * Firestore path (orgs/{orgId}/customers/{customerId}) doesn't depend on a caller-supplied
+     * constant.
+     */
+    val orgId: String = DEFAULT_ORG_ID,
+
+    /**
+     * Flips to true once FirebaseSyncClient.pushCustomer's push succeeds — same role as
+     * DocumentEntity.syncedToCloud. Also doubles as the one-time-backfill marker: every row that
+     * existed before schema v6 defaults to false, so CustomerDao.getUnsyncedCustomers() naturally
+     * picks up this device's pre-existing customers the first time it runs post-upgrade (see
+     * MainActivity's seed/restore/backfill sequencing).
+     */
+    val syncedToCloud: Boolean = false
 )

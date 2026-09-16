@@ -23,13 +23,16 @@ import java.io.File
  * viewModelFactory in AppNavShell) — this app's first argument-scoped ViewModel.
  */
 class DocumentDetailViewModel(
-    documentId: String,
-    dataSource: DocumentDetailDataSource,
+    private val documentId: String,
+    private val dataSource: DocumentDetailDataSource,
     private val invoicePdfRenderer: InvoicePdfRenderer
 ) : ViewModel() {
 
     private val _document = MutableStateFlow<InvoiceDocumentModel?>(null)
     val document: StateFlow<InvoiceDocumentModel?> = _document.asStateFlow()
+
+    private val _selfNotes = MutableStateFlow<String?>(null)
+    val selfNotes: StateFlow<String?> = _selfNotes.asStateFlow()
 
     /**
      * The job-work-linked document's id, if this document has a jobWorkLink AND that link
@@ -53,6 +56,8 @@ class DocumentDetailViewModel(
                 loaded.identity.documentType == DocumentType.INVOICE -> jobWorkLink.linkedDocumentId
                 else -> dataSource.findLinkedDocumentId(documentId)
             }
+
+            _selfNotes.value = dataSource.loadSelfNotes(documentId)
         }
     }
 
@@ -62,5 +67,18 @@ class DocumentDetailViewModel(
             "Document not loaded yet"
         }
         return invoicePdfRenderer.ensurePdf(document)
+    }
+
+    /**
+     * Explicit commit, not autosave-on-keystroke — the field owning this call site only shows a
+     * Save action once the text actually differs from what's persisted (see
+     * DocumentDetailDataSource.updateSelfNotes, which also re-pushes to Firebase on every call).
+     */
+    fun saveSelfNotes(value: String) {
+        val trimmed = value.trim().ifBlank { null }
+        viewModelScope.launch {
+            dataSource.updateSelfNotes(documentId, trimmed)
+            _selfNotes.value = trimmed
+        }
     }
 }

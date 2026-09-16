@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.verity.core.ui.primitives.dp
 import androidx.compose.ui.unit.dp
@@ -25,6 +30,8 @@ import com.verity.core.ui.primitives.VerityButtonRole
 import com.verity.core.ui.primitives.VerityButtonState
 import com.verity.core.ui.primitives.VerityDivider
 import com.verity.core.ui.primitives.VerityDividerStrength
+import com.verity.core.ui.primitives.VerityTextField
+import com.verity.core.ui.primitives.VerityTextFieldRole
 import com.verity.core.ui.primitives.VeritySpacer
 import com.verity.core.ui.primitives.VeritySurface
 import com.verity.core.ui.primitives.VeritySurfaceType
@@ -53,7 +60,16 @@ fun InvoicePreviewScreen(
     /** Non-null only once the linked document actually resolves to a real row — see
      *  DocumentDetailViewModel.linkedDocumentId. Null shows the reference as plain text instead
      *  of a tappable row (e.g. a job-work Challan whose reserved Invoice was never finalized). */
-    onViewLinkedDocument: (() -> Unit)? = null
+    onViewLinkedDocument: (() -> Unit)? = null,
+    /**
+     * Both non-null only on the reopened-from-Documents/Home/Customer-detail Document Detail
+     * route — the "come back and review/add a note" surface (see AppNavShell). Null on the
+     * pre-finalize Preview and the just-finalized in-memory routes, which hide the section
+     * entirely rather than showing a note with nowhere to persist it yet. [selfNotes] is
+     * DocumentEntity.selfNotes — deliberately not part of [document], since it's never printed.
+     */
+    selfNotes: String? = null,
+    onSelfNotesChange: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -223,6 +239,14 @@ fun InvoicePreviewScreen(
             }
         }
 
+        if (onSelfNotesChange != null) {
+            VeritySpacer(size = VeritySpace.Medium)
+            SelfNotesSection(
+                selfNotes = selfNotes.orEmpty(),
+                onSave = onSelfNotesChange
+            )
+        }
+
         if (onFinalize != null) {
             VeritySpacer(size = VeritySpace.Medium)
 
@@ -247,6 +271,45 @@ fun InvoicePreviewScreen(
         }
 
         VeritySpacer(size = VeritySpace.Large)
+    }
+}
+
+/**
+ * Private, never-printed per-document notes (see DocumentEntity.selfNotes) — a Save button
+ * appears only once the field diverges from the last-persisted value, so a note isn't re-pushed
+ * to Firestore on every keystroke (see DefaultDocumentDetailDataSource.updateSelfNotes).
+ */
+@Composable
+private fun SelfNotesSection(selfNotes: String, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(selfNotes) }
+    LaunchedEffect(selfNotes) { text = selfNotes }
+
+    VeritySection(
+        title = "Notes to Self (private — not printed)",
+        modifier = Modifier.padding(horizontal = VeritySpace.Small.dp)
+    ) {
+        VerityTextField(
+            role = VerityTextFieldRole.Basic,
+            label = "Notes",
+            placeholder = "e.g. sold this part at this rate, follow up next week",
+            value = text,
+            onValueChange = { text = it },
+            editing = true,
+            onEnterEdit = null,
+            onExitEdit = null,
+            suggestions = emptyList(),
+            onSelectSuggestion = null,
+            singleLine = false
+        )
+
+        if (text != selfNotes) {
+            VeritySpacer(size = VeritySpace.Small)
+            VerityButton(
+                label = "Save Note",
+                onClick = { onSave(text) },
+                role = VerityButtonRole.Secondary
+            )
+        }
     }
 }
 

@@ -51,7 +51,7 @@ class DefaultDocumentDetailDataSourceTest {
         finalizer = DefaultInvoiceFinalizer(
             database, clock, localOnlyInvoiceNumberAllocator(database.documentDao()), NoOpFirebaseSyncClient
         )
-        dataSource = DefaultDocumentDetailDataSource(database)
+        dataSource = DefaultDocumentDetailDataSource(database, NoOpFirebaseSyncClient)
     }
 
     @After
@@ -75,6 +75,27 @@ class DefaultDocumentDetailDataSourceTest {
         val loaded = dataSource.loadDocument(UUID.randomUUID().toString())
 
         assertNull(loaded)
+    }
+
+    @Test
+    fun loadSelfNotes_returns_null_for_a_freshly_finalized_document_with_no_notes() = runBlocking {
+        finalizer.finalize(testDraft(), UUID.randomUUID().toString())
+        val documentId = database.documentDao().getAll().single().documentId
+
+        assertNull(dataSource.loadSelfNotes(documentId))
+    }
+
+    @Test
+    fun updateSelfNotes_persists_and_is_readable_back_without_touching_the_document_payload() = runBlocking {
+        val finalized = finalizer.finalize(testDraft(), UUID.randomUUID().toString())
+        val documentId = database.documentDao().getAll().single().documentId
+
+        dataSource.updateSelfNotes(documentId, "Customer paid partly in cash")
+
+        assertEquals("Customer paid partly in cash", dataSource.loadSelfNotes(documentId))
+        // The immutable snapshot is untouched by a notes edit — this is the whole point of
+        // keeping selfNotes off InvoiceDocumentModel.
+        assertEquals(finalized, dataSource.loadDocument(documentId))
     }
 
     private fun testDraft(): InvoiceDraftUiState =

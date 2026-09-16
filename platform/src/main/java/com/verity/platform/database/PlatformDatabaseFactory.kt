@@ -5,6 +5,8 @@ import androidx.room.Room
 import com.verity.platform.database.migrations.Migration1To2
 import com.verity.platform.database.migrations.Migration2To3
 import com.verity.platform.database.migrations.Migration3To4
+import com.verity.platform.database.migrations.Migration4To5
+import com.verity.platform.database.migrations.Migration5To6
 
 /**
  * PlatformDatabaseFactory
@@ -30,7 +32,7 @@ object PlatformDatabaseFactory {
             PlatformDatabase::class.java,
             DATABASE_NAME
         )
-            .addMigrations(Migration1To2, Migration2To3, Migration3To4)
+            .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
             .build()
     }
 }
