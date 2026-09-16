@@ -11,7 +11,7 @@ This file is a **living reference**, not a constitution. Update it in place as d
 
 ## Status (read this before trusting anything else below)
 
-Current as of 2026-09-15. This is a snapshot of what's actually true, not a changelog — for the
+Current as of 2026-09-16. This is a snapshot of what's actually true, not a changelog — for the
 history of how it got here (bugs found, decisions made mid-build, exact reasoning behind a fix),
 read `git log` and individual commit messages rather than this file. Nothing here counts as "done"
 until it's demonstrably reachable from the running app, not just unit-tested — see Principle 2
@@ -30,14 +30,14 @@ fixture set at seed time, but the customers themselves are now real CRUD-managed
 not a closed fixture — a customer added or edited through the new Customers screens is real data
 the autocomplete picks up too, it's just that the *initial* seed population is still fixture-based.
 
-**Challan → Invoice (job work) — built 2026-09-16, JVM/androidTest-green, on-device pass still
-pending.** The Document Type dropdown in Invoice Workspace has a third option, "Challan + Invoice",
-for the job-work scenario this section of the domain model previously only described (see "Domain
-model" below for the finalized design). Selecting it reveals a "Job Work" section on the Challan
-draft with an always-available "Received Vide Challan No. / Dated" reference (any Challan, not
-gated by job work) and a static "Ref: Invoice No. — (assigned automatically at finalize)" row.
-Finalizing that Challan atomically reserves-and-consumes the real next Invoice number
-(`InvoiceFinalizer.JobWorkLinkage.ReserveLinkedInvoiceNumber`) — a deliberate choice over a
+**Challan → Invoice (job work) — built 2026-09-16, manually verified end-to-end on a real device
+the same day.** The Document Type dropdown in Invoice Workspace has a third option, "Challan +
+Invoice", for the job-work scenario this section of the domain model previously only described
+(see "Domain model" below for the finalized design). Selecting it reveals a "Job Work" section on
+the Challan draft with an always-available "Received Vide Challan No. / Dated" reference (any
+Challan, not gated by job work) and a static "Ref: Invoice No. — (assigned automatically at
+finalize)" row. Finalizing that Challan atomically reserves-and-consumes the real next Invoice
+number (`InvoiceFinalizer.JobWorkLinkage.ReserveLinkedInvoiceNumber`) — a deliberate choice over a
 non-binding preview, so the number printed on the already-issued Challan PDF is always correct;
 the accepted trade-off is a permanent numbering gap if the follow-up Invoice draft is abandoned.
 The Challan's "Finalized" screen gets a "Continue to Invoice" button that opens a fresh Invoice
@@ -49,10 +49,46 @@ but was never written until now — pointing at the Challan's real row; the Chal
 never mutated (finalized documents are insert-only), so its "Linked Invoice" is a reverse DAO
 query, not a stored forward pointer. The Invoice's PDF gets a "JOB WORK INVOICE" banner (Challan's
 does not, by design); both PDFs gain the new reference rows. `DefaultInvoiceFinalizerTest` has real
-in-memory-Room coverage for the numbering/linking logic; **not yet run**: `connectedDebugAndroidTest`
-itself, and an on-device pixel/behavior look at the full flow and the PDF banner/grid — this
-project's own testing standards (see below) don't consider a Robolectric-green UI or a
-compiled-but-unrun androidTest suite sufficient proof for either.
+in-memory-Room coverage for the numbering/linking logic; **still not run**: `connectedDebugAndroidTest`
+itself (the automated instrumented suite) — the on-device pass below was a manual click-through,
+not that suite.
+
+  **On-device pass (2026-09-16) found and fixed two real bugs the JVM/Robolectric suite couldn't
+  catch**, both in `AppNavShell`'s Compose Navigation wiring rather than in domain logic:
+  1. Tapping "Continue to Invoice" crashed with `IllegalStateException: Finalized route entered
+     without a finalized document`. `onContinueToJobWorkInvoice()` nulled
+     `InvoiceWorkspaceViewModel`'s `_finalizedDocument` before Navigation had actually removed the
+     `FINALIZED` composable from composition, racing that screen's own `requireNotNull` guard — the
+     same race class already diagnosed and fixed once before for `onFinalizeInvoice()` (see that
+     function's own comment), reintroduced here. Fixed by not nulling it there at all — the value
+     gets cleared naturally the next time `onCreateInvoice()` runs, or overwritten when the new
+     Invoice itself finalizes.
+  2. With that value left non-null, a second bug surfaced: the `PREVIEW` route's own
+     `LaunchedEffect` (meant to auto-advance to "Finalized" once *a* finalize completes) fired
+     immediately on entering Preview for the new Invoice draft, since it only checked "is this
+     non-null" rather than "did this just change" — it silently bounced the user back to the old
+     Challan's Finalized screen before they could ever finalize the Invoice. No crash, just a dead
+     end. Fixed by snapshotting `finalizedDocument` on entry to Preview and only auto-navigating on
+     a genuine transition away from that snapshot (`AppNavShell.kt`, the `PREVIEW` composable).
+
+  Both fixes verified by a full manual click-through on a real device: Challan (Job Work) → finalize
+  → Continue to Invoice → add line item → Preview (now correctly shows the new Invoice, GST
+  computed) → finalize → PDF renders with the "JOB WORK INVOICE" banner and Ref: Challan No./Dated
+  rows. Full JVM/Robolectric suite stayed green throughout (110 tasks).
+
+  **Also found and fixed while investigating why finalize felt slow**: `ensurePdf()` was being
+  called for a document that was *just* finalized, so its Storage-download check (a real network
+  round trip, ~1-2s, confirmed via on-device logcat showing repeated `StorageException: Object does
+  not exist (404)`) was guaranteed to fail every time — the document can't be in Storage yet, it
+  didn't exist a moment ago. Split into `ensurePdf()` (unchanged 3-tier fallback, for the PDF viewer
+  defensively reopening a document that might genuinely be remote-only) and a new
+  `generateFreshPdf()` (skips straight to render + fire-and-forget upload), with
+  `onFinalizeInvoice()` now calling the latter. Confirmed via on-device logcat: the 404s are gone.
+  The online invoice-number allocator's own Firestore transaction (5s timeout, awaited
+  synchronously in `finalize()` — see "Data & sync architecture" below) remains the dominant cost
+  of a finalize and was deliberately left untouched — that's a real collision-safety/speed
+  trade-off from the 2026-09-15 numbering hardening, not a bug, and revisiting it needs its own
+  discussion.
 
 **Navigation & screens**: bottom nav (Home / Documents / Customers / Settings) plus a FAB for
 Create is built and merged to `main` — see "UX direction" below for what's built vs. still planned.
@@ -87,10 +123,11 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
 **Known placeholders / gaps to close before this is production-ready**:
 - `HardcodedSeller.kt`'s `pincode` field is still `PLACEHOLDER_PINCODE` — every other seller field
   is real (Unitech Machineries).
-- Challan→Invoice job-work linkage's same-session flow is now built (2026-09-16 — see Status and
-  "Domain model" below); its on-device pass is still outstanding (see Status), and the broader
-  "mark a standalone Challan Invoice-Linked, link it from a later session/different device" version
-  of this design remains deliberately deferred, not built.
+- Challan→Invoice job-work linkage's same-session flow is now built and manually verified
+  end-to-end on-device (2026-09-16 — see Status and "Domain model" below); the automated
+  `connectedDebugAndroidTest` suite itself still hasn't been run (see Status). The broader "mark a
+  standalone Challan Invoice-Linked, link it from a later session/different device" version of this
+  design remains deliberately deferred, not built.
 - A real Business Profile screen (to retire `HardcodedSeller.kt`) isn't built — the Settings
   screen's Business Profile row ships visible-but-inert until it exists, deliberately, since no
   design exists for that screen yet (see "Next up" below). Customer CRUD and the Settings theme
@@ -120,12 +157,15 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
   rather than regenerating; confirm `firestore.rules`/`storage.rules` genuinely *reject* a request
   with a missing/wrong `org_id` (only the allow path has been exercised so far); the two-device
   concurrent-finalize numbering scenario `InvoiceNumberAllocator` exists to handle.
-- The `ensurePdf()` local → Storage → regenerate fallback order (`DefaultInvoicePdfRenderer`) has
-  no automated test — the first two tiers return before touching `android.graphics.pdf`, so a
-  plain JVM test could cover them, but doing so needs a fake `Context` this module doesn't
-  currently have infrastructure for, and the third tier (regenerate) needs Robolectric or a real
-  device either way. Skipped rather than forced into an awkward shape — worth returning to if/when
-  `platform` grows a Robolectric setup for something else.
+- `InvoicePdfRenderer` now has two entry points (2026-09-16 — see Status): `ensurePdf()` keeps its
+  local → Storage → regenerate fallback order for the PDF viewer defensively reopening a document;
+  `generateFreshPdf()` (used by `onFinalizeInvoice()`) skips straight to render + upload, since a
+  document that was just finalized this call can't already be in Storage. Neither has an automated
+  test — the checks in `ensurePdf()` return before touching `android.graphics.pdf`, so a plain JVM
+  test could cover them, but doing so needs a fake `Context` this module doesn't currently have
+  infrastructure for, and actual rendering needs Robolectric or a real device either way. Skipped
+  rather than forced into an awkward shape — worth returning to if/when `platform` grows a
+  Robolectric setup for something else.
 
 ## Next up (prioritized 2026-09-15)
 
@@ -386,8 +426,10 @@ multi-person customer rather than guessed at now.
   `InvoiceDocumentModel` straight to a PDF via `android.graphics.pdf.PdfDocument`/`Canvas` — no
   new dependency, fully on-device/offline. Stored at
   `getExternalFilesDir("documents")/{documentNumber}.pdf`, generated eagerly right after finalize
-  and re-verified defensively (`ensurePdf()`, idempotent) whenever the PDF viewer opens, so a
-  failed eager attempt self-heals with no dedicated retry UI. Viewing is a hand-rolled Compose
+  (`generateFreshPdf()`, added 2026-09-16 — skips `ensurePdf()`'s Storage-download check, which is
+  guaranteed to fail for a document that didn't exist a moment ago) and re-verified defensively
+  (`ensurePdf()`, idempotent) whenever the PDF viewer opens, so a failed eager attempt self-heals
+  with no dedicated retry UI. Viewing is a hand-rolled Compose
   screen (`PdfViewerScreen`) on the stable `android.graphics.pdf.PdfRenderer` API, not the
   pre-1.0 `androidx.pdf` Compose library. Uses its own bespoke navy+brass palette
   (`InvoicePalette`, private to the renderer), deliberately distinct from the app's own
