@@ -41,6 +41,25 @@ fun sharePdf(context: Context, file: File) {
 }
 
 /**
+ * Bulk version of [sharePdf], for the Documents list's multi-select share action — same
+ * FileProvider authority/scope, just Android's multi-file share intent instead of the single-file
+ * one. A no-op on an empty list rather than firing a chooser with nothing attached.
+ */
+fun sharePdfs(context: Context, files: List<File>) {
+    if (files.isEmpty()) return
+
+    val uris = ArrayList(
+        files.map { file -> FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) }
+    )
+    val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+        type = "application/pdf"
+        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share ${files.size} documents"))
+}
+
+/**
  * Sends [file] to Android's native print framework (the system print dialog — any registered
  * printer, "Save as PDF", etc.), not a share-to-a-printing-app workaround. [PdfFileAdapter]
  * streams the already-rendered PDF's bytes directly rather than redrawing the document — this is

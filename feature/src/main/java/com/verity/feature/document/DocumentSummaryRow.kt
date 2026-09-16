@@ -1,13 +1,17 @@
 package com.verity.feature.document
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.verity.core.document.model.DocumentType
@@ -34,16 +38,44 @@ private val summaryDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPatter
  * [isLinked]: true only for a Challan whose reserved job-work Invoice was actually finalized (see
  * DocumentsListViewModel.linkedToDocumentIds) — always false for an Invoice, and false for a
  * standalone Challan with no continuation Invoice.
+ *
+ * [isSelectionMode]/[isSelected]/[onLongClick] back the Documents tab's multi-select-for-bulk-
+ * share flow (see DocumentsListViewModel) — defaulted off/null so the other three call sites
+ * (Home, Document Search, Customer Detail) render exactly as before.
  */
 @Composable
-fun DocumentSummaryRow(document: DocumentSummary, isLinked: Boolean = false, onClick: () -> Unit) {
+fun DocumentSummaryRow(
+    document: DocumentSummary,
+    isLinked: Boolean = false,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
     val typeLabel = when (document.documentType) {
         DocumentType.INVOICE -> "INVOICE"
         DocumentType.CHALLAN -> "CHALLAN"
     }
 
     VerityListItem(
-        leading = { VerityCustomerAvatar(customerName = document.customerName) },
+        leading = {
+            if (isSelectionMode) {
+                // Display-only — the row's own click (below) does the toggling, same as tapping
+                // anywhere else on a Gmail/Photos row while selecting. onCheckedChange = null
+                // means Compose's own toggleable semantics never get attached (there'd be no
+                // click to run), so the checked state is announced explicitly here instead — both
+                // for screen readers and so this state is assertable in tests.
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (isSelected) "Selected" else "Not selected"
+                    }
+                )
+            } else {
+                VerityCustomerAvatar(customerName = document.customerName)
+            }
+        },
         title = "${document.documentNumber} · ${document.customerName}",
         titleMaxLines = 1,
         titleOverflow = TextOverflow.Ellipsis,
@@ -81,7 +113,8 @@ fun DocumentSummaryRow(document: DocumentSummary, isLinked: Boolean = false, onC
             }
         },
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .background(if (isSelected) VerityTheme.colors.surface.assist else VerityTheme.colors.surface.base)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 8.dp, vertical = 12.dp)
     )
 }

@@ -44,7 +44,9 @@ fun DocumentsListRoute(
     DocumentsListScreen(
         state = state,
         onFilterChanged = viewModel::onFilterChanged,
-        onDocumentClick = onDocumentClick
+        onDocumentClick = onDocumentClick,
+        onDocumentLongPress = viewModel::onDocumentLongPress,
+        onDocumentToggleSelect = viewModel::onToggleSelection
     )
 }
 
@@ -62,6 +64,8 @@ fun DocumentsListScreen(
     state: DocumentsListUiState,
     onFilterChanged: (DocumentTypeFilter) -> Unit,
     onDocumentClick: (String) -> Unit,
+    onDocumentLongPress: (String) -> Unit = {},
+    onDocumentToggleSelect: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     VeritySurface(
@@ -96,7 +100,16 @@ fun DocumentsListScreen(
                                 DocumentSummaryRow(
                                     document = document,
                                     isLinked = document.documentId in state.linkedToDocumentIds,
-                                    onClick = { onDocumentClick(document.documentId) }
+                                    isSelectionMode = state.isSelectionMode,
+                                    isSelected = document.documentId in state.selectedDocumentIds,
+                                    onLongClick = { onDocumentLongPress(document.documentId) },
+                                    onClick = {
+                                        if (state.isSelectionMode) {
+                                            onDocumentToggleSelect(document.documentId)
+                                        } else {
+                                            onDocumentClick(document.documentId)
+                                        }
+                                    }
                                 )
 
                                 if (index != state.visibleDocuments.lastIndex) {

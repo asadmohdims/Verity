@@ -1,5 +1,6 @@
 package com.verity.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,7 @@ import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.pdf.PdfViewerScreen
 import com.verity.feature.invoice.pdf.printPdf
 import com.verity.feature.invoice.pdf.sharePdf
+import com.verity.feature.invoice.pdf.sharePdfs
 import com.verity.feature.invoice.ui.LineItemEntryRoute
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
@@ -73,6 +75,8 @@ import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.settings.SettingsRoute
 import com.verity.feature.settings.SettingsViewModel
 import java.io.File
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 /**
@@ -177,6 +181,35 @@ fun AppNavShell(
         navController.navigate(AppRoutes.WORKSPACE)
     }
 
+    val documentsListState by documentsListViewModel.uiState.collectAsState()
+
+    // System back cancels a Documents-list selection instead of leaving the tab/app — the same
+    // behavior Gmail/Photos/Files give their own contextual selection bars.
+    BackHandler(enabled = currentRoute == AppRoutes.DOCUMENTS && documentsListState.isSelectionMode) {
+        documentsListViewModel.onClearSelection()
+    }
+
+    /**
+     * Resolves every selected document's PDF (same load-then-ensurePdf pair DOCUMENT_PDF's own
+     * share action uses below, run concurrently rather than one at a time — several of these may
+     * need a real render or a Storage download, and there's no reason to serialize that) and hands
+     * the results to sharePdfs() for one bulk share-sheet intent.
+     */
+    fun shareSelectedDocuments(documentIds: Set<String>) {
+        coroutineScope.launch {
+            // launch{}'s own lambda is already a CoroutineScope, so async{} below runs directly on
+            // it — no separate coroutineScope{} builder needed.
+            val files = documentIds.map { documentId ->
+                async {
+                    documentDetailDataSource.loadDocument(documentId)?.let { document ->
+                        invoicePdfRenderer.ensurePdf(document)
+                    }
+                }
+            }.awaitAll().filterNotNull()
+            sharePdfs(context, files)
+        }
+    }
+
     /**
      * Share/Print top-bar actions for a PDF-viewing route. [resolveFile] resolves (and, if
      * needed, generates — see ensurePdf()/ensureFinalizedPdf()'s own doc comments) the exact File
@@ -234,23 +267,43 @@ fun AppNavShell(
                 // unwired, so the Workspace screen's back arrow was a silent no-op and never
                 // returned to Home.
                 is VerityNavIcon.Back -> icon.copy(onClick = { navController.popBackStack() })
-                VerityNavIcon.None -> icon
+                // The Workspace ViewModel never builds a Close icon (that's only ever built
+                // directly in this file's own selectionChrome(), with a real onClick already) —
+                // pass it through unchanged rather than special-casing a case that can't occur.
+                is VerityNavIcon.Close, VerityNavIcon.None -> icon
             }
         )
     }
 
     val effectiveChromeSpec = when (currentRoute) {
         AppRoutes.HOME -> brandChrome(title = "Verity", isEntrySurface = true)
-        AppRoutes.DOCUMENTS -> brandChrome(
-            title = "Documents",
-            actions = listOf(
-                VerityTopBarAction.Icon(
-                    icon = VerityIcons.Search,
-                    contentDescription = "Search documents",
-                    onClick = { navController.navigate(AppRoutes.DOCUMENT_SEARCH) }
+        AppRoutes.DOCUMENTS -> {
+            val selectedIds = documentsListState.selectedDocumentIds
+            if (selectedIds.isNotEmpty()) {
+                selectionChrome(
+                    title = "${selectedIds.size} selected",
+                    onCancel = { documentsListViewModel.onClearSelection() },
+                    actions = listOf(
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Share,
+                            contentDescription = "Share selected documents",
+                            onClick = { shareSelectedDocuments(selectedIds) }
+                        )
+                    )
                 )
-            )
-        )
+            } else {
+                brandChrome(
+                    title = "Documents",
+                    actions = listOf(
+                        VerityTopBarAction.Icon(
+                            icon = VerityIcons.Search,
+                            contentDescription = "Search documents",
+                            onClick = { navController.navigate(AppRoutes.DOCUMENT_SEARCH) }
+                        )
+                    )
+                )
+            }
+        }
         AppRoutes.CUSTOMERS -> brandChrome(
             title = "Customers",
             actions = listOf(
@@ -787,6 +840,18 @@ private fun supportChrome(
 ): WorkspaceChromeSpec = WorkspaceChromeSpec(
     title = title,
     navigationIcon = VerityNavIcon.Back(onClick = onBack, contentDescription = "Back"),
+    actions = actions,
+    chromeMode = VerityChromeMode.Support
+)
+
+/** Contextual bar for a multi-select mode (Documents list) — Close, not Back, cancels it. */
+private fun selectionChrome(
+    title: String,
+    onCancel: () -> Unit,
+    actions: List<VerityTopBarAction> = emptyList()
+): WorkspaceChromeSpec = WorkspaceChromeSpec(
+    title = title,
+    navigationIcon = VerityNavIcon.Close(onClick = onCancel, contentDescription = "Cancel selection"),
     actions = actions,
     chromeMode = VerityChromeMode.Support
 )

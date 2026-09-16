@@ -98,24 +98,29 @@ fun VerityTopAppBar(
             ) {
                 // Navigation overlay (start-aligned, optional)
                 if ((chromeMode is VerityChromeMode.Workspace || chromeMode is VerityChromeMode.Support)
-                    && navigationIcon is VerityNavIcon.Back
+                    && (navigationIcon is VerityNavIcon.Back || navigationIcon is VerityNavIcon.Close)
                 ) {
+                    val (glyph, onClick, contentDescription) = when (navigationIcon) {
+                        is VerityNavIcon.Back -> Triple(VerityIcons.Back, navigationIcon.onClick, navigationIcon.contentDescription)
+                        is VerityNavIcon.Close -> Triple(VerityIcons.Close, navigationIcon.onClick, navigationIcon.contentDescription)
+                        VerityNavIcon.None -> error("unreachable — guarded above")
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .width(navZoneWidth),
                         contentAlignment = Alignment.Center
                     ) {
-                        IconButton(onClick = navigationIcon.onClick) {
-                            when (val icon = VerityIcons.Back) {
+                        IconButton(onClick = onClick) {
+                            when (glyph) {
                                 is VerityIcon.Material -> Icon(
-                                    imageVector = icon.imageVector,
-                                    contentDescription = navigationIcon.contentDescription,
+                                    imageVector = glyph.imageVector,
+                                    contentDescription = contentDescription,
                                     tint = VerityTheme.colors.primary
                                 )
                                 is VerityIcon.VectorRes -> Icon(
-                                    painter = painterResource(icon.resId),
-                                    contentDescription = navigationIcon.contentDescription,
+                                    painter = painterResource(glyph.resId),
+                                    contentDescription = contentDescription,
                                     tint = VerityTheme.colors.primary
                                 )
                             }
@@ -129,7 +134,7 @@ fun VerityTopAppBar(
                         .align(Alignment.CenterStart)
                         .fillMaxWidth()
                         .padding(
-                            start = if (navigationIcon is VerityNavIcon.Back) {
+                            start = if (navigationIcon is VerityNavIcon.Back || navigationIcon is VerityNavIcon.Close) {
                                 workspaceTitleStart
                             } else {
                                 brandTitleStart
@@ -244,6 +249,12 @@ sealed interface VerityNavIcon {
     object None : VerityNavIcon
 
     data class Back(
+        val onClick: () -> Unit,
+        val contentDescription: String? = null
+    ) : VerityNavIcon
+
+    /** Exits a contextual selection mode — see VerityIcons.Close's own doc comment. */
+    data class Close(
         val onClick: () -> Unit,
         val contentDescription: String? = null
     ) : VerityNavIcon

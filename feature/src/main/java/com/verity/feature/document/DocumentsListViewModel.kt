@@ -27,7 +27,15 @@ data class DocumentsListUiState(
      * (every DocumentSummary already carries linkedDocumentId), not a second query — see
      * DocumentsListViewModel.refresh().
      */
-    val linkedToDocumentIds: Set<String> = emptySet()
+    val linkedToDocumentIds: Set<String> = emptySet(),
+    /**
+     * Multi-select for bulk PDF sharing — long-press a row to start, tap more to extend. Empty
+     * means "not selecting"; see [isSelectionMode]. Lives here rather than local Compose state so
+     * AppNavShell can read it to swap the top bar into a contextual "N selected" bar, the same way
+     * it already reads InvoiceWorkspaceViewModel's state for the Preview/Finalized/PDF_VIEWER
+     * chrome.
+     */
+    val selectedDocumentIds: Set<String> = emptySet()
 ) {
     /** The list DocumentsListScreen actually renders — [documents] filtered by [filter]. */
     val visibleDocuments: List<DocumentSummary>
@@ -36,6 +44,9 @@ data class DocumentsListUiState(
             DocumentTypeFilter.INVOICES -> documents.filter { it.documentType == DocumentType.INVOICE }
             DocumentTypeFilter.CHALLANS -> documents.filter { it.documentType == DocumentType.CHALLAN }
         }
+
+    val isSelectionMode: Boolean
+        get() = selectedDocumentIds.isNotEmpty()
 }
 
 /**
@@ -69,16 +80,36 @@ class DocumentsListViewModel(
                 .sortedByDescending { it.finalizedAtEpochMillis }
 
             // Preserves the current filter across a refresh (e.g. re-entering this tab with
-            // "Invoices" still selected) rather than resetting to ALL every time.
+            // "Invoices" still selected) rather than resetting to ALL every time. Selection is
+            // reset instead — re-entering this tab (refresh() is re-invoked every time, see the
+            // Route) with a stale selection from a previous visit would be confusing, not useful.
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 documents = documents,
-                linkedToDocumentIds = documents.mapNotNull { it.linkedDocumentId }.toSet()
+                linkedToDocumentIds = documents.mapNotNull { it.linkedDocumentId }.toSet(),
+                selectedDocumentIds = emptySet()
             )
         }
     }
 
     fun onFilterChanged(filter: DocumentTypeFilter) {
-        _uiState.value = _uiState.value.copy(filter = filter)
+        // Also clears selection: a selected row could otherwise be hidden by the new filter with
+        // no way to see or deselect it short of switching the filter back.
+        _uiState.value = _uiState.value.copy(filter = filter, selectedDocumentIds = emptySet())
+    }
+
+    /** Starts or extends multi-select — long-pressing an already-selected row deselects it. */
+    fun onDocumentLongPress(documentId: String) = onToggleSelection(documentId)
+
+    /** Toggles one row's selection; used both by long-press (start/extend) and by a plain tap while already selecting. */
+    fun onToggleSelection(documentId: String) {
+        val current = _uiState.value.selectedDocumentIds
+        _uiState.value = _uiState.value.copy(
+            selectedDocumentIds = if (documentId in current) current - documentId else current + documentId
+        )
+    }
+
+    fun onClearSelection() {
+        _uiState.value = _uiState.value.copy(selectedDocumentIds = emptySet())
     }
 }

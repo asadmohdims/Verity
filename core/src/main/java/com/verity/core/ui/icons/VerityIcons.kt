@@ -1,6 +1,7 @@
 
 package com.verity.core.ui.icons
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -53,6 +54,13 @@ object VerityIcons {
      */
     val Back: VerityIcon =
         VerityIcon.Material(VerityBackOutlineIcon)
+
+    /**
+     * Exits a contextual selection mode (e.g. multi-select on the Documents list) — distinct from
+     * Back's "navigate to the previous screen" meaning, so the two are never interchangeable.
+     */
+    val Close: VerityIcon =
+        VerityIcon.Material(Icons.Filled.Close)
 
     /**
      * Chrome / Global actions

@@ -101,4 +101,79 @@ class DocumentsListViewModelTest {
 
         assertEquals(DocumentTypeFilter.INVOICES, viewModel.uiState.value.filter)
     }
+
+    @Test
+    fun `a long press selects a document and enters selection mode`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice)))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onDocumentLongPress("1")
+
+        assertEquals(setOf("1"), viewModel.uiState.value.selectedDocumentIds)
+        assertEquals(true, viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
+    fun `toggling an already-selected document deselects it and exits selection mode`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice)))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onDocumentLongPress("1")
+
+        viewModel.onToggleSelection("1")
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedDocumentIds)
+        assertEquals(false, viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
+    fun `toggling a second document extends the selection`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val challan = document("2", DocumentType.CHALLAN)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice, challan)))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onDocumentLongPress("1")
+
+        viewModel.onToggleSelection("2")
+
+        assertEquals(setOf("1", "2"), viewModel.uiState.value.selectedDocumentIds)
+    }
+
+    @Test
+    fun `onClearSelection empties the selection`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice)))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onDocumentLongPress("1")
+
+        viewModel.onClearSelection()
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedDocumentIds)
+    }
+
+    @Test
+    fun `changing the filter clears an existing selection`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice)))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onDocumentLongPress("1")
+
+        viewModel.onFilterChanged(DocumentTypeFilter.INVOICES)
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedDocumentIds)
+    }
+
+    @Test
+    fun `a subsequent refresh clears an existing selection`() = runTest(dispatcher) {
+        val invoice = document("1", DocumentType.INVOICE)
+        val viewModel = DocumentsListViewModel(FakeHomeDataSource(listOf(invoice)))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onDocumentLongPress("1")
+
+        viewModel.refresh()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedDocumentIds)
+    }
 }
