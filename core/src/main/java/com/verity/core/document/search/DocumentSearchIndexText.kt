@@ -37,6 +37,9 @@ fun buildSearchIndexText(document: InvoiceDocumentModel): String {
             logistics.notes?.let { add(it) }
         }
 
+        document.inboundChallanReference?.let { add(it.challanNumber) }
+        document.jobWorkLink?.let { add(it.linkedDocumentNumber) }
+
         // Plain rupee string (no grouping/decimals) so typing an amount like "45000" matches —
         // deliberately not Money.format()'s grouped "45,000" form, which would make substring
         // matching depend on where the user's cursor lands relative to a comma.

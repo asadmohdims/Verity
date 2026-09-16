@@ -180,11 +180,38 @@ object InvoiceDraftReducer {
         draft: InvoiceDraftUiState,
         documentType: DraftDocumentType
     ): InvoiceDraftUiState {
-        // No behavior change yet.
-        // Tax behavior will branch on documentType in Atom 6.2.
+        // isJobWorkFlow always resets here — plain "Invoice"/"Challan" dropdown items call only
+        // this, while "Challan + Invoice" calls this THEN a follow-up setJobWorkFlow(true), so
+        // switching between any two of the three items always lands in the right state.
+        // inboundChallanReference is Challan-only and clears when leaving Challan.
         return recalculate(
-            draft.copy(documentType = documentType)
+            draft.copy(
+                documentType = documentType,
+                isJobWorkFlow = false,
+                inboundChallanReference = if (documentType == DraftDocumentType.CHALLAN) draft.inboundChallanReference else null
+            )
         )
+    }
+
+    fun setJobWorkFlow(
+        draft: InvoiceDraftUiState,
+        enabled: Boolean
+    ): InvoiceDraftUiState {
+        return draft.copy(isJobWorkFlow = enabled)
+    }
+
+    fun setInboundChallanReference(
+        draft: InvoiceDraftUiState,
+        reference: DraftInboundChallanReference?
+    ): InvoiceDraftUiState {
+        return draft.copy(inboundChallanReference = reference)
+    }
+
+    fun setJobWorkChallanLink(
+        draft: InvoiceDraftUiState,
+        link: DraftJobWorkChallanLink?
+    ): InvoiceDraftUiState {
+        return draft.copy(jobWorkChallanLink = link)
     }
 
     /**

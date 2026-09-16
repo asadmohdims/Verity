@@ -130,6 +130,7 @@ private class InvoicePdfPageDrawer(private val document: InvoiceDocumentModel) {
     fun draw(): PdfDocument {
         startNewPage()
         drawTopStrip()
+        drawJobWorkBanner()
         drawHeaderBand()
         drawDetailsGrid()
         drawParties()
@@ -199,6 +200,29 @@ private class InvoicePdfPageDrawer(private val document: InvoiceDocumentModel) {
         y += 10f
     }
 
+    // ---------- Job Work banner (Invoice side of a "Challan + Invoice" pair only) ----------
+
+    /**
+     * A full-width bar naming this Invoice as job-work billing, distinct from the small
+     * "Original" copy badge in drawTopStrip() — that one marks a print run, this marks what kind
+     * of document it is, so it needs to be legible at a glance rather than tucked into a corner.
+     * Deliberately not drawn on the Challan side of the pair (see decision recorded in
+     * CLAUDE.md/the job-work implementation plan): only the Invoice gets the visible stamp.
+     */
+    private fun drawJobWorkBanner() {
+        if (document.jobWorkLink == null || document.identity.documentType != DocumentType.INVOICE) return
+
+        val height = 16f
+        canvas.drawRect(CONTENT_LEFT, y, CONTENT_RIGHT, y + height, fill(InvoicePalette.brassDeep))
+        canvas.drawText(
+            "JOB WORK INVOICE",
+            PAGE_WIDTH / 2f,
+            y + height - 4.5f,
+            paint(InvoicePalette.white, 10f, bold = true, align = Paint.Align.CENTER)
+        )
+        y += height + 6f
+    }
+
     // ---------- Header band: business identity ----------
 
     private fun drawHeaderBand() {
@@ -246,14 +270,29 @@ private class InvoicePdfPageDrawer(private val document: InvoiceDocumentModel) {
         drawBar("Invoice Details", leftX, top, colWidth)
         drawBar("Transportation Mode", rightX, top, colWidth)
 
-        val invoiceRows = listOf(
-            "Invoice Number" to document.identity.documentNumber,
-            "Invoice Date" to document.identity.issueDate.format(printDateFormatter),
-            "Reverse Charge" to if (document.identity.reverseChargeApplicable) "Yes" else "No",
-            "Place of Supply" to "${document.identity.placeOfSupplyState} (${document.identity.placeOfSupplyStateCode})"
-        )
+        // Independent-length columns (job-work reference rows can make the left column taller
+        // than the right) — padded to whichever is taller via getOrNull, rather than assuming
+        // both always have the same row count the way the original 4-and-4 design did.
+        val leftRows = buildList {
+            add("Invoice Number" to document.identity.documentNumber)
+            add("Invoice Date" to document.identity.issueDate.format(printDateFormatter))
+            add("Reverse Charge" to if (document.identity.reverseChargeApplicable) "Yes" else "No")
+            add("Place of Supply" to "${document.identity.placeOfSupplyState} (${document.identity.placeOfSupplyStateCode})")
+            document.inboundChallanReference?.let {
+                add("Received Vide Challan No." to it.challanNumber)
+                add("Dated" to (it.challanDate?.format(printDateFormatter) ?: "—"))
+            }
+            document.jobWorkLink?.let { link ->
+                val label = when (document.identity.documentType) {
+                    DocumentType.CHALLAN -> "Ref: Invoice No."
+                    DocumentType.INVOICE -> "Ref: Challan No."
+                }
+                add(label to link.linkedDocumentNumber)
+                add("Ref: Dated" to link.linkedDocumentDate.format(printDateFormatter))
+            }
+        }
         val logistics = document.logistics
-        val transportRows = listOf(
+        val rightRows = listOf(
             "Transporter" to (logistics?.transporterName?.takeIf { it.isNotBlank() } ?: "—"),
             "Vehicle Number" to (logistics?.vehicleNumber?.takeIf { it.isNotBlank() } ?: "—"),
             "Supply Date" to (logistics?.supplyDate?.format(printDateFormatter) ?: "—"),
@@ -261,9 +300,9 @@ private class InvoicePdfPageDrawer(private val document: InvoiceDocumentModel) {
         )
 
         var rowY = top + BAR_HEIGHT
-        for (i in invoiceRows.indices) {
-            drawKeyValueRow(invoiceRows[i].first, invoiceRows[i].second, leftX, rowY, colWidth)
-            drawKeyValueRow(transportRows[i].first, transportRows[i].second, rightX, rowY, colWidth)
+        for (i in 0 until maxOf(leftRows.size, rightRows.size)) {
+            leftRows.getOrNull(i)?.let { (label, value) -> drawKeyValueRow(label, value, leftX, rowY, colWidth) }
+            rightRows.getOrNull(i)?.let { (label, value) -> drawKeyValueRow(label, value, rightX, rowY, colWidth) }
             rowY += DETAIL_ROW_HEIGHT
         }
 

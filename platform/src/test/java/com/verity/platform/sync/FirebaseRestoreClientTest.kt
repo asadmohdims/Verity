@@ -113,6 +113,8 @@ class FirebaseRestoreClientTest {
         override suspend fun getAll(): List<DocumentEntity> = error("not used by this test")
         override suspend fun search(normalizedQuery: String): List<DocumentEntity> = error("not used by this test")
         override suspend fun getByCustomerId(customerId: String): List<DocumentEntity> = error("not used by this test")
+        override suspend fun findByLinkedDocumentId(challanDocumentId: String): DocumentEntity? = error("not used by this test")
+        override suspend fun findByDocumentNumber(orgId: String, documentNumber: String): DocumentEntity? = error("not used by this test")
     }
 
     private class FakeLedgerEntryDao : LedgerEntryDao {

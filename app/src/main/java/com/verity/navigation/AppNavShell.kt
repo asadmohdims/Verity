@@ -56,6 +56,7 @@ import com.verity.feature.home.HomeRoute
 import com.verity.feature.home.HomeViewModel
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.pdf.PdfViewerScreen
+import com.verity.feature.invoice.ui.LineItemEntryRoute
 import com.verity.feature.invoice.preview.InvoiceFinalizedScreen
 import com.verity.feature.invoice.preview.InvoicePreviewScreen
 import com.verity.feature.invoice.ui.InvoiceWorkspaceRoute
@@ -97,12 +98,15 @@ internal object AppRoutes {
     const val CUSTOMER_ADD = "customer/add"
     const val CUSTOMER_EDIT = "customer/{customerId}/edit"
     const val REFERENCE_LIST = "settings/reference-list/{kind}"
+    const val LINE_ITEM_ADD = "workspace/line-item/add"
+    const val LINE_ITEM_EDIT = "workspace/line-item/{index}/edit"
 
     fun documentDetail(documentId: String) = "document/$documentId"
     fun documentPdf(documentId: String) = "document/$documentId/pdf"
     fun customerDetail(customerId: String) = "customer/$customerId"
     fun customerEdit(customerId: String) = "customer/$customerId/edit"
     fun referenceList(kind: ReferenceListKind) = "settings/reference-list/${kind.name}"
+    fun lineItemEdit(index: Int) = "workspace/line-item/$index/edit"
 }
 
 private val bottomNavItems = listOf(
@@ -290,6 +294,10 @@ fun AppNavShell(
             supportChrome(title = "Add Customer") { navController.popBackStack() }
         AppRoutes.CUSTOMER_EDIT ->
             supportChrome(title = "Edit Customer") { navController.popBackStack() }
+        AppRoutes.LINE_ITEM_ADD ->
+            supportChrome(title = "Add Line Item") { navController.popBackStack() }
+        AppRoutes.LINE_ITEM_EDIT ->
+            supportChrome(title = "Edit Line Item") { navController.popBackStack() }
         else -> chromeSpecWithNavigation
     }
 
@@ -484,7 +492,31 @@ fun AppNavShell(
 
                 composable(AppRoutes.WORKSPACE) {
                     InvoiceWorkspaceRoute(
-                        viewModel = invoiceWorkspaceViewModel
+                        viewModel = invoiceWorkspaceViewModel,
+                        onAddLineItem = { navController.navigate(AppRoutes.LINE_ITEM_ADD) },
+                        onEditLineItem = { index ->
+                            navController.navigate(AppRoutes.lineItemEdit(index))
+                        }
+                    )
+                }
+
+                composable(AppRoutes.LINE_ITEM_ADD) {
+                    LineItemEntryRoute(
+                        viewModel = invoiceWorkspaceViewModel,
+                        editingIndex = null,
+                        onDone = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = AppRoutes.LINE_ITEM_EDIT,
+                    arguments = listOf(navArgument("index") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val index = backStackEntry.arguments?.getInt("index") ?: 0
+                    LineItemEntryRoute(
+                        viewModel = invoiceWorkspaceViewModel,
+                        editingIndex = index,
+                        onDone = { navController.popBackStack() }
                     )
                 }
 
@@ -536,7 +568,13 @@ fun AppNavShell(
                     InvoiceFinalizedScreen(
                         document = finalizedDocument!!,
                         onViewDocument = { navController.navigate(AppRoutes.FINALIZED_DOCUMENT) },
-                        onViewPdf = { navController.navigate(AppRoutes.PDF_VIEWER) }
+                        onViewPdf = { navController.navigate(AppRoutes.PDF_VIEWER) },
+                        onContinueToJobWorkInvoice = {
+                            invoiceWorkspaceViewModel.onContinueToJobWorkInvoice()
+                            navController.navigate(AppRoutes.WORKSPACE) {
+                                popUpTo(AppRoutes.FINALIZED) { inclusive = true }
+                            }
+                        }
                     )
                 }
 
@@ -551,7 +589,16 @@ fun AppNavShell(
 
                     InvoicePreviewScreen(
                         document = finalizedDocument!!,
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        // Only ever resolvable here for the Invoice side of a job-work pair —
+                        // its jobWorkLink.linkedDocumentId is written at that Invoice's own
+                        // finalize time (see DefaultInvoiceFinalizer). The Challan side's link
+                        // never resolves this way (that id doesn't exist at Challan-finalize
+                        // time) — see DocumentDetailViewModel.linkedDocumentId for the reverse
+                        // lookup used once a Challan is reopened from Documents/Home instead.
+                        onViewLinkedDocument = finalizedDocument!!.jobWorkLink?.linkedDocumentId?.let { linkedId ->
+                            { navController.navigate(AppRoutes.documentDetail(linkedId)) }
+                        }
                     )
                 }
 
@@ -591,6 +638,7 @@ fun AppNavShell(
                         }
                     )
                     val document by documentDetailViewModel.document.collectAsState()
+                    val linkedDocumentId by documentDetailViewModel.linkedDocumentId.collectAsState()
 
                     val loadedDocument = document
                     if (loadedDocument == null) {
@@ -601,6 +649,9 @@ fun AppNavShell(
                             onBack = { navController.popBackStack() },
                             onViewPdf = {
                                 navController.navigate(AppRoutes.documentPdf(documentId))
+                            },
+                            onViewLinkedDocument = linkedDocumentId?.let { linkedId ->
+                                { navController.navigate(AppRoutes.documentDetail(linkedId)) }
                             }
                         )
                     }

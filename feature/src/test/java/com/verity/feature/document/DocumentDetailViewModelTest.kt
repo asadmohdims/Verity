@@ -47,10 +47,13 @@ class DocumentDetailViewModelTest {
     }
 
     private class FakeDocumentDetailDataSource(
-        private val documents: Map<String, InvoiceDocumentModel>
+        private val documents: Map<String, InvoiceDocumentModel>,
+        private val linkedDocumentIds: Map<String, String> = emptyMap()
     ) : DocumentDetailDataSource {
         override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
             documents[documentId]
+        override suspend fun findLinkedDocumentId(documentId: String): String? =
+            linkedDocumentIds[documentId]
     }
 
     private class FakeInvoicePdfRenderer : InvoicePdfRenderer {

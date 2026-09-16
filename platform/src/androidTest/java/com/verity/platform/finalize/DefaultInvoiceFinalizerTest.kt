@@ -6,8 +6,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.feature.invoice.draft.DraftAddress
 import com.verity.feature.invoice.draft.DraftDocumentType
+import com.verity.feature.invoice.draft.DraftInboundChallanReference
+import com.verity.feature.invoice.draft.DraftJobWorkChallanLink
 import com.verity.feature.invoice.draft.DraftLineItem
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.platform.database.PlatformDatabase
 import com.verity.platform.database.entities.DocumentEntity
 import com.verity.platform.database.entities.LedgerEntryEntity
@@ -19,11 +22,14 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -167,6 +173,137 @@ class DefaultInvoiceFinalizerTest {
 
         assertEquals(1, syncClient.pushedDocuments.size)
         assertEquals(0, syncClient.pushedLedgerEntries.size)
+    }
+
+    @Test
+    fun finalize_challan_with_reserve_linkage_burns_the_next_invoice_number() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+
+        val challan = finalizer.finalize(
+            testDraft().copy(documentType = DraftDocumentType.CHALLAN),
+            customerId,
+            JobWorkLinkage.ReserveLinkedInvoiceNumber
+        )
+
+        assertEquals("CH-000001", challan.identity.documentNumber)
+        assertEquals("INV-000001", challan.jobWorkLink?.linkedDocumentNumber)
+        assertNull(challan.jobWorkLink?.linkedDocumentId)
+
+        // The reserved number is genuinely consumed - a plain, unrelated Invoice finalized next
+        // must skip straight past it.
+        val nextInvoice = finalizer.finalize(testDraft(), customerId)
+        assertEquals("INV-000002", nextInvoice.identity.documentNumber)
+    }
+
+    @Test
+    fun full_job_work_flow_reuses_the_reserved_number_and_links_the_invoice_to_the_challan() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+
+        val challan = finalizer.finalize(
+            testDraft().copy(documentType = DraftDocumentType.CHALLAN),
+            customerId,
+            JobWorkLinkage.ReserveLinkedInvoiceNumber
+        )
+        val reservedNumber = requireNotNull(challan.jobWorkLink).linkedDocumentNumber
+
+        val invoice = finalizer.finalize(
+            testDraft(),
+            customerId,
+            JobWorkLinkage.UseReservedNumber(
+                documentNumber = reservedNumber,
+                linkedChallanDocumentNumber = challan.identity.documentNumber,
+                linkedChallanDate = challan.identity.issueDate
+            )
+        )
+
+        assertEquals(reservedNumber, invoice.identity.documentNumber)
+        assertEquals(challan.identity.documentNumber, invoice.jobWorkLink?.linkedDocumentNumber)
+
+        val challanEntity = database.documentDao().findByDocumentNumber(DEFAULT_ORG_ID, challan.identity.documentNumber)
+        assertEquals(challanEntity?.documentId, invoice.jobWorkLink?.linkedDocumentId)
+
+        val invoiceEntity = database.documentDao().findByDocumentNumber(DEFAULT_ORG_ID, reservedNumber)
+        assertEquals(challanEntity?.documentId, invoiceEntity?.linkedDocumentId)
+
+        // No second number was silently allocated for the Invoice - the very next plain finalize
+        // gets the immediately-following number, not one further along.
+        val nextInvoice = finalizer.finalize(testDraft(), customerId)
+        assertEquals("INV-000002", nextInvoice.identity.documentNumber)
+
+        // Only the job-work amount is billed - the Challan's own value never enters the ledger.
+        val balance = database.ledgerEntryDao().getBalanceForCustomer(DEFAULT_ORG_ID, customerId)
+        assertEquals(invoice.totals.grandTotalPaise + nextInvoice.totals.grandTotalPaise, balance)
+    }
+
+    @Test
+    fun finalize_invoice_with_unresolvable_linked_challan_throws() {
+        val customerId = UUID.randomUUID().toString()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                finalizer.finalize(
+                    testDraft(),
+                    customerId,
+                    JobWorkLinkage.UseReservedNumber(
+                        documentNumber = "INV-000001",
+                        linkedChallanDocumentNumber = "CH-999999",
+                        linkedChallanDate = LocalDate.now(clock)
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
+    fun reserve_linked_invoice_number_on_an_invoice_draft_throws() {
+        val customerId = UUID.randomUUID().toString()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                finalizer.finalize(testDraft(), customerId, JobWorkLinkage.ReserveLinkedInvoiceNumber)
+            }
+        }
+    }
+
+    @Test
+    fun use_reserved_number_on_a_challan_draft_throws() {
+        val customerId = UUID.randomUUID().toString()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                finalizer.finalize(
+                    testDraft().copy(documentType = DraftDocumentType.CHALLAN),
+                    customerId,
+                    JobWorkLinkage.UseReservedNumber(
+                        documentNumber = "INV-000001",
+                        linkedChallanDocumentNumber = "CH-000001",
+                        linkedChallanDate = LocalDate.now(clock)
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
+    fun standalone_challan_with_inbound_reference_round_trips_independent_of_job_work() = runBlocking {
+        val customerId = UUID.randomUUID().toString()
+        val draft = testDraft().copy(
+            documentType = DraftDocumentType.CHALLAN,
+            inboundChallanReference = DraftInboundChallanReference(
+                challanNumber = "CUST-CH-0042",
+                challanDate = LocalDate.of(2026, 9, 1)
+            )
+        )
+
+        val document = finalizer.finalize(draft, customerId)
+
+        assertEquals("CUST-CH-0042", document.inboundChallanReference?.challanNumber)
+        assertNull(document.jobWorkLink)
+
+        val roundTripped = json.decodeFromString<InvoiceDocumentModel>(
+            database.documentDao().getAll().single().payloadJson
+        )
+        assertEquals("CUST-CH-0042", roundTripped.inboundChallanReference?.challanNumber)
     }
 
     private fun testDraft(): InvoiceDraftUiState =

@@ -1,10 +1,12 @@
 package com.verity.platform.finalize
 
 import androidx.room.withTransaction
+import com.verity.core.document.model.DocumentJobWorkLink
 import com.verity.core.document.model.HARDCODED_SELLER
 import com.verity.core.document.model.InvoiceDocumentModel
 import com.verity.core.document.search.buildSearchIndexText
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.projection.DraftToInvoiceDocument
 import com.verity.feature.invoice.draft.DraftDocumentType
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
@@ -16,6 +18,7 @@ import com.verity.platform.sync.InvoiceNumberAllocator
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.Clock
+import java.time.LocalDate
 import java.util.UUID
 
 /** Single-org for now — see CLAUDE.md, multi-org is a real future goal kept cheap, not urgent. */
@@ -42,6 +45,11 @@ const val DEFAULT_ORG_ID = "default-org"
  * transactional; the deliberate risk this reopens (two on-device finalize calls racing between
  * allocate() and the DB write) is the same "pointless-to-leave-open double-tap race" the original
  * local-only version already accepted, not a new one.
+ *
+ * Job work ("Challan + Invoice", see [JobWorkLinkage]): a Challan finalize that reserves a linked
+ * Invoice number allocates *two* numbers before the transaction opens instead of one. If the
+ * transaction then fails, both are burned rather than just one — the same accepted risk category
+ * as above, just occasionally two-wide instead of one-wide.
  */
 class DefaultInvoiceFinalizer(
     private val database: PlatformDatabase,
@@ -52,7 +60,11 @@ class DefaultInvoiceFinalizer(
 
     private val json = Json { ignoreUnknownKeys = false }
 
-    override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel {
+    override suspend fun finalize(
+        draft: InvoiceDraftUiState,
+        customerId: String,
+        jobWorkLinkage: JobWorkLinkage
+    ): InvoiceDocumentModel {
         val documentTypeColumn = when (draft.documentType) {
             DraftDocumentType.INVOICE -> "INVOICE"
             DraftDocumentType.CHALLAN -> "CHALLAN"
@@ -62,19 +74,78 @@ class DefaultInvoiceFinalizer(
             DraftDocumentType.CHALLAN -> "CH-"
         }
 
-        val nextSequence = numberAllocator.allocate(DEFAULT_ORG_ID, documentTypeColumn)
-        val documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
+        // Reusing a reserved number (UseReservedNumber) only ever applies to the Invoice half of
+        // a job-work pair; reserving one (ReserveLinkedInvoiceNumber) only to the Challan half —
+        // both declared upfront by the "Challan + Invoice" flow, never mixed up by the caller.
+        if (jobWorkLinkage is JobWorkLinkage.UseReservedNumber) {
+            require(draft.documentType == DraftDocumentType.INVOICE) {
+                "JobWorkLinkage.UseReservedNumber only applies to an Invoice finalize"
+            }
+        }
+        if (jobWorkLinkage is JobWorkLinkage.ReserveLinkedInvoiceNumber) {
+            require(draft.documentType == DraftDocumentType.CHALLAN) {
+                "JobWorkLinkage.ReserveLinkedInvoiceNumber only applies to a Challan finalize"
+            }
+        }
+
+        val nextSequence: Long
+        val documentNumber: String
+        if (jobWorkLinkage is JobWorkLinkage.UseReservedNumber) {
+            documentNumber = jobWorkLinkage.documentNumber
+            nextSequence = documentNumber.substringAfterLast('-').toLong()
+        } else {
+            nextSequence = numberAllocator.allocate(DEFAULT_ORG_ID, documentTypeColumn)
+            documentNumber = numberPrefix + nextSequence.toString().padStart(6, '0')
+        }
+
+        // Reserved BEFORE opening the transaction, same reasoning as the allocate() call above —
+        // it can hit the network (up to its own timeout via numberAllocator), and this is a
+        // second real number being consumed on top of this document's own.
+        val reservedInvoiceNumber: String? =
+            if (jobWorkLinkage is JobWorkLinkage.ReserveLinkedInvoiceNumber) {
+                val invoiceSequence = numberAllocator.allocate(DEFAULT_ORG_ID, "INVOICE")
+                "INV-" + invoiceSequence.toString().padStart(6, '0')
+            } else {
+                null
+            }
+
+        // Cheap local read, also done before opening the transaction: resolves the job-work
+        // Invoice's linked Challan (known only by number on the draft) to its real documentId.
+        val linkedChallanEntity: DocumentEntity? =
+            (jobWorkLinkage as? JobWorkLinkage.UseReservedNumber)?.let { linkage ->
+                requireNotNull(
+                    database.documentDao()
+                        .findByDocumentNumber(DEFAULT_ORG_ID, linkage.linkedChallanDocumentNumber)
+                ) {
+                    "Linked Challan ${linkage.linkedChallanDocumentNumber} not found — cannot finalize job-work Invoice"
+                }
+            }
 
         lateinit var documentEntity: DocumentEntity
         var ledgerEntryEntity: LedgerEntryEntity? = null
 
         val document = database.withTransaction {
-            val document = DraftToInvoiceDocument.project(
+            var document = DraftToInvoiceDocument.project(
                 draft = draft,
                 documentNumber = documentNumber,
                 seller = HARDCODED_SELLER,
                 clock = clock
             )
+
+            if (reservedInvoiceNumber != null) {
+                document = document.copy(
+                    jobWorkLink = DocumentJobWorkLink(
+                        linkedDocumentNumber = reservedInvoiceNumber,
+                        linkedDocumentDate = LocalDate.now(clock),
+                        linkedDocumentId = null
+                    )
+                )
+            }
+            if (linkedChallanEntity != null) {
+                document = document.copy(
+                    jobWorkLink = document.jobWorkLink?.copy(linkedDocumentId = linkedChallanEntity.documentId)
+                )
+            }
 
             val now = System.currentTimeMillis()
             val documentId = UUID.randomUUID().toString()
@@ -89,7 +160,7 @@ class DefaultInvoiceFinalizer(
                 customerName = document.parties.billedTo.name,
                 issueDateEpochDay = document.identity.issueDate.toEpochDay(),
                 grandTotalPaise = document.totals.grandTotalPaise,
-                linkedDocumentId = null,
+                linkedDocumentId = linkedChallanEntity?.documentId,
                 payloadJson = json.encodeToString(document),
                 finalizedAt = now,
                 searchIndexText = buildSearchIndexText(document)

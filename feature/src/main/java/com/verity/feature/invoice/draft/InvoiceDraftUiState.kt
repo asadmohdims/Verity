@@ -28,6 +28,12 @@ data class InvoiceDraftUiState(
     val reverseCharge: Boolean = false,
     val lineItems: List<DraftLineItem> = emptyList(),
     val transportDetails: DraftTransportDetails? = null,
+    /** Set via the "Challan + Invoice" Document Type option. Challan-only. */
+    val isJobWorkFlow: Boolean = false,
+    /** "Received vide Challan No X dated Y" — available on any Challan, not gated by job work. */
+    val inboundChallanReference: DraftInboundChallanReference? = null,
+    /** Present only on a continuation Invoice draft opened via onContinueToJobWorkInvoice(). */
+    val jobWorkChallanLink: DraftJobWorkChallanLink? = null,
     val summary: DraftSummary = DraftSummary()
 ) {
     /**
@@ -138,6 +144,32 @@ data class DraftTransportDetails(
     val freightPaise: Long? = null,
     val notes: String? = null,
     val ewayBillNumber: String? = null
+)
+
+/**
+ * DraftInboundChallanReference
+ *
+ * The customer's own delivery challan that accompanied goods sent in for job work — external to
+ * Verity, never itself a Verity row. Available on any Challan draft.
+ */
+data class DraftInboundChallanReference(
+    val challanNumber: String,
+    val challanDate: LocalDate? = null
+)
+
+/**
+ * DraftJobWorkChallanLink
+ *
+ * Carried onto a fresh Invoice draft by InvoiceWorkspaceViewModel.onContinueToJobWorkInvoice()
+ * right after its originating Challan is finalized. reservedInvoiceNumber was already allocated
+ * (and consumed) at that Challan's finalize time — finalizing this Invoice draft must reuse it
+ * rather than allocate a new one. No challan documentId is carried here: the finalizer resolves
+ * the real Challan row by [challanDocumentNumber], not by id (see InvoiceFinalizer.JobWorkLinkage).
+ */
+data class DraftJobWorkChallanLink(
+    val reservedInvoiceNumber: String,
+    val challanDocumentNumber: String,
+    val challanDate: LocalDate
 )
 
 /**

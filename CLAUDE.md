@@ -30,6 +30,30 @@ fixture set at seed time, but the customers themselves are now real CRUD-managed
 not a closed fixture — a customer added or edited through the new Customers screens is real data
 the autocomplete picks up too, it's just that the *initial* seed population is still fixture-based.
 
+**Challan → Invoice (job work) — built 2026-09-16, JVM/androidTest-green, on-device pass still
+pending.** The Document Type dropdown in Invoice Workspace has a third option, "Challan + Invoice",
+for the job-work scenario this section of the domain model previously only described (see "Domain
+model" below for the finalized design). Selecting it reveals a "Job Work" section on the Challan
+draft with an always-available "Received Vide Challan No. / Dated" reference (any Challan, not
+gated by job work) and a static "Ref: Invoice No. — (assigned automatically at finalize)" row.
+Finalizing that Challan atomically reserves-and-consumes the real next Invoice number
+(`InvoiceFinalizer.JobWorkLinkage.ReserveLinkedInvoiceNumber`) — a deliberate choice over a
+non-binding preview, so the number printed on the already-issued Challan PDF is always correct;
+the accepted trade-off is a permanent numbering gap if the follow-up Invoice draft is abandoned.
+The Challan's "Finalized" screen gets a "Continue to Invoice" button that opens a fresh Invoice
+draft pre-filled with the same customer and a locked Document Type, but deliberately empty line
+items — only the job-work service gets billed, never the Challan's goods value. That Invoice's
+finalize reuses the reserved number (`JobWorkLinkage.UseReservedNumber`) instead of allocating a
+new one, and writes `DocumentEntity.linkedDocumentId` — a column that has existed since schema v1
+but was never written until now — pointing at the Challan's real row; the Challan's own row is
+never mutated (finalized documents are insert-only), so its "Linked Invoice" is a reverse DAO
+query, not a stored forward pointer. The Invoice's PDF gets a "JOB WORK INVOICE" banner (Challan's
+does not, by design); both PDFs gain the new reference rows. `DefaultInvoiceFinalizerTest` has real
+in-memory-Room coverage for the numbering/linking logic; **not yet run**: `connectedDebugAndroidTest`
+itself, and an on-device pixel/behavior look at the full flow and the PDF banner/grid — this
+project's own testing standards (see below) don't consider a Robolectric-green UI or a
+compiled-but-unrun androidTest suite sufficient proof for either.
+
 **Navigation & screens**: bottom nav (Home / Documents / Customers / Settings) plus a FAB for
 Create is built and merged to `main` — see "UX direction" below for what's built vs. still planned.
 Home shows a "This Month" invoiced-total card (Invoice only) and a Recent Documents list. Documents
@@ -63,9 +87,10 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
 **Known placeholders / gaps to close before this is production-ready**:
 - `HardcodedSeller.kt`'s `pincode` field is still `PLACEHOLDER_PINCODE` — every other seller field
   is real (Unitech Machineries).
-- Challan→Invoice job-work linkage (Standalone vs. Invoice-Linked declaration, `DocumentLinkCreated`
-  — see "Domain model" below) is designed but not built; only a standalone Challan can be finalized
-  today.
+- Challan→Invoice job-work linkage's same-session flow is now built (2026-09-16 — see Status and
+  "Domain model" below); its on-device pass is still outstanding (see Status), and the broader
+  "mark a standalone Challan Invoice-Linked, link it from a later session/different device" version
+  of this design remains deliberately deferred, not built.
 - A real Business Profile screen (to retire `HardcodedSeller.kt`) isn't built — the Settings
   screen's Business Profile row ships visible-but-inert until it exists, deliberately, since no
   design exists for that screen yet (see "Next up" below). Customer CRUD and the Settings theme
@@ -73,6 +98,11 @@ for. All JVM/Robolectric-testable pieces are green (`InvoiceNumberAllocatorTest`
 - Share/Print/Export (and the `FileProvider` it needs) isn't built — now top priority, see
   "Next up" above.
 - No real app icon — still the stock Android Studio default. See "Next up" above.
+- `LineItemEntryScreen` (2026-09-15, replacing inline Line Item add/edit — see "UI conventions"
+  above) is green on the full Robolectric suite but has **not** had the on-device pixel/behavior
+  look this project's own testing standard requires before calling mockup-matching work done
+  (Robolectric green ≠ visual proof — see "Testing standards" below). Do an `installDebug` pass
+  on a real device/emulator, on a long invoice specifically, before treating this as fully closed.
 - Several `platform` androidTest suites (real Room — `DefaultInvoiceFinalizerTest`,
   `Migration1To2Test`, `DefaultDocumentSearchDataSourceTest`) compile and pass in JVM/Robolectric
   form but need a connected device/emulator for `connectedDebugAndroidTest` itself, which hasn't
@@ -204,20 +234,31 @@ coupling.
 - **Customer** is supporting identity data — plain CRUD, not event-sourced. Snapshot customer
   identity into a document at finalization time so a later customer edit never retroactively
   changes a historical document.
-- **Challan → Invoice (job work)** *(designed, not yet built — today a Challan only finalizes
-  standalone; see Status)*: at Challan finalization, the user explicitly declares intent
-  — Standalone or Invoice-Linked (job-work) — this is always known upfront, never decided later.
-  Every finalized Challan gets its own PDF **immediately at finalization**, identical to Invoice
-  (same finalize → PDF → background-sync pattern, PDF is the finish line either way) —
-  regardless of whether it's later linked to an invoice, because goods move now and something
-  has to travel with them. The original Challan PDF is never regenerated once issued. If later
-  linked, `DocumentLinkCreated` is an additive fact surfaced in-app (document view/search), not
-  retroactively added to the already-issued PDF. A Challan links to at most one Invoice; not
-  copied into the linked Invoice draft: the Challan's goods value, dates, payments, or ledger
-  effects — only the job-work service actually being billed. Linking from a different device
-  than the one that created the Challan requires that device to have already synced the Challan
-  down first — no special handling for this beyond waiting for sync, consistent with the
-  numbering and durability decisions above.
+- **Challan → Invoice (job work)** *(built 2026-09-16, same-session flow only — see Status)*: the
+  Document Type dropdown's "Challan + Invoice" option declares job-work intent upfront, at Challan
+  creation — there's no "mark a standalone Challan Invoice-Linked, to be linked later from a
+  different session" flow; that broader version of this design (`DocumentLinkCreated` as a fully
+  general additive fact, linkable from any device once synced) remains future/deferred, per
+  Principle 1. Every finalized Challan still gets its own PDF immediately at finalization,
+  identical to a plain Invoice's finalize → PDF → background-sync pattern, and the original
+  Challan PDF is never regenerated once issued. What "job work" adds: (1) any Challan can carry a
+  "Received vide Challan No. X dated Y" reference to the customer's own inbound delivery challan
+  (an external document, never itself a Verity row); (2) a job-work Challan's finalize atomically
+  reserves-and-consumes the real next Invoice number (`InvoiceFinalizer.JobWorkLinkage.
+  ReserveLinkedInvoiceNumber`) and bakes it into the Challan's own printed "Ref: Invoice No."
+  reference — chosen over a non-binding preview so that number is always correct once printed,
+  accepting a permanent numbering gap if the user never finalizes the follow-up Invoice; (3) the
+  Challan's "Finalized" screen offers "Continue to Invoice", opening a pre-filled Invoice draft
+  (same customer, locked Document Type, empty line items — the Challan's goods value/dates/
+  payments are deliberately **not** copied, only the job-work service gets billed) carrying that
+  reserved number forward (`JobWorkLinkage.UseReservedNumber`); (4) that Invoice's finalize reuses
+  the reserved number rather than allocating a new one, and writes `DocumentEntity.linkedDocumentId`
+  (a column dormant since schema v1) pointing at the Challan's real row — written once, at the
+  Invoice's own insert time, never as a mutation of the already-finalized Challan; the Challan's
+  "Linked Invoice" is therefore a reverse `DocumentDao` query, not a stored forward pointer, and
+  resolves to nothing if that Invoice was never finalized. Only the Invoice's PDF gets a visible
+  "JOB WORK INVOICE" banner; both PDFs gain the new reference rows. A Challan still links to at
+  most one Invoice, and none of the Challan's goods value/payments/ledger effects ever reach it.
 - **GST tax**: CGST+SGST for intra-state, IGST for inter-state, determined by comparing buyer
   state code to seller state code. Computed once, deterministically, from line items + freight —
   never recomputed or overridden in the UI layer.
@@ -378,10 +419,52 @@ multi-person customer rather than guessed at now.
   tests. A reducer without tests is incomplete.
 - **EditBlock pattern** for inline draft editing: read-only projection → explicit user action →
   single expandable edit block → commit or cancel → re-rendered read-only projection. No
-  always-visible inline editors. Exactly one edit block active at a time per section.
+  always-visible inline editors. Exactly one edit block active at a time per section. **Exception,
+  added 2026-09-15**: Line Items no longer uses an inline `VerityEditBlock` for add/edit — a long
+  invoice's edit block could expand dozens of items down a single shared scroll region with no
+  `imePadding()` anywhere in the app, so the keyboard would cover the field being typed into with
+  no way to bring it back into view short of a manual scroll. Add/Edit now lives on
+  `LineItemEntryScreen` (`feature/invoice/ui/`), a dedicated pushed (Support-mode) full-screen
+  surface sharing the same `InvoiceWorkspaceViewModel`/`InvoiceDraftStore` instance as Workspace —
+  see that file's header comment for the full reasoning, including why a full screen was chosen
+  over a bottom sheet (five fields plus two autocomplete panels don't fit above a keyboard in a
+  half-height sheet). Add mode offers "Save & Add Another" (commits and reopens a blank form
+  without leaving the screen) as the primary action, specifically for entering many line items in
+  one sitting. `MainActivity` now declares `android:windowSoftInputMode="adjustResize"` — required
+  for `imePadding()` to behave correctly and consistently across API levels, not just legacy
+  boilerplate.
 - **Focus/IME ownership**: explicit, owned by the screen/caller — never inferred, never owned by
   layout containers. Edit blocks auto-focus the first field on expand and dismiss IME on
-  collapse; field-to-field order is linear via `ImeAction` (Next/Done), never guessed.
+  collapse; field-to-field order is linear via `ImeAction` (Next/Done), never guessed. **Actually
+  wired up for the first time 2026-09-15** (`LineItemEntryScreen`, via `VerityTextField`'s new
+  `fieldModifier`/`keyboardOptions`/`keyboardActions` params; Transportation Mode's still-inline
+  `VerityEditBlock` got the same chain the same day) — this bullet described the intended
+  convention for a while before any screen implemented it.
+  - **The scroll-into-view half of this needed two rounds to get right.** First attempt trusted
+    Compose's own "auto-scroll a newly-focused TextField into view" behavior (implicit in
+    `Modifier.verticalScroll`) to carry the user from field to field once the `ImeAction.Next`
+    chain moved focus. On-device testing showed that doesn't reliably fire once focus moves
+    between fields while the keyboard is *already* open — exactly the case that matters here. Both
+    `LineItemEntryScreen` and Transportation's fields now wire an explicit
+    `BringIntoViewRequester` per field instead (`rememberFocusScrollModifier` in
+    `InvoiceWorkspaceScreen.kt`, shared by both files) — call it in `onFocusChanged` rather than
+    trust the field to do it itself. Lesson: don't rely on this specific implicit Compose behavior
+    going forward: make it explicit every time, consistent with this bullet's own rule.
+  - **Inline edit blocks have a second, separate scroll problem full-screen surfaces don't**:
+    a block that expands partway down a long shared scroll region (Transportation, still inline)
+    can open with only its first field guaranteed visible, no matter how good the field-to-field
+    chain is — `imePadding()` shrinks the viewport but doesn't decide *where* in the scroll content
+    that viewport lands. Fix: track the block's own on-screen Y offset
+    (`Modifier.onGloballyPositioned`) and, in a `LaunchedEffect` keyed on its expanded/collapsed
+    state, `ScrollState.animateScrollTo()` that offset the moment it expands, so the section
+    heading lands at the top of the screen before the user even taps a field. `LineItemEntryScreen`
+    doesn't need this since it's already its own full screen with nothing above it to scroll past.
+  - **Billed To / Shipped To still use the plain old inline `VerityEditBlock` with neither fix** —
+    apply the same recipe there if the same complaint comes up, rather than re-deriving it. This is
+    now the second and third call site hand-rolling both fixes; if a fourth shows up, it's worth
+    reconsidering whether `VerityEditBlock` itself should grow this generically (it doesn't own the
+    parent's `ScrollState` today, so the scroll-to-top-on-expand half would need that threaded in
+    or reworked around `BringIntoViewRequester`) rather than copying the recipe a third time.
 - **Chrome modes**: exactly one of Brand (entry surface only) / Workspace (primary task surfaces,
   back nav, title = document type) / Support (auxiliary surfaces) active at a time, derived from
   navigation context, never inferred heuristically.

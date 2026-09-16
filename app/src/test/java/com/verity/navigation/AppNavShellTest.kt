@@ -46,6 +46,7 @@ import com.verity.feature.referencelist.ReferenceListKind
 import com.verity.feature.invoice.draft.InvoiceDraftStore
 import com.verity.feature.invoice.draft.InvoiceDraftUiState
 import com.verity.feature.invoice.finalize.InvoiceFinalizer
+import com.verity.feature.invoice.finalize.JobWorkLinkage
 import com.verity.feature.invoice.pdf.InvoicePdfRenderer
 import com.verity.feature.invoice.ui.InvoiceWorkspaceViewModel
 import com.verity.feature.settings.SettingsViewModel
@@ -92,7 +93,11 @@ class AppNavShellTest {
     }
 
     private class NoopInvoiceFinalizer : InvoiceFinalizer {
-        override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel {
+        override suspend fun finalize(
+            draft: InvoiceDraftUiState,
+            customerId: String,
+            jobWorkLinkage: JobWorkLinkage
+        ): InvoiceDocumentModel {
             error("not used in this test")
         }
     }
@@ -105,6 +110,7 @@ class AppNavShellTest {
 
     private class NoopDocumentDetailDataSource : DocumentDetailDataSource {
         override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? = null
+        override suspend fun findLinkedDocumentId(documentId: String): String? = null
     }
 
     private class NoopDocumentSearchDataSource : DocumentSearchDataSource {
@@ -165,8 +171,11 @@ class AppNavShellTest {
     )
 
     private class FakeInvoiceFinalizer(private val document: InvoiceDocumentModel) : InvoiceFinalizer {
-        override suspend fun finalize(draft: InvoiceDraftUiState, customerId: String): InvoiceDocumentModel =
-            document
+        override suspend fun finalize(
+            draft: InvoiceDraftUiState,
+            customerId: String,
+            jobWorkLinkage: JobWorkLinkage
+        ): InvoiceDocumentModel = document
     }
 
     private class FakeInvoicePdfRenderer : InvoicePdfRenderer {
@@ -405,6 +414,7 @@ class AppNavShellTest {
         val documentDetailDataSource = object : DocumentDetailDataSource {
             override suspend fun loadDocument(documentId: String): InvoiceDocumentModel? =
                 if (documentId == "doc-1") document else null
+            override suspend fun findLinkedDocumentId(documentId: String): String? = null
         }
         val documentSearchViewModel = DocumentSearchViewModel(
             homeDataSource = homeDataSource,

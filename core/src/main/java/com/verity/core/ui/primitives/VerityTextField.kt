@@ -82,7 +82,18 @@ fun VerityTextField(
      * CLAUDE.md's UI conventions rule out ("suggestions expand inline below the input field —
      * never a popup/dropdown menu"). Free text past the list is still accepted either way.
      */
-    expandSuggestionsOnFocus: Boolean = false
+    expandSuggestionsOnFocus: Boolean = false,
+    /**
+     * Applied to the actual underlying `OutlinedTextField`, separate from [modifier] (which sizes
+     * the field's outer layout — e.g. `Modifier.weight(1f)` in a Row — and must stay on the outer
+     * Column so weight resolves against the right parent). Use this for `Modifier.focusRequester(...)`
+     * or anything else that needs to reach the real focusable element.
+     */
+    fieldModifier: Modifier = Modifier,
+    /** Keyboard type/capitalization for this field — e.g. `KeyboardType.Decimal` for a rate. */
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    /** Wires the IME action button (Next/Done) — e.g. advancing focus to the next field. */
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     when (role) {
         VerityTextFieldRole.Basic -> BasicTextField(
@@ -91,7 +102,10 @@ fun VerityTextField(
             value = value,
             onValueChange = onValueChange,
             errorText = errorText,
-            modifier = modifier
+            modifier = modifier,
+            fieldModifier = fieldModifier,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
 
         VerityTextFieldRole.SelectionSearch -> SelectionSearchField(
@@ -102,7 +116,10 @@ fun VerityTextField(
             suggestions = suggestions,
             onSelectSuggestion = onSelectSuggestion,
             expandSuggestionsOnFocus = expandSuggestionsOnFocus,
-            modifier = modifier
+            modifier = modifier,
+            fieldModifier = fieldModifier,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         )
     }
 }
@@ -117,7 +134,10 @@ private fun SelectionSearchField(
     suggestions: List<VeritySuggestion>,
     onSelectSuggestion: ((VeritySuggestion) -> Unit)?,
     expandSuggestionsOnFocus: Boolean,
-    modifier: Modifier
+    modifier: Modifier,
+    fieldModifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     var expanded by remember { mutableStateOf(false) }
@@ -136,7 +156,7 @@ private fun SelectionSearchField(
                     Text(placeholder)
                 }
             },
-            modifier = Modifier
+            modifier = fieldModifier
                 .fillMaxWidth()
                 .onFocusChanged { focusState ->
                     if (expandSuggestionsOnFocus && focusState.isFocused) {
@@ -144,6 +164,8 @@ private fun SelectionSearchField(
                     }
                 },
             singleLine = true,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             textStyle = VerityTheme.typography.body.copy(
                 color = VerityTheme.colors.text.primary
             ),
@@ -275,7 +297,10 @@ private fun BasicTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier,
-    errorText: String? = null
+    errorText: String? = null,
+    fieldModifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -287,8 +312,10 @@ private fun BasicTextField(
                     Text(placeholder)
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = fieldModifier.fillMaxWidth(),
             singleLine = true,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             isError = errorText != null,
             textStyle = VerityTheme.typography.body.copy(
                 color = VerityTheme.colors.text.primary
