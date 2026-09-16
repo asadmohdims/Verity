@@ -294,21 +294,13 @@ fun LineItemEntryScreen(
                     )
                 }
             } else {
+                // "Save & Add Another" on the left (Secondary) since it's the one reached for
+                // most often mid-entry; "Save & Close" stays Primary/green on the right as the
+                // eventual, more consequential action that ends the flow.
                 Row(modifier = Modifier.fillMaxWidth()) {
                     VerityButton(
-                        label = "Save & Close",
-                        role = VerityButtonRole.Secondary,
-                        onClick = {
-                            onAdd(buildItem())
-                            onDone()
-                        },
-                        state = if (validation.canSubmit) VerityButtonState.Enabled else VerityButtonState.Disabled,
-                        modifier = Modifier.weight(1f)
-                    )
-                    VeritySpacer(size = VeritySpace.Medium, horizontal = true)
-                    VerityButton(
                         label = "Save & Add Another",
-                        role = VerityButtonRole.Primary,
+                        role = VerityButtonRole.Secondary,
                         onClick = {
                             onAdd(buildItem())
                             coroutineScope.launch {
@@ -319,6 +311,17 @@ fun LineItemEntryScreen(
                             }
                             clearFieldsForNextItem()
                             descriptionFocus.requestFocus()
+                        },
+                        state = if (validation.canSubmit) VerityButtonState.Enabled else VerityButtonState.Disabled,
+                        modifier = Modifier.weight(1f)
+                    )
+                    VeritySpacer(size = VeritySpace.Medium, horizontal = true)
+                    VerityButton(
+                        label = "Save & Close",
+                        role = VerityButtonRole.Primary,
+                        onClick = {
+                            onAdd(buildItem())
+                            onDone()
                         },
                         state = if (validation.canSubmit) VerityButtonState.Enabled else VerityButtonState.Disabled,
                         modifier = Modifier.weight(1f)
