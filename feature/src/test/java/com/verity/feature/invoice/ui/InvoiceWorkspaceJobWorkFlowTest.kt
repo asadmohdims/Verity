@@ -1,5 +1,6 @@
 package com.verity.feature.invoice.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -31,7 +32,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Covers the new "Challan + Invoice" Document Type option: selecting it reveals the Job Work
+ * Covers the "Job Work" Document Type option (the dropdown item that sets CHALLAN +
+ * isJobWorkFlow — labeled "Challan + Invoice" internally, see InvoiceDraftUiState): selecting it
+ * reveals the Job Work
  * section (the always-available "Received Vide Challan" reference block, plus a placeholder for
  * the auto-assigned Invoice number), and saving that block updates its read-only summary. The
  * cross-document finalize/continue flow itself (reserving a real Invoice number, opening the
@@ -104,9 +107,12 @@ class InvoiceWorkspaceJobWorkFlowTest {
 
         // Opens the Document Type dropdown (the closed field currently reads "Invoice").
         composeTestRule.onNodeWithText("Invoice").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Challan + Invoice").performClick()
+        composeTestRule.onNodeWithText("Job Work").performClick()
 
-        composeTestRule.onNodeWithText("Challan + Invoice").assertIsDisplayed()
+        // "Job Work" is now ambiguous on its own: the closed Document Type field reads it AND
+        // the revealed section below is titled the same — assert both are present instead of a
+        // single onNodeWithText, which would fail on "expected exactly 1 node".
+        composeTestRule.onAllNodesWithText("Job Work").assertCountEquals(2)
         // VerityEditBlock's collapsed action label is always rendered as "+ <label>".
         composeTestRule.onNodeWithText("+ Add received-vide-challan reference").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("(assigned automatically at finalize)").performScrollTo().assertIsDisplayed()

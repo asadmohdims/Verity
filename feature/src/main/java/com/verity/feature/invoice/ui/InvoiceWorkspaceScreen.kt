@@ -267,38 +267,82 @@ fun InvoiceWorkspaceScreen(
                 // type away would orphan that reservation, so the control is locked.
                 val isDocumentTypeLocked = draft.jobWorkChallanLink != null
                 val documentTypeLabel = if (draft.documentType == DraftDocumentType.CHALLAN && draft.isJobWorkFlow) {
-                    "Challan + Invoice"
+                    "Job Work"
                 } else {
                     draft.documentType.name.lowercase().replaceFirstChar { it.uppercase() }
                 }
 
                 // Bordered select field, matching `.selectfield` — a plain clickable Text (no
                 // border/chevron) gave no visual affordance this was a selector.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .border(
-                            width = 1.dp,
-                            color = VerityTheme.colors.borders.subtle,
-                            shape = RoundedCornerShape(4.dp)
+                //
+                // The trigger Row and its DropdownMenu are wrapped in their own tight Box:
+                // DropdownMenu anchors itself to its *enclosing layout's* bounds, not to any
+                // specific sibling — left as a direct child of this whole section's Column (as it
+                // was before), that enclosing layout was the entire section, so the menu opened
+                // anchored to the section's full height (visually: below Billed To/Shipped To)
+                // instead of right under this field. A Box containing only the trigger shrinks to
+                // the trigger's own bounds, which is what the popup then anchors to.
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .border(
+                                width = 1.dp,
+                                color = VerityTheme.colors.borders.subtle,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .let { rowModifier ->
+                                if (isDocumentTypeLocked) rowModifier
+                                else rowModifier.clickable { isDocTypeMenuOpen = true }
+                            }
+                            .padding(horizontal = 14.dp, vertical = 13.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        VerityText(
+                            text = documentTypeLabel,
+                            style = VerityTextStyle.Body
                         )
-                        .let { rowModifier ->
-                            if (isDocumentTypeLocked) rowModifier
-                            else rowModifier.clickable { isDocTypeMenuOpen = true }
+                        if (!isDocumentTypeLocked) {
+                            VerityIconGlyph(
+                                icon = VerityIcons.ChevronDown,
+                                contentDescription = null
+                            )
                         }
-                        .padding(horizontal = 14.dp, vertical = 13.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    VerityText(
-                        text = documentTypeLabel,
-                        style = VerityTextStyle.Body
-                    )
-                    if (!isDocumentTypeLocked) {
-                        VerityIconGlyph(
-                            icon = VerityIcons.ChevronDown,
-                            contentDescription = null
+                    }
+
+                    DropdownMenu(
+                        expanded = isDocTypeMenuOpen,
+                        onDismissRequest = { isDocTypeMenuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { VerityText("Invoice", VerityTextStyle.Body) },
+                            onClick = {
+                                viewModel.onDocumentTypeChanged(
+                                    DraftDocumentType.INVOICE
+                                )
+                                isDocTypeMenuOpen = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { VerityText("Challan", VerityTextStyle.Body) },
+                            onClick = {
+                                viewModel.onDocumentTypeChanged(
+                                    DraftDocumentType.CHALLAN
+                                )
+                                isDocTypeMenuOpen = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { VerityText("Job Work", VerityTextStyle.Body) },
+                            onClick = {
+                                viewModel.onDocumentTypeChanged(
+                                    DraftDocumentType.CHALLAN
+                                )
+                                viewModel.onJobWorkFlowChanged(true)
+                                isDocTypeMenuOpen = false
+                            }
                         )
                     }
                 }
@@ -308,40 +352,6 @@ fun InvoiceWorkspaceScreen(
                     VerityText(
                         text = "Locked — continues Challan ${draft.jobWorkChallanLink?.challanDocumentNumber}",
                         style = VerityTextStyle.Caption
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = isDocTypeMenuOpen,
-                    onDismissRequest = { isDocTypeMenuOpen = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { VerityText("Invoice", VerityTextStyle.Body) },
-                        onClick = {
-                            viewModel.onDocumentTypeChanged(
-                                DraftDocumentType.INVOICE
-                            )
-                            isDocTypeMenuOpen = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { VerityText("Challan", VerityTextStyle.Body) },
-                        onClick = {
-                            viewModel.onDocumentTypeChanged(
-                                DraftDocumentType.CHALLAN
-                            )
-                            isDocTypeMenuOpen = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { VerityText("Challan + Invoice", VerityTextStyle.Body) },
-                        onClick = {
-                            viewModel.onDocumentTypeChanged(
-                                DraftDocumentType.CHALLAN
-                            )
-                            viewModel.onJobWorkFlowChanged(true)
-                            isDocTypeMenuOpen = false
-                        }
                     )
                 }
 
@@ -761,6 +771,12 @@ fun InvoiceWorkspaceScreen(
                             null,
                     onCollapsedAction = {
                         isEditingTransport = true
+                        // Only reached starting a fresh Add (see collapsedActionLabel above) —
+                        // editing existing transport details loads its own saved supplyDate via
+                        // VerityTransportSummaryRow's onClick instead. Defaults to the document's
+                        // own date since goods are typically dispatched the same day it's raised;
+                        // still freely editable from there.
+                        supplyDate = draft.issueDate
                     },
                     onAdd = {
                         val freightPaiseLong = parseRupeesInputToPaise(freightPaise)
